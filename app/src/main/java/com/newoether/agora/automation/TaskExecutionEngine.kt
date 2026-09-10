@@ -88,6 +88,10 @@ class TaskExecutionEngine(
     private val automationWakeLockOwner: AutomationWakeLockOwner =
         AutomationWakeLockOwner(appContext),
     private val pauseConversationLoop: suspend (String) -> Unit = {},
+    // Extra tool providers beyond mcpToolProvider (e.g. Heartbeat's promote_learning,
+    // SMS/Notification tools) that headless callers like HeartbeatScheduler need available
+    // during runOnce(), without changing the tool set Task/Loop executions see by default.
+    extraToolProviders: List<com.newoether.agora.tool.ToolProvider> = emptyList(),
 ) {
     sealed interface Result {
         data class Success(val modelMessageId: String, val text: String) : Result
@@ -338,7 +342,7 @@ class TaskExecutionEngine(
         skillManager = skillManager,
         context = appContext,
         sandboxFactory = sandboxFactory,
-        additionalToolProviders = listOf(mcpToolProvider),
+        additionalToolProviders = listOf(mcpToolProvider) + extraToolProviders,
         customProviders = { settings.customProviders.value },
     ).also {
         // Foreground Task/Loop executions share the exact same prompt and session trust state as

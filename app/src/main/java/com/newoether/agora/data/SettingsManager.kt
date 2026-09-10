@@ -54,9 +54,15 @@ private val Context.dataStore by preferencesDataStore(
     name = "settings", produceMigrations = { listOf(modelProviderNamesMigration) },
 )
 
-class SettingsManager(private val context: Context) {
+class SettingsManager(val context: Context) {
     private val json = Json { ignoreUnknownKeys = true }
     private val modelPreferenceStore = SettingsModelPreferenceStore(context.dataStore, json)
+
+    /** Public access to the underlying DataStore for components that need direct access. */
+    val dataStore = context.dataStore
+
+    // SettingsNotifications instance for notification-related settings
+    val settingsNotifications: SettingsNotifications by lazy { SettingsNotifications(context, dataStore) }
 
     companion object {
         const val DEFAULT_PROXY_HOST = "127.0.0.1"
@@ -281,6 +287,28 @@ class SettingsManager(private val context: Context) {
     val autoDeletePeriodHours: Flow<Int> = context.dataStore.data.map { it[AUTO_DELETE_PERIOD_HOURS] ?: 168 }
     val lastBackupTimestamp: Flow<Long> = context.dataStore.data.map { it[LAST_BACKUP_TIMESTAMP] ?: 0L }
     val lastModelsFetchFingerprint: Flow<String> = modelPreferenceStore.lastModelsFetchFingerprint
+
+    // ── Heartbeat ──────────────────────────────────────────────
+    val heartbeatEnabled: Flow<Boolean> = context.dataStore.data.map { it[HEARTBEAT_ENABLED] ?: true }
+    val heartbeatIntervalMinutes: Flow<Int> = context.dataStore.data.map { it[HEARTBEAT_INTERVAL_MINUTES] ?: 30 }
+    val heartbeatActiveHoursStart: Flow<Int> = context.dataStore.data.map { it[HEARTBEAT_ACTIVE_HOURS_START] ?: 8 }
+    val heartbeatActiveHoursEnd: Flow<Int> = context.dataStore.data.map { it[HEARTBEAT_ACTIVE_HOURS_END] ?: 22 }
+    val heartbeatLastHeartbeatEpochMs: Flow<Long> = context.dataStore.data.map { it[HEARTBEAT_LAST_HEARTBEAT_EPOCH_MS] ?: 0L }
+    val heartbeatInstanceId: Flow<String?> = context.dataStore.data.map { it[HEARTBEAT_INSTANCE_ID] }
+    val heartbeatPrompt: Flow<String> = context.dataStore.data.map { it[HEARTBEAT_PROMPT] ?: "" }
+    val heartbeatModel: Flow<String?> = context.dataStore.data.map { it[HEARTBEAT_MODEL] }
+
+    // ── SMS ────────────────────────────────────────────────────
+    val smsReadEnabled: Flow<Boolean> = context.dataStore.data.map { it[SMS_READ_ENABLED] ?: false }
+    val smsSendEnabled: Flow<Boolean> = context.dataStore.data.map { it[SMS_SEND_ENABLED] ?: false }
+    val smsPollIntervalMinutes: Flow<Int> = context.dataStore.data.map { it[SMS_POLL_INTERVAL_MINUTES] ?: 15 }
+
+    // fdroid support gates
+    val smsReaderSupported: Flow<Boolean> = settingsNotifications.smsReaderSupported
+    val notificationListenerSupported: Flow<Boolean> = settingsNotifications.notificationListenerSupported
+
+    // ── Daemon ─────────────────────────────────────────────────
+    val daemonEnabled: Flow<Boolean> = context.dataStore.data.map { it[DAEMON_ENABLED] ?: false }
 
     suspend fun saveProviderBaseUrl(provider: String, url: String) =
         modelPreferenceStore.saveProviderBaseUrl(provider, url)
@@ -775,6 +803,54 @@ class SettingsManager(private val context: Context) {
     }
     suspend fun incrementMessagesSent() {
         context.dataStore.edit { it[TOTAL_MESSAGES_SENT] = (it[TOTAL_MESSAGES_SENT] ?: 0) + 1 }
+    }
+
+    // ── Heartbeat ──────────────────────────────────────────────
+    suspend fun saveHeartbeatEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[HEARTBEAT_ENABLED] = enabled }
+    }
+    suspend fun saveHeartbeatIntervalMinutes(minutes: Int) {
+        context.dataStore.edit { it[HEARTBEAT_INTERVAL_MINUTES] = minutes }
+    }
+    suspend fun saveHeartbeatActiveHoursStart(hour: Int) {
+        context.dataStore.edit { it[HEARTBEAT_ACTIVE_HOURS_START] = hour }
+    }
+    suspend fun saveHeartbeatActiveHoursEnd(hour: Int) {
+        context.dataStore.edit { it[HEARTBEAT_ACTIVE_HOURS_END] = hour }
+    }
+    suspend fun saveHeartbeatLastHeartbeatEpochMs(epochMs: Long) {
+        context.dataStore.edit { it[HEARTBEAT_LAST_HEARTBEAT_EPOCH_MS] = epochMs }
+    }
+    suspend fun saveHeartbeatInstanceId(instanceId: String?) {
+        context.dataStore.edit { prefs ->
+            if (instanceId == null) prefs.remove(HEARTBEAT_INSTANCE_ID) else prefs[HEARTBEAT_INSTANCE_ID] = instanceId
+        }
+    }
+    suspend fun saveHeartbeatPrompt(prompt: String) {
+        context.dataStore.edit { prefs ->
+            if (prompt.isBlank()) prefs.remove(HEARTBEAT_PROMPT) else prefs[HEARTBEAT_PROMPT] = prompt
+        }
+    }
+    suspend fun saveHeartbeatModel(model: String?) {
+        context.dataStore.edit { prefs ->
+            if (model == null) prefs.remove(HEARTBEAT_MODEL) else prefs[HEARTBEAT_MODEL] = model
+        }
+    }
+
+    // ── SMS ────────────────────────────────────────────────────
+    suspend fun saveSmsReadEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[SMS_READ_ENABLED] = enabled }
+    }
+    suspend fun saveSmsSendEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[SMS_SEND_ENABLED] = enabled }
+    }
+    suspend fun saveSmsPollIntervalMinutes(minutes: Int) {
+        context.dataStore.edit { it[SMS_POLL_INTERVAL_MINUTES] = minutes }
+    }
+
+    // ── Daemon ─────────────────────────────────────────────────
+    suspend fun saveDaemonEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[DAEMON_ENABLED] = enabled }
     }
 
     // ── Auto Backup ───────────────────────────────────────────
