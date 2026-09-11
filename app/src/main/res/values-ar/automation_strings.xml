@@ -91,6 +91,10 @@
     <string name="heartbeat_model_desc">النموذج المستخدم لنبض النظام: %s</string>
     <string name="heartbeat_custom_prompt">موجه مخصص</string>
     <string name="heartbeat_custom_prompt_desc">تعليمات إضافية لفحص نبض النظام (%d حرفًا)</string>
+    <string name="heartbeat_conversation">المحادثة</string>
+    <string name="heartbeat_conversation_desc">المحادثة المستخدمة لنبض النظام. تُورث نموذجها وأدواتها وموجّه النظام الخاص بها.</string>
+    <string name="heartbeat_conversation_none">تلقائي (مخصصة)</string>
+    <string name="heartbeat_conversation_pick_title">اختيار محادثة نبض النظام</string>
     <string name="automation_sms">SMS</string>
     <string name="sms_read_enabled">قراءة رسائل SMS الواردة</string>
     <string name="sms_read_enabled_desc">السماح لـ Agora بقراءة رسائل SMS الواردة (يتطلب إذن READ_SMS)</string>

@@ -91,6 +91,10 @@
     <string name="heartbeat_model_desc">하트비트에 사용할 모델: %s</string>
     <string name="heartbeat_custom_prompt">사용자 지정 프롬프트</string>
     <string name="heartbeat_custom_prompt_desc">하트비트 점검에 대한 추가 지침 (%d자)</string>
+    <string name="heartbeat_conversation">대화</string>
+    <string name="heartbeat_conversation_desc">하트비트에 사용할 대화입니다. 해당 대화의 모델, 도구 및 시스템 프롬프트가 상속됩니다.</string>
+    <string name="heartbeat_conversation_none">자동 (전용)</string>
+    <string name="heartbeat_conversation_pick_title">하트비트 대화 선택</string>
     <string name="automation_sms">SMS</string>
     <string name="sms_read_enabled">수신 SMS 읽기</string>
     <string name="sms_read_enabled_desc">Agora가 수신 SMS 메시지를 읽도록 허용(READ_SMS 권한 필요)</string>

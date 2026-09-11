@@ -91,6 +91,10 @@
     <string name="heartbeat_model_desc">Mô hình dùng cho heartbeat: %s</string>
     <string name="heartbeat_custom_prompt">Lời nhắc tùy chỉnh</string>
     <string name="heartbeat_custom_prompt_desc">Hướng dẫn bổ sung cho lần kiểm tra heartbeat (%d ký tự)</string>
+    <string name="heartbeat_conversation">Cuộc trò chuyện</string>
+    <string name="heartbeat_conversation_desc">Cuộc trò chuyện dùng cho heartbeat. Mô hình, công cụ và lời nhắc hệ thống sẽ được kế thừa.</string>
+    <string name="heartbeat_conversation_none">Tự động (chuyên dụng)</string>
+    <string name="heartbeat_conversation_pick_title">Chọn cuộc trò chuyện heartbeat</string>
     <string name="automation_sms">SMS</string>
     <string name="sms_read_enabled">Đọc SMS đến</string>
     <string name="sms_read_enabled_desc">Cho phép Agora đọc tin nhắn SMS đến (cần quyền READ_SMS)</string>

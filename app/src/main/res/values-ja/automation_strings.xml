@@ -91,6 +91,10 @@
     <string name="heartbeat_model_desc">ハートビートに使用するモデル: %s</string>
     <string name="heartbeat_custom_prompt">カスタムプロンプト</string>
     <string name="heartbeat_custom_prompt_desc">ハートビートチェックへの追加指示 (%d文字)</string>
+    <string name="heartbeat_conversation">会話</string>
+    <string name="heartbeat_conversation_desc">ハートビートに使用する会話。モデル、ツール、システムプロンプトが継承されます。</string>
+    <string name="heartbeat_conversation_none">自動（専用）</string>
+    <string name="heartbeat_conversation_pick_title">ハートビートの会話を選択</string>
     <string name="automation_sms">SMS</string>
     <string name="sms_read_enabled">受信SMSを読む</string>
     <string name="sms_read_enabled_desc">Agoraが受信SMSメッセージを読み取ることを許可（READ_SMS権限が必要）</string>

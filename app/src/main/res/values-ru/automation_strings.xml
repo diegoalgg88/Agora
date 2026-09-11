@@ -91,6 +91,10 @@
     <string name="heartbeat_model_desc">Модель для heartbeat: %s</string>
     <string name="heartbeat_custom_prompt">Свой запрос</string>
     <string name="heartbeat_custom_prompt_desc">Дополнительные инструкции для проверки heartbeat (%d символов)</string>
+    <string name="heartbeat_conversation">Беседа</string>
+    <string name="heartbeat_conversation_desc">Беседа, используемая для heartbeat. Её модель, инструменты и системный промпт наследуются.</string>
+    <string name="heartbeat_conversation_none">Авто (выделенная)</string>
+    <string name="heartbeat_conversation_pick_title">Выбрать беседу для heartbeat</string>
     <string name="automation_sms">SMS</string>
     <string name="sms_read_enabled">Читать входящие SMS</string>
     <string name="sms_read_enabled_desc">Разрешить Agora читать входящие SMS-сообщения (требуется разрешение READ_SMS)</string>

@@ -92,6 +92,10 @@
     <string name="heartbeat_model_desc">Modelo para heartbeat: %s</string>
     <string name="heartbeat_custom_prompt">Prompt personalizado</string>
     <string name="heartbeat_custom_prompt_desc">Instrucciones adicionales para la comprobación (%d caracteres)</string>
+    <string name="heartbeat_conversation">Conversación</string>
+    <string name="heartbeat_conversation_desc">Conversación que se usará para el heartbeat. Se heredan su modelo, herramientas e instrucción del sistema.</string>
+    <string name="heartbeat_conversation_none">Automático (dedicada)</string>
+    <string name="heartbeat_conversation_pick_title">Seleccionar conversación de heartbeat</string>
 
     <string name="automation_sms">SMS</string>
     <string name="sms_read_enabled">Leer SMS entrantes</string>

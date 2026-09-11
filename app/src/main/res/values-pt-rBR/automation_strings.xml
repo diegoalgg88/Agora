@@ -91,6 +91,10 @@
     <string name="heartbeat_model_desc">Modelo a usar para o heartbeat: %s</string>
     <string name="heartbeat_custom_prompt">Prompt personalizado</string>
     <string name="heartbeat_custom_prompt_desc">Instruções adicionais para a verificação de heartbeat (%d caracteres)</string>
+    <string name="heartbeat_conversation">Conversa</string>
+    <string name="heartbeat_conversation_desc">Conversa a ser usada para o heartbeat. Seu modelo, ferramentas e prompt do sistema são herdados.</string>
+    <string name="heartbeat_conversation_none">Automático (dedicada)</string>
+    <string name="heartbeat_conversation_pick_title">Selecionar conversa do heartbeat</string>
     <string name="automation_sms">SMS</string>
     <string name="sms_read_enabled">Ler SMS recebidos</string>
     <string name="sms_read_enabled_desc">Permitir que o Agora leia mensagens SMS recebidas (requer permissão READ_SMS)</string>

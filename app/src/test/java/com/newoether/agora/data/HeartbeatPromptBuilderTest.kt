@@ -22,6 +22,7 @@ class HeartbeatPromptBuilderTest {
             loopManager = mockk(relaxed = true),
             conversationRepository = mockk<ConversationRepository>(relaxed = true),
             memoryManager = mockk(relaxed = true),
+            taskRepository = mockk(relaxed = true),
         )
     }
 

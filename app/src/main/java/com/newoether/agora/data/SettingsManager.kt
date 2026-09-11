@@ -297,6 +297,7 @@ class SettingsManager(val context: Context) {
     val heartbeatInstanceId: Flow<String?> = context.dataStore.data.map { it[HEARTBEAT_INSTANCE_ID] }
     val heartbeatPrompt: Flow<String> = context.dataStore.data.map { it[HEARTBEAT_PROMPT] ?: "" }
     val heartbeatModel: Flow<String?> = context.dataStore.data.map { it[HEARTBEAT_MODEL] }
+    val heartbeatConversationId: Flow<String?> = context.dataStore.data.map { it[HEARTBEAT_CONVERSATION_ID] }
 
     // ── SMS ────────────────────────────────────────────────────
     val smsReadEnabled: Flow<Boolean> = context.dataStore.data.map { it[SMS_READ_ENABLED] ?: false }
@@ -806,21 +807,11 @@ class SettingsManager(val context: Context) {
     }
 
     // ── Heartbeat ──────────────────────────────────────────────
-    suspend fun saveHeartbeatEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[HEARTBEAT_ENABLED] = enabled }
-    }
-    suspend fun saveHeartbeatIntervalMinutes(minutes: Int) {
-        context.dataStore.edit { it[HEARTBEAT_INTERVAL_MINUTES] = minutes }
-    }
-    suspend fun saveHeartbeatActiveHoursStart(hour: Int) {
-        context.dataStore.edit { it[HEARTBEAT_ACTIVE_HOURS_START] = hour }
-    }
-    suspend fun saveHeartbeatActiveHoursEnd(hour: Int) {
-        context.dataStore.edit { it[HEARTBEAT_ACTIVE_HOURS_END] = hour }
-    }
-    suspend fun saveHeartbeatLastHeartbeatEpochMs(epochMs: Long) {
-        context.dataStore.edit { it[HEARTBEAT_LAST_HEARTBEAT_EPOCH_MS] = epochMs }
-    }
+    suspend fun saveHeartbeatEnabled(enabled: Boolean) = context.dataStore.edit { it[HEARTBEAT_ENABLED] = enabled }
+    suspend fun saveHeartbeatIntervalMinutes(minutes: Int) = context.dataStore.edit { it[HEARTBEAT_INTERVAL_MINUTES] = minutes }
+    suspend fun saveHeartbeatActiveHoursStart(hour: Int) = context.dataStore.edit { it[HEARTBEAT_ACTIVE_HOURS_START] = hour }
+    suspend fun saveHeartbeatActiveHoursEnd(hour: Int) = context.dataStore.edit { it[HEARTBEAT_ACTIVE_HOURS_END] = hour }
+    suspend fun saveHeartbeatLastHeartbeatEpochMs(epochMs: Long) = context.dataStore.edit { it[HEARTBEAT_LAST_HEARTBEAT_EPOCH_MS] = epochMs }
     suspend fun saveHeartbeatInstanceId(instanceId: String?) {
         context.dataStore.edit { prefs ->
             if (instanceId == null) prefs.remove(HEARTBEAT_INSTANCE_ID) else prefs[HEARTBEAT_INSTANCE_ID] = instanceId
@@ -834,6 +825,11 @@ class SettingsManager(val context: Context) {
     suspend fun saveHeartbeatModel(model: String?) {
         context.dataStore.edit { prefs ->
             if (model == null) prefs.remove(HEARTBEAT_MODEL) else prefs[HEARTBEAT_MODEL] = model
+        }
+    }
+    suspend fun saveHeartbeatConversationId(id: String?) {
+        context.dataStore.edit { prefs ->
+            if (id == null) prefs.remove(HEARTBEAT_CONVERSATION_ID) else prefs[HEARTBEAT_CONVERSATION_ID] = id
         }
     }
     // ── SMS ────────────────────────────────────────────────────
@@ -953,6 +949,7 @@ class SettingsManager(val context: Context) {
             prefs.remove(HEARTBEAT_ACTIVE_HOURS_END)
             prefs.remove(HEARTBEAT_PROMPT)
             prefs.remove(HEARTBEAT_MODEL)
+            prefs.remove(HEARTBEAT_CONVERSATION_ID)
             prefs.remove(SMS_READ_ENABLED)
             prefs.remove(SMS_SEND_ENABLED)
             prefs.remove(SMS_POLL_INTERVAL_MINUTES)

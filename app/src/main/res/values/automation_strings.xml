@@ -112,6 +112,10 @@
     <string name="heartbeat_model_desc">Model to use for heartbeat: %s</string>
     <string name="heartbeat_custom_prompt">Custom Prompt</string>
     <string name="heartbeat_custom_prompt_desc">Additional instructions for the heartbeat check (%d chars)</string>
+    <string name="heartbeat_conversation">Conversation</string>
+    <string name="heartbeat_conversation_desc">Conversation to use for heartbeat. Its model, tools and system prompt are inherited.</string>
+    <string name="heartbeat_conversation_none">Auto (dedicated)</string>
+    <string name="heartbeat_conversation_pick_title">Select Heartbeat Conversation</string>
 
     <!-- Settings - Automation Page - SMS -->
     <string name="automation_sms">SMS</string>

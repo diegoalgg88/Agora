@@ -32,3 +32,19 @@ suspend fun ConversationRepository.getOrCreateHeartbeatConversationId(
     )
     return id
 }
+
+/**
+ * One-shot migration: if `heartbeatConversationId` is not yet set but there is an existing
+ * heartbeat conversation (by origin or legacy title), adopt it into the new setting so the
+ * user doesn't have to re-select it manually after the upgrade.
+ */
+suspend fun ConversationRepository.migrateHeartbeatConversationSetting(
+    settingsRepository: SettingsRepository,
+) {
+    if (!settingsRepository.heartbeatConversationId.value.isNullOrBlank()) return
+    val existing = getConversationByOrigin(HEARTBEAT_ORIGIN)
+        ?: getConversationByTitle(HEARTBEAT_CONVERSATION_TITLE)
+    if (existing != null) {
+        settingsRepository.saveHeartbeatConversationId(existing.id)
+    }
+}

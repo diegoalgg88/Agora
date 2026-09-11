@@ -276,6 +276,7 @@ class SettingsRepository(
     val heartbeatInstanceId: StateFlow<String?> = hot(settingsManager.heartbeatInstanceId, null)
     val heartbeatPrompt: StateFlow<String> = hot(settingsManager.heartbeatPrompt, "")
     val heartbeatModel: StateFlow<String?> = hot(settingsManager.heartbeatModel, null)
+    val heartbeatConversationId: StateFlow<String?> = hot(settingsManager.heartbeatConversationId, null)
 
     // ── SMS ────────────────────────────────────────────────────
     val smsReadEnabled: StateFlow<Boolean> = hot(settingsManager.smsReadEnabled, false)
@@ -851,6 +852,7 @@ class SettingsRepository(
     fun saveHeartbeatInstanceId(instanceId: String?) = scope.launch { settingsManager.saveHeartbeatInstanceId(instanceId) }
     fun saveHeartbeatPrompt(prompt: String) = scope.launch { settingsManager.saveHeartbeatPrompt(prompt) }
     fun saveHeartbeatModel(model: String?) = scope.launch { settingsManager.saveHeartbeatModel(model) }
+    fun saveHeartbeatConversationId(id: String?) = scope.launch { settingsManager.saveHeartbeatConversationId(id) }
 
     // ── SMS ────────────────────────────────────────────────────
     fun setSmsReadEnabled(enabled: Boolean) = scope.launch { settingsManager.saveSmsReadEnabled(enabled) }

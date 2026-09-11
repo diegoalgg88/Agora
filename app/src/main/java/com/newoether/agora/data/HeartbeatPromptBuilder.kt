@@ -24,6 +24,7 @@ class HeartbeatPromptBuilder(
     private val loopManager: LoopManager,
     private val conversationRepository: ConversationRepository,
     private val memoryManager: MemoryManager,
+    private val taskRepository: com.newoether.agora.data.repository.TaskRepository,
 ) {
 
     /**
@@ -33,6 +34,7 @@ class HeartbeatPromptBuilder(
         customPrompt: String,
         pendingSms: List<SmsMessageData> = emptyList(),
         pendingNotifications: List<NotificationRecord> = emptyList(),
+        recentResponses: List<String> = emptyList(),
     ): String {
         val sections = mutableListOf<String>()
 
@@ -62,6 +64,10 @@ class HeartbeatPromptBuilder(
         // Section 5: New Notifications
         val notificationsSection = buildNotificationsSection(pendingNotifications)
         if (notificationsSection.isNotBlank()) sections.add(notificationsSection)
+
+        // Section 6: Previous Heartbeat Results (for continuity)
+        val previousSection = buildPreviousHeartbeatSection(recentResponses)
+        if (previousSection.isNotBlank()) sections.add(previousSection)
 
         return sections.joinToString("\n\n")
     }
@@ -93,9 +99,7 @@ class HeartbeatPromptBuilder(
     }
 
     private suspend fun getActiveLoops(): List<com.newoether.agora.data.local.LoopEntity> {
-        // LoopManager doesn't expose a simple list; we'll query via TaskRepository
-        // For now, return empty list as placeholder
-        return emptyList()
+        return taskRepository.getActiveLoops()
     }
 
     private suspend fun buildPendingAutomationsSection(): String {
@@ -105,9 +109,15 @@ class HeartbeatPromptBuilder(
     }
 
     private suspend fun buildPromotionCandidatesSection(): String {
-        // MemoryManager doesn't expose promotion candidates directly
-        // For now, return empty string as placeholder
-        return ""
+        val candidates = memoryManager.getPromotionCandidates()
+        if (candidates.isEmpty()) return ""
+        val lines = mutableListOf("## Memory Promotion Candidates")
+        lines.add("The following memory files have been accessed frequently. Consider if any of this information should be promoted. Use the `pin_memory_file` tool to pin these memories so they are no longer suggested here.")
+        for (c in candidates) {
+            val descriptionText = if (c.description.isNotBlank()) ": ${c.description}" else ""
+            lines.add("- **${c.name}**$descriptionText")
+        }
+        return lines.joinToString("\n")
     }
 
     private fun buildSmsSection(pendingSms: List<SmsMessageData>): String {
@@ -128,8 +138,21 @@ class HeartbeatPromptBuilder(
 
         val lines = mutableListOf("## New Notifications")
         lines.add("These notifications arrived since the last heartbeat. Summarise briefly; only flag items that genuinely need attention.")
-        for (record in pendingNotifications.take(20)) {
-            lines.add("- **${record.appLabel}** (id: ${record.id}): ${record.preview}")
+        
+        val sortedNotifications = pendingNotifications.sortedByDescending { it.postedAt }.take(20)
+        for (record in sortedNotifications) {
+            val titleText = if (record.title.isNotBlank()) ": ${record.title}" else ""
+            lines.add("- **${record.appLabel}**$titleText (id: ${record.id}): ${record.preview}")
+        }
+        return lines.joinToString("\n")
+    }
+
+    private fun buildPreviousHeartbeatSection(recentResponses: List<String>): String {
+        if (recentResponses.isEmpty()) return ""
+        val lines = mutableListOf("## Previous Heartbeat Results", "For context, here are your most recent heartbeat summaries:")
+        for ((i, response) in recentResponses.withIndex()) {
+            val label = if (i == 0) "Most recent" else "${i + 1} heartbeats ago"
+            lines.add("### $label\n$response")
         }
         return lines.joinToString("\n")
     }

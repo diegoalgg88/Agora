@@ -91,6 +91,10 @@
     <string name="heartbeat_model_desc">Modell für den Heartbeat: %s</string>
     <string name="heartbeat_custom_prompt">Benutzerdefinierter Prompt</string>
     <string name="heartbeat_custom_prompt_desc">Zusätzliche Anweisungen für die Heartbeat-Prüfung (%d Zeichen)</string>
+    <string name="heartbeat_conversation">Unterhaltung</string>
+    <string name="heartbeat_conversation_desc">Unterhaltung für den Heartbeat. Modell, Werkzeuge und System-Prompt werden übernommen.</string>
+    <string name="heartbeat_conversation_none">Automatisch (dediziert)</string>
+    <string name="heartbeat_conversation_pick_title">Heartbeat-Unterhaltung auswählen</string>
     <string name="automation_sms">SMS</string>
     <string name="sms_read_enabled">Eingehende SMS lesen</string>
     <string name="sms_read_enabled_desc">Agora erlauben, eingehende SMS-Nachrichten zu lesen (erfordert READ_SMS-Berechtigung)</string>

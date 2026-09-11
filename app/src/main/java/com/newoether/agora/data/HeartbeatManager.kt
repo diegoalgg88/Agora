@@ -33,6 +33,7 @@ class HeartbeatManager(
     val heartbeatInstanceId: kotlinx.coroutines.flow.StateFlow<String?> = settingsRepository.heartbeatInstanceId
     val heartbeatPrompt: kotlinx.coroutines.flow.StateFlow<String> = settingsRepository.heartbeatPrompt
     val heartbeatModel: kotlinx.coroutines.flow.StateFlow<String?> = settingsRepository.heartbeatModel
+    val heartbeatConversationId: kotlinx.coroutines.flow.StateFlow<String?> = settingsRepository.heartbeatConversationId
 
     suspend fun setEnabled(enabled: Boolean) = settingsRepository.saveHeartbeatEnabled(enabled)
     suspend fun setIntervalMinutes(minutes: Int) = settingsRepository.saveHeartbeatIntervalMinutes(minutes)
@@ -42,6 +43,7 @@ class HeartbeatManager(
     suspend fun setHeartbeatInstanceId(instanceId: String?) = settingsRepository.saveHeartbeatInstanceId(instanceId)
     suspend fun setHeartbeatPrompt(prompt: String) = settingsRepository.saveHeartbeatPrompt(prompt)
     suspend fun setHeartbeatModel(model: String?) = settingsRepository.saveHeartbeatModel(model)
+    suspend fun setHeartbeatConversationId(id: String?) = settingsRepository.saveHeartbeatConversationId(id)
 
     /**
      * Checks if a heartbeat is due based on the enabled flag, interval, and active hours.

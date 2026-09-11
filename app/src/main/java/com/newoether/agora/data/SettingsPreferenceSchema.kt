@@ -154,6 +154,7 @@ internal val HEARTBEAT_LAST_HEARTBEAT_EPOCH_MS = longPreferencesKey("heartbeat_l
 internal val HEARTBEAT_INSTANCE_ID = stringPreferencesKey("heartbeat_instance_id")
 internal val HEARTBEAT_PROMPT = stringPreferencesKey("heartbeat_prompt")
 internal val HEARTBEAT_MODEL = stringPreferencesKey("heartbeat_model")
+internal val HEARTBEAT_CONVERSATION_ID = stringPreferencesKey("heartbeat_conversation_id")
 
 // ── SMS ────────────────────────────────────────────────────
 internal val SMS_READ_ENABLED = booleanPreferencesKey("sms_read_enabled")

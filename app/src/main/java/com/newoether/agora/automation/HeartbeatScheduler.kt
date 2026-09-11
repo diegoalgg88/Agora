@@ -7,6 +7,7 @@ import com.newoether.agora.data.SmsPoller
 import com.newoether.agora.data.SmsStore
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.getOrCreateHeartbeatConversationId
+import com.newoether.agora.data.repository.migrateHeartbeatConversationSetting
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.service.AppForegroundTracker
 import com.newoether.agora.service.HeartbeatNotifier
@@ -46,12 +47,22 @@ class HeartbeatScheduler(
     @Volatile
     private var heartbeatInFlight = false
 
+    @Volatile
+    private var migrated = false
+
     fun start() {
         if (job != null && job!!.isActive) return
         job = scope.launch {
             while (true) {
                 delay(60_000) // 60 second loop
                 try {
+                    if (!migrated) {
+                        awaitInitialLoad()
+                        getConversationRepository().migrateHeartbeatConversationSetting(
+                            settingsRepository,
+                        )
+                        migrated = true
+                    }
                     runCycle()
                 } catch (e: Exception) {
                     com.newoether.agora.util.DebugLog.e("HeartbeatScheduler", "Cycle error", e)
@@ -126,18 +137,32 @@ class HeartbeatScheduler(
 
     // This method is called from runCycle
     private suspend fun runHeartbeat() {
-        val snapshot = buildPrompt()
+        // Resolve the heartbeat conversation:
+        // 1. User-selected conversation from settings (Kai behavior: inherits tools/provider/context)
+        // 2. Fallback: legacy auto-created heartbeat conversation
+        val userSelectedId = settingsRepository.heartbeatConversationId.value
+        val heartbeatConversationId: String
+        val modelOverride: String?
 
-        // Use a dedicated heartbeat conversation (reused across runs)
-        val heartbeatConversationId =
-            getConversationRepository().getOrCreateHeartbeatConversationId(
-                modelId = settingsRepository.heartbeatModel.value,
-            )
+        if (!userSelectedId.isNullOrBlank()) {
+            // User picked a specific conversation — inherit its model/tools/system prompt
+            heartbeatConversationId = userSelectedId
+            modelOverride = null
+        } else {
+            // Legacy path: auto-create a dedicated heartbeat conversation
+            heartbeatConversationId =
+                getConversationRepository().getOrCreateHeartbeatConversationId(
+                    modelId = settingsRepository.heartbeatModel.value,
+                )
+            modelOverride = settingsRepository.heartbeatModel.value
+        }
+
+        val snapshot = buildPrompt(heartbeatConversationId)
 
         val result = taskExecutionEngine.runOnce(
             conversationId = heartbeatConversationId,
             userText = snapshot.prompt,
-            modelId = settingsRepository.heartbeatModel.value,
+            modelId = modelOverride,
             requestKind = "heartbeat",
         )
 
@@ -172,25 +197,41 @@ class HeartbeatScheduler(
         }
     }
 
-    private suspend fun buildPrompt(): HeartbeatSnapshot {
+    private suspend fun buildPrompt(heartbeatConversationId: String): HeartbeatSnapshot {
         val customPrompt = settingsRepository.heartbeatPrompt.value
         val pendingSms = smsStore.getPendingSnapshot()
         val pendingNotifications = notificationStore.getPendingSnapshot()
+        
+        val conversationRepository = getConversationRepository()
+        val runs = conversationRepository.getRunsForConversationSnapshot(heartbeatConversationId)
+        val recentMessages = conversationRepository.getMessagesForRuns(runs.map { it.id })
+        val recentResponses = recentMessages
+            .filter { it.participant == com.newoether.agora.model.Participant.MODEL }
+            .takeLast(3)
+            .map { it.text }
+
         val builder = com.newoether.agora.data.HeartbeatPromptBuilder(
             taskManager = getTaskManager(),
             loopManager = getLoopManager(),
-            conversationRepository = getConversationRepository(),
+            conversationRepository = conversationRepository,
             memoryManager = getMemoryManager(),
+            taskRepository = getTaskRepository(),
         )
         return HeartbeatSnapshot(
             prompt = builder.buildHeartbeatPrompt(
                 customPrompt = customPrompt,
                 pendingSms = pendingSms,
                 pendingNotifications = pendingNotifications,
+                recentResponses = recentResponses,
             ),
             smsIds = pendingSms.map { it.id },
             notificationKeys = pendingNotifications.map { it.id },
         )
+    }
+
+    private fun getTaskRepository(): com.newoether.agora.data.repository.TaskRepository {
+        val application = appContext.applicationContext as com.newoether.agora.AgoraApplication
+        return application.requireContainer().taskRepository
     }
 
     private fun getTaskManager(): TaskManager {

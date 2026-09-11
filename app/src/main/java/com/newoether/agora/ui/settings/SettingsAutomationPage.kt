@@ -363,14 +363,22 @@ fun HeartbeatSection(viewModel: ChatViewModel) {
     val activeHoursEnd by viewModel.settings.heartbeatActiveHoursEnd.collectAsState()
     val customPrompt by viewModel.settings.heartbeatPrompt.collectAsState()
     val heartbeatModel by viewModel.settings.heartbeatModel.collectAsState()
+    val heartbeatConversationId by viewModel.settings.heartbeatConversationId.collectAsState()
     val enabledModels by viewModel.settings.enabledModels.collectAsState()
     val modelAliases by viewModel.settings.modelAliases.collectAsState()
     val customProviders by viewModel.settings.customProviders.collectAsState()
+    val conversations by viewModel.conversations.collectAsState()
 
     var showIntervalDialog by rememberSaveable { mutableStateOf(false) }
     var showActiveHoursDialog by rememberSaveable { mutableStateOf(false) }
     var showModelDialog by rememberSaveable { mutableStateOf(false) }
     var showPromptDialog by rememberSaveable { mutableStateOf(false) }
+    var showConversationDialog by rememberSaveable { mutableStateOf(false) }
+
+    val conversationTitle = remember(heartbeatConversationId, conversations) {
+        if (heartbeatConversationId.isNullOrBlank()) null
+        else conversations?.firstOrNull { it.id == heartbeatConversationId }?.title
+    }
 
     SettingsGroup(
         title = stringResource(R.string.automation_heartbeat),
@@ -452,22 +460,44 @@ fun HeartbeatSection(viewModel: ChatViewModel) {
             },
             {
                 SettingsItem(
-                    headlineContent = { Text(stringResource(R.string.heartbeat_model)) },
-                    supportingContent = { Text(stringResource(R.string.heartbeat_model_desc)) },
+                    headlineContent = { Text(stringResource(R.string.heartbeat_conversation)) },
+                    supportingContent = { Text(stringResource(R.string.heartbeat_conversation_desc)) },
                     leadingContent = {
                         Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
                     },
                     trailingContent = {
                         Text(
-                            heartbeatModel?.let { modelApiDisplayName(it, customProviders) } ?: "Default",
+                            conversationTitle ?: stringResource(R.string.heartbeat_conversation_none),
                             style = MaterialTheme.typography.bodyMedium,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.widthIn(max = 130.dp),
                         )
                     },
-                    modifier = Modifier.clickable { showModelDialog = true },
+                    modifier = Modifier.clickable { showConversationDialog = true },
                 )
+            },
+            {
+                // Show model picker only in legacy mode (no conversation selected)
+                if (heartbeatConversationId.isNullOrBlank()) {
+                    SettingsItem(
+                        headlineContent = { Text(stringResource(R.string.heartbeat_model)) },
+                        supportingContent = { Text(stringResource(R.string.heartbeat_model_desc)) },
+                        leadingContent = {
+                            Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        trailingContent = {
+                            Text(
+                                heartbeatModel?.let { modelApiDisplayName(it, customProviders) } ?: "Default",
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.widthIn(max = 130.dp),
+                            )
+                        },
+                        modifier = Modifier.clickable { showModelDialog = true },
+                    )
+                }
             },
             {
                 SettingsItem(
@@ -628,6 +658,68 @@ fun HeartbeatSection(viewModel: ChatViewModel) {
             dismissButton = {
                 TextButton(onClick = { showPromptDialog = false }) {
                     Text(stringResource(R.string.provider_cancel))
+                }
+            },
+        )
+    }
+
+    if (showConversationDialog) {
+        val titled = remember(conversations) {
+            conversations?.filter { it.title.isNotBlank() }?.sortedByDescending { it.id } ?: emptyList()
+        }
+        AlertDialog(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            onDismissRequest = { showConversationDialog = false },
+            title = { Text(stringResource(R.string.heartbeat_conversation_pick_title), fontWeight = androidx.compose.ui.text.font.FontWeight.Bold) },
+            text = {
+                LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                    item(key = "__none__") {
+                        SettingsItem(
+                            headlineContent = { Text(stringResource(R.string.heartbeat_conversation_none)) },
+                            leadingContent = {
+                                RadioButton(
+                                    selected = heartbeatConversationId.isNullOrBlank(),
+                                    onClick = {
+                                        viewModel.settings.saveHeartbeatConversationId(null)
+                                        showConversationDialog = false
+                                    },
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                viewModel.settings.saveHeartbeatConversationId(null)
+                                showConversationDialog = false
+                            },
+                        )
+                    }
+                    items(titled, key = { it.id }) { conv ->
+                        SettingsItem(
+                            headlineContent = {
+                                Text(
+                                    conv.title,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            },
+                            leadingContent = {
+                                RadioButton(
+                                    selected = heartbeatConversationId == conv.id,
+                                    onClick = {
+                                        viewModel.settings.saveHeartbeatConversationId(conv.id)
+                                        showConversationDialog = false
+                                    },
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                viewModel.settings.saveHeartbeatConversationId(conv.id)
+                                showConversationDialog = false
+                            },
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showConversationDialog = false }) {
+                    Text(stringResource(R.string.provider_close))
                 }
             },
         )

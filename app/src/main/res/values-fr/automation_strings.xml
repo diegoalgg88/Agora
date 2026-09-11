@@ -91,6 +91,10 @@
     <string name="heartbeat_model_desc">Modèle utilisé pour le heartbeat : %s</string>
     <string name="heartbeat_custom_prompt">Invite personnalisée</string>
     <string name="heartbeat_custom_prompt_desc">Instructions supplémentaires pour la vérification heartbeat (%d caractères)</string>
+    <string name="heartbeat_conversation">Conversation</string>
+    <string name="heartbeat_conversation_desc">Conversation à utiliser pour le heartbeat. Son modèle, ses outils et son instruction système sont hérités.</string>
+    <string name="heartbeat_conversation_none">Automatique (dédiée)</string>
+    <string name="heartbeat_conversation_pick_title">Sélectionner la conversation pour le heartbeat</string>
     <string name="automation_sms">SMS</string>
     <string name="sms_read_enabled">Lire les SMS entrants</string>
     <string name="sms_read_enabled_desc">Autoriser Agora à lire les SMS entrants (nécessite l\'autorisation READ_SMS)</string>
