@@ -556,8 +556,9 @@ class TaskExecutionEngine(
             if (preCompactMessageId != null) {
                 val preCompactMessage = convRepo.getMessage(preCompactMessageId)
                 if (!automaticCompactAllowsHandoff(preCompactMessage?.status)) {
+                    // Same rule as the terminal path below: no message text in the reason.
                     return Result.Failure(
-                        preCompactMessage?.text?.takeIf(String::isNotBlank)
+                        preCompactMessage?.let { "Compact generation ended with status ${it.status}" }
                             ?: "Compact generation did not complete successfully",
                     )
                 }
@@ -729,7 +730,14 @@ class TaskExecutionEngine(
             if (finalMsg != null && finalMsg.status == MessageStatus.SUCCESS) {
                 Result.Success(finalModelMessageId, finalMsg.text)
             } else {
-                Result.Failure(finalMsg?.text?.takeIf { it.isNotBlank() } ?: "Generation failed")
+                // Never surface message text as the failure reason: a failed generation can
+                // leave partial answer or reasoning content in it, and this reason is
+                // persisted to durable logs (heartbeat_logs, task results) and shown in
+                // settings. The full message stays inspectable in the conversation itself.
+                Result.Failure(
+                    finalMsg?.let { "Generation ended with status ${it.status}" }
+                        ?: "Generation failed",
+                )
             }
         } catch (e: CancellationException) {
             withContext(NonCancellable) {

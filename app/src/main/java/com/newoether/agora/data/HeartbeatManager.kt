@@ -74,18 +74,25 @@ class HeartbeatManager(
     /**
      * Records the outcome of one heartbeat run in Room (kept to the 5 newest rows).
      * Called by the scheduler after every run, scheduled or manual.
+     *
+     * The error is capped at [MAX_LOGGED_ERROR_CHARS]: it is rendered inline in
+     * Settings → Automation → Recent runs, so an unbounded provider/model blob must
+     * never reach the durable log.
      */
     suspend fun recordHeartbeat(success: Boolean, error: String? = null) = withContext(Dispatchers.IO) {
         chatDao.insertHeartbeatLog(
             HeartbeatLogEntity(
                 timestampEpochMs = System.currentTimeMillis(),
                 success = success,
-                error = error,
+                error = error?.take(MAX_LOGGED_ERROR_CHARS),
             ),
         )
     }
 
     companion object {
+        /** Max length of the error text persisted to heartbeat_logs. */
+        const val MAX_LOGGED_ERROR_CHARS = 300
+
         const val DEFAULT_HEARTBEAT_PROMPT =
             "[HEARTBEAT] This is an automatic self-check. Review your memories and pending tasks. " +
                 "If everything looks good and nothing needs attention, respond with exactly: HEARTBEAT_OK\n" +
