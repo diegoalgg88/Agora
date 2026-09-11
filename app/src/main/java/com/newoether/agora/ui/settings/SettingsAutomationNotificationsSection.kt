@@ -4,6 +4,8 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Notifications
@@ -14,6 +16,7 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.rememberCoroutineScope
@@ -31,7 +34,7 @@ import kotlinx.serialization.json.Json
  * Extracted from SettingsAutomationPage so that file stays within the 999-line source policy.
  */
 @Composable
-fun NotificationsSection(viewModel: ChatViewModel) {
+fun NotificationsSection(viewModel: ChatViewModel, onManageApps: () -> Unit) {
     val context = LocalContext.current
     val enabled by viewModel.settings.notificationsEnabled.collectAsState()
     val pendingQueue by viewModel.settings.notificationsPending.collectAsState()
@@ -41,6 +44,25 @@ fun NotificationsSection(viewModel: ChatViewModel) {
 
     val coroutineScope = rememberCoroutineScope()
     val notificationListenerStatus by viewModel.settings.notificationListenerStatus.collectAsState()
+
+    // Launcher for Notification Access settings — returns when user comes back
+    val settingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult(),
+    ) { result ->
+        // User returned from Notification Access settings — force status refresh
+        viewModel.settings.triggerNotificationListenerStatusRefresh()
+    }
+
+    // Helper to open Notification Access settings via launcher
+    fun openNotificationListenerSettingsWithRefresh() {
+        val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        } else {
+            Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
+        }
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        settingsLauncher.launch(intent)
+    }
 
     SettingsGroup(
         title = stringResource(R.string.automation_notifications),
@@ -58,7 +80,7 @@ fun NotificationsSection(viewModel: ChatViewModel) {
                             onCheckedChange = { newEnabled ->
                                 viewModel.settings.setNotificationsEnabled(newEnabled)
                                 if (newEnabled) {
-                                    openNotificationListenerSettings(context)
+                                    openNotificationListenerSettingsWithRefresh()
                                 }
                             },
                         )
@@ -68,7 +90,7 @@ fun NotificationsSection(viewModel: ChatViewModel) {
                             viewModel.settings.setNotificationsEnabled(false)
                         } else {
                             viewModel.settings.setNotificationsEnabled(true)
-                            openNotificationListenerSettings(context)
+                            openNotificationListenerSettingsWithRefresh()
                         }
                     },
                 )
@@ -97,9 +119,8 @@ fun NotificationsSection(viewModel: ChatViewModel) {
                         )
                     },
                     modifier = Modifier.clickable {
-                        if (!notificationListenerStatus.hasAccess) {
-                            openNotificationListenerSettings(context)
-                        }
+                        // Always open settings (Option C) — user can manage app list anytime
+                        openNotificationListenerSettingsWithRefresh()
                     },
                 )
             },
@@ -111,7 +132,7 @@ fun NotificationsSection(viewModel: ChatViewModel) {
                         Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
                     },
                     modifier = Modifier.clickable {
-                        openNotificationListenerSettings(context)
+                        onManageApps()
                     },
                 )
             },
@@ -149,14 +170,4 @@ fun NotificationsSection(viewModel: ChatViewModel) {
             },
         ),
     )
-}
-
-fun openNotificationListenerSettings(context: Context) {
-    val intent = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-        Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-    } else {
-        Intent("android.settings.ACTION_NOTIFICATION_LISTENER_SETTINGS")
-    }
-    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-    context.startActivity(intent)
 }

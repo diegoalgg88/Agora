@@ -11,6 +11,8 @@ import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 
 /**
@@ -25,12 +27,25 @@ class SettingsNotifications(
     private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
     private val NOTIFICATIONS_PENDING = stringPreferencesKey("notifications_pending")
     private val NOTIFICATIONS_SYNC_STATE = stringPreferencesKey("notifications_sync_state")
+    private val NOTIFICATIONS_ALLOWED_APPS = stringPreferencesKey("notifications_allowed_apps")
+    private val NOTIFICATIONS_APPS_INITIALIZED = booleanPreferencesKey("notifications_apps_initialized")
 
     // ── Flows ────────────────────────────────────────────────────────
 
     val notificationsEnabled: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_ENABLED] ?: false }
     val notificationsPending: Flow<String> = dataStore.data.map { it[NOTIFICATIONS_PENDING] ?: "[]" }
     val notificationsSyncState: Flow<String> = dataStore.data.map { it[NOTIFICATIONS_SYNC_STATE] ?: "{}" }
+
+    val notificationsAllowedApps: Flow<Set<String>> = dataStore.data.map { pref ->
+        val jsonStr = pref[NOTIFICATIONS_ALLOWED_APPS] ?: "[]"
+        try {
+            kotlinx.serialization.json.Json.decodeFromString<Set<String>>(jsonStr)
+        } catch (e: Exception) {
+            emptySet()
+        }
+    }
+    
+    val notificationsAppsInitialized: Flow<Boolean> = dataStore.data.map { it[NOTIFICATIONS_APPS_INITIALIZED] ?: false }
 
     // Build/flavor capability gates — these must reflect whether THIS BUILD can ever support
     // the feature (fdroid manifest declares it) independent of whether the user has granted
@@ -71,7 +86,14 @@ class SettingsNotifications(
     }
 
     // Notification listener status
-    val notificationListenerStatus: Flow<NotificationListenerStatus> = dataStore.data.map { prefs ->
+    // Triggered when user returns from Notification Access settings to force a re-check
+    private val _notificationListenerStatusRefresh = MutableStateFlow(0)
+    val notificationListenerStatusRefresh: kotlinx.coroutines.flow.StateFlow<Int> = _notificationListenerStatusRefresh
+
+    val notificationListenerStatus: Flow<NotificationListenerStatus> = combine(
+        dataStore.data,
+        _notificationListenerStatusRefresh,
+    ) { prefs, _ ->
         val hasAccess = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val nm = context.getSystemService(NotificationManager::class.java)
             // Resolved by name so main sources stay flavor-safe: the listener service is
@@ -89,6 +111,11 @@ class SettingsNotifications(
         NotificationListenerStatus(hasAccess = hasAccess, intentEnabled = intentEnabled)
     }
 
+    // Call this when returning from Notification Access settings to force status refresh
+    fun triggerNotificationListenerStatusRefresh() {
+        _notificationListenerStatusRefresh.value++
+    }
+
     // ── Write ────────────────────────────────────────────────────────
 
     suspend fun saveNotificationsEnabled(enabled: Boolean) {
@@ -102,5 +129,23 @@ class SettingsNotifications(
     }
     suspend fun clearNotificationsPending() {
         dataStore.edit { it[NOTIFICATIONS_PENDING] = "[]" }
+    }
+    suspend fun saveNotificationsAllowedApps(apps: Set<String>) {
+        dataStore.edit { it[NOTIFICATIONS_ALLOWED_APPS] = kotlinx.serialization.json.Json.encodeToString(apps) }
+    }
+    suspend fun setNotificationsAppsInitialized() {
+        dataStore.edit { it[NOTIFICATIONS_APPS_INITIALIZED] = true }
+    }
+
+    /**
+     * Clears portable notification keys during a Settings REPLACE import.
+     * Non-portable keys (pending queue, sync state) are intentionally preserved.
+     */
+    suspend fun resetPortableKeys() {
+        dataStore.edit { prefs ->
+            prefs.remove(NOTIFICATIONS_ENABLED)
+            prefs.remove(NOTIFICATIONS_ALLOWED_APPS)
+            prefs.remove(NOTIFICATIONS_APPS_INITIALIZED)
+        }
     }
 }

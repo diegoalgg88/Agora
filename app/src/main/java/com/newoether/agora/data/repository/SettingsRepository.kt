@@ -289,6 +289,8 @@ class SettingsRepository(
     val notificationsEnabled: StateFlow<Boolean> = hot(settingsManager.settingsNotifications.notificationsEnabled, false)
     val notificationsPending: StateFlow<String> = hot(settingsManager.settingsNotifications.notificationsPending, "[]")
     val notificationsSyncState: StateFlow<String> = hot(settingsManager.settingsNotifications.notificationsSyncState, "{}")
+    val notificationsAllowedApps: StateFlow<Set<String>> = hot(settingsManager.settingsNotifications.notificationsAllowedApps, emptySet())
+    val notificationsAppsInitialized: StateFlow<Boolean> = hot(settingsManager.settingsNotifications.notificationsAppsInitialized, false)
 
     // Notification listener status (fdroid only)
     val notificationListenerStatus: StateFlow<NotificationListenerStatus> =
@@ -296,6 +298,11 @@ class SettingsRepository(
             settingsManager.settingsNotifications.notificationListenerStatus,
             NotificationListenerStatus(hasAccess = false, intentEnabled = false),
         )
+
+    // Trigger to force notification listener status refresh (e.g., after returning from settings)
+    fun triggerNotificationListenerStatusRefresh() {
+        settingsManager.settingsNotifications.triggerNotificationListenerStatusRefresh()
+    }
 
     // fdroid support gates
     val smsReaderSupported: StateFlow<Boolean> = hot(settingsManager.settingsNotifications.smsReaderSupported, false)
@@ -858,6 +865,8 @@ class SettingsRepository(
 
     // ── Notifications ───────────────────────────────────────────
     fun setNotificationsEnabled(enabled: Boolean) = scope.launch { settingsManager.settingsNotifications.saveNotificationsEnabled(enabled) }
+    fun setNotificationsAllowedApps(apps: Set<String>) = scope.launch { settingsManager.settingsNotifications.saveNotificationsAllowedApps(apps) }
+    fun setNotificationsAppsInitialized() = scope.launch { settingsManager.settingsNotifications.setNotificationsAppsInitialized() }
     fun saveNotificationsEnabled(enabled: Boolean) = scope.launch { settingsManager.settingsNotifications.saveNotificationsEnabled(enabled) }
     fun saveNotificationsPending(pendingJson: String) = scope.launch { settingsManager.settingsNotifications.saveNotificationsPending(pendingJson) }
     fun saveNotificationsSyncState(syncStateJson: String) = scope.launch { settingsManager.settingsNotifications.saveNotificationsSyncState(syncStateJson) }

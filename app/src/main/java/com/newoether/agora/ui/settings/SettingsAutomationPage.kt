@@ -180,6 +180,12 @@ fun SettingsAutomationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
         }
     }
 
+    var showNotificationApps by rememberSaveable { mutableStateOf(false) }
+    if (showNotificationApps) {
+        SettingsNotificationAppsPage(viewModel, onBack = { showNotificationApps = false })
+        return
+    }
+
     CollapsingSettingsScaffold(
         title = stringResource(R.string.settings_automation),
         onBack = onBack,
@@ -335,7 +341,7 @@ fun SettingsAutomationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             SmsSection(viewModel)
 
             // Notifications section (fdroid only)
-            NotificationsSection(viewModel)
+            NotificationsSection(viewModel, onManageApps = { showNotificationApps = true })
         }
         if (showDocFab) { Spacer(modifier = Modifier.height(80.dp)) }
     }

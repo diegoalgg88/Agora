@@ -836,7 +836,6 @@ class SettingsManager(val context: Context) {
             if (model == null) prefs.remove(HEARTBEAT_MODEL) else prefs[HEARTBEAT_MODEL] = model
         }
     }
-
     // ── SMS ────────────────────────────────────────────────────
     suspend fun saveSmsReadEnabled(enabled: Boolean) {
         context.dataStore.edit { it[SMS_READ_ENABLED] = enabled }
@@ -847,12 +846,10 @@ class SettingsManager(val context: Context) {
     suspend fun saveSmsPollIntervalMinutes(minutes: Int) {
         context.dataStore.edit { it[SMS_POLL_INTERVAL_MINUTES] = minutes }
     }
-
     // ── Daemon ─────────────────────────────────────────────────
     suspend fun saveDaemonEnabled(enabled: Boolean) {
         context.dataStore.edit { it[DAEMON_ENABLED] = enabled }
     }
-
     // ── Auto Backup ───────────────────────────────────────────
     suspend fun saveAutoBackupEnabled(enabled: Boolean) {
         context.dataStore.edit { it[AUTO_BACKUP_ENABLED] = enabled }
@@ -949,6 +946,16 @@ class SettingsManager(val context: Context) {
             prefs.remove(AUTOMATION_TOOLS_ENABLED)
             prefs.remove(EXACT_EXECUTION_ENABLED)
             prefs.remove(AUTOMATION_WAKE_LOCK_ENABLED)
+            prefs.remove(DAEMON_ENABLED)
+            prefs.remove(HEARTBEAT_ENABLED)
+            prefs.remove(HEARTBEAT_INTERVAL_MINUTES)
+            prefs.remove(HEARTBEAT_ACTIVE_HOURS_START)
+            prefs.remove(HEARTBEAT_ACTIVE_HOURS_END)
+            prefs.remove(HEARTBEAT_PROMPT)
+            prefs.remove(HEARTBEAT_MODEL)
+            prefs.remove(SMS_READ_ENABLED)
+            prefs.remove(SMS_SEND_ENABLED)
+            prefs.remove(SMS_POLL_INTERVAL_MINUTES)
             prefs.remove(PROXY_ENABLED)
             prefs.remove(PROXY_TYPE)
             prefs.remove(PROXY_HOST)
@@ -984,6 +991,7 @@ class SettingsManager(val context: Context) {
             prefs.remove(CUSTOM_ENDPOINT_RESOLUTIONS_JSON)
             prefs.remove(LAST_MODELS_FETCH_FINGERPRINT)
         }
+        settingsNotifications.resetPortableKeys()
     }
     suspend fun invalidatePortableModelCaches() =
         modelPreferenceStore.invalidatePortableModelCaches()

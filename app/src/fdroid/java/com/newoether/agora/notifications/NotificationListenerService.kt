@@ -23,6 +23,7 @@ class AgoraNotificationListenerService : NotificationListenerService() {
     private val job = SupervisorJob()
     private val scope = CoroutineScope(job + Dispatchers.IO)
     private var notificationStore: NotificationStore? = null
+    private var settingsRepository: com.newoether.agora.data.repository.SettingsRepository? = null
 
     companion object {
         private const val TAG = "AgoraNotificationListener"
@@ -42,11 +43,12 @@ class AgoraNotificationListenerService : NotificationListenerService() {
         DebugLog.d(TAG, "AgoraNotificationListenerService destroyed")
     }
 
-    /** Resolves the store once the process container is available; null until then. */
     private fun resolveNotificationStore(): NotificationStore? {
         notificationStore?.let { return it }
         val app = applicationContext as? com.newoether.agora.AgoraApplication ?: return null
-        return app.containerIfAvailable()?.notificationStore.also { notificationStore = it }
+        val container = app.containerIfAvailable() ?: return null
+        settingsRepository = container.settingsRepository
+        return container.notificationStore.also { notificationStore = it }
     }
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
@@ -119,10 +121,17 @@ class AgoraNotificationListenerService : NotificationListenerService() {
         DebugLog.d(TAG, "Captured notification: $record")
 
         val store = resolveNotificationStore()
-        if (store == null) {
+        if (store == null || settingsRepository == null) {
             // Cold-start window: the process container isn't published yet. Fail closed
             // without crashing the listener (the OS would keep rebinding it in a loop).
             DebugLog.w(TAG, "Container not ready; skipping notification from ${sbn.packageName}")
+            return
+        }
+
+        // Apply whitelist filtering
+        val allowedApps = settingsRepository?.notificationsAllowedApps?.value ?: emptySet()
+        if (!allowedApps.contains(packageName)) {
+            DebugLog.d(TAG, "Skipping non-whitelisted notification from ${sbn.packageName}")
             return
         }
 
