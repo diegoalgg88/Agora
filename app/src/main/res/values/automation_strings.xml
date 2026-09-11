@@ -109,7 +109,7 @@
     <string name="heartbeat_active_hours">Active Hours</string>
     <string name="heartbeat_active_hours_desc">Time window when heartbeats can run: %1$d:00 – %2$d:00</string>
     <string name="heartbeat_model">Model</string>
-    <string name="heartbeat_model_desc">Model to use for heartbeat: %s</string>
+    <string name="heartbeat_model_desc">Model used for heartbeat. Overrides the conversation\'s model; leave as Default to inherit it.</string>
     <string name="heartbeat_custom_prompt">Custom Prompt</string>
     <string name="heartbeat_custom_prompt_desc">Additional instructions for the heartbeat check (%d chars)</string>
     <string name="heartbeat_conversation">Conversation</string>

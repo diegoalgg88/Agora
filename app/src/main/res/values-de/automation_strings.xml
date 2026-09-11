@@ -88,7 +88,7 @@
     <string name="heartbeat_active_hours">Aktive Zeiten</string>
     <string name="heartbeat_active_hours_desc">Zeitfenster für Heartbeats: %1$d:00 – %2$d:00</string>
     <string name="heartbeat_model">Modell</string>
-    <string name="heartbeat_model_desc">Modell für den Heartbeat: %s</string>
+    <string name="heartbeat_model_desc">Modell für den Heartbeat. Überschreibt das Modell der Unterhaltung; auf „Standard“ belassen, um es zu erben.</string>
     <string name="heartbeat_custom_prompt">Benutzerdefinierter Prompt</string>
     <string name="heartbeat_custom_prompt_desc">Zusätzliche Anweisungen für die Heartbeat-Prüfung (%d Zeichen)</string>
     <string name="heartbeat_conversation">Unterhaltung</string>

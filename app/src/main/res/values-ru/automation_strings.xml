@@ -88,7 +88,7 @@
     <string name="heartbeat_active_hours">Активные часы</string>
     <string name="heartbeat_active_hours_desc">Временное окно для heartbeats: %1$d:00 – %2$d:00</string>
     <string name="heartbeat_model">Модель</string>
-    <string name="heartbeat_model_desc">Модель для heartbeat: %s</string>
+    <string name="heartbeat_model_desc">Модель для heartbeat. Переопределяет модель беседы; оставьте «По умолчанию», чтобы наследовать её.</string>
     <string name="heartbeat_custom_prompt">Свой запрос</string>
     <string name="heartbeat_custom_prompt_desc">Дополнительные инструкции для проверки heartbeat (%d символов)</string>
     <string name="heartbeat_conversation">Беседа</string>

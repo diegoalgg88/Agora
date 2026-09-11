@@ -478,26 +478,25 @@ fun HeartbeatSection(viewModel: ChatViewModel) {
                 )
             },
             {
-                // Show model picker only in legacy mode (no conversation selected)
-                if (heartbeatConversationId.isNullOrBlank()) {
-                    SettingsItem(
-                        headlineContent = { Text(stringResource(R.string.heartbeat_model)) },
-                        supportingContent = { Text(stringResource(R.string.heartbeat_model_desc)) },
-                        leadingContent = {
-                            Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
-                        },
-                        trailingContent = {
-                            Text(
-                                heartbeatModel?.let { modelApiDisplayName(it, customProviders) } ?: "Default",
-                                style = MaterialTheme.typography.bodyMedium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 130.dp),
-                            )
-                        },
-                        modifier = Modifier.clickable { showModelDialog = true },
-                    )
-                }
+                // Model override always applies (Kai-style); "Default" inherits the
+                // selected conversation's model.
+                SettingsItem(
+                    headlineContent = { Text(stringResource(R.string.heartbeat_model)) },
+                    supportingContent = { Text(stringResource(R.string.heartbeat_model_desc)) },
+                    leadingContent = {
+                        Icon(Icons.Default.Settings, null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                    trailingContent = {
+                        Text(
+                            heartbeatModel?.let { modelApiDisplayName(it, customProviders) } ?: "Default",
+                            style = MaterialTheme.typography.bodyMedium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 130.dp),
+                        )
+                    },
+                    modifier = Modifier.clickable { showModelDialog = true },
+                )
             },
             {
                 SettingsItem(

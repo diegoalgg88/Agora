@@ -137,25 +137,19 @@ class HeartbeatScheduler(
 
     // This method is called from runCycle
     private suspend fun runHeartbeat() {
-        // Resolve the heartbeat conversation:
-        // 1. User-selected conversation from settings (Kai behavior: inherits tools/provider/context)
-        // 2. Fallback: legacy auto-created heartbeat conversation
+        // Resolve the heartbeat conversation: the user-selected one, or the dedicated
+        // auto-created conversation when "Auto (dedicated)" is selected. The model setting
+        // always applies as an override; null inherits the conversation's model.
         val userSelectedId = settingsRepository.heartbeatConversationId.value
-        val heartbeatConversationId: String
-        val modelOverride: String?
-
-        if (!userSelectedId.isNullOrBlank()) {
-            // User picked a specific conversation — inherit its model/tools/system prompt
-            heartbeatConversationId = userSelectedId
-            modelOverride = null
-        } else {
-            // Legacy path: auto-create a dedicated heartbeat conversation
-            heartbeatConversationId =
+        val heartbeatConversationId: String =
+            if (!userSelectedId.isNullOrBlank()) {
+                userSelectedId
+            } else {
                 getConversationRepository().getOrCreateHeartbeatConversationId(
                     modelId = settingsRepository.heartbeatModel.value,
                 )
-            modelOverride = settingsRepository.heartbeatModel.value
-        }
+            }
+        val modelOverride: String? = settingsRepository.heartbeatModel.value
 
         val snapshot = buildPrompt(heartbeatConversationId)
 

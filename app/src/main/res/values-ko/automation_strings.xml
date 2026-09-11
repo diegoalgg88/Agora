@@ -88,7 +88,7 @@
     <string name="heartbeat_active_hours">활성 시간</string>
     <string name="heartbeat_active_hours_desc">하트비트를 실행할 수 있는 시간대: %1$d:00 – %2$d:00</string>
     <string name="heartbeat_model">모델</string>
-    <string name="heartbeat_model_desc">하트비트에 사용할 모델: %s</string>
+    <string name="heartbeat_model_desc">하트비트에 사용할 모델입니다. 대화의 모델을 재정의합니다. 상속하려면 기본값으로 두세요.</string>
     <string name="heartbeat_custom_prompt">사용자 지정 프롬프트</string>
     <string name="heartbeat_custom_prompt_desc">하트비트 점검에 대한 추가 지침 (%d자)</string>
     <string name="heartbeat_conversation">대화</string>

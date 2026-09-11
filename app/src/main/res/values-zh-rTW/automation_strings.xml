@@ -88,7 +88,7 @@
     <string name="heartbeat_active_hours">活躍時段</string>
     <string name="heartbeat_active_hours_desc">可執行心跳的時間範圍：%1$d:00 – %2$d:00</string>
     <string name="heartbeat_model">模型</string>
-    <string name="heartbeat_model_desc">用於心跳的模型：%s</string>
+    <string name="heartbeat_model_desc">用於心跳的模型。會覆寫對話的模型；保持「預設」即可繼承。</string>
     <string name="heartbeat_custom_prompt">自訂提示詞</string>
     <string name="heartbeat_custom_prompt_desc">心跳檢查的額外說明（%d 個字元）</string>
     <string name="heartbeat_conversation">對話</string>

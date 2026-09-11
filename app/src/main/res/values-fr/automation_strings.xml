@@ -88,7 +88,7 @@
     <string name="heartbeat_active_hours">Heures actives</string>
     <string name="heartbeat_active_hours_desc">Plage horaire des heartbeats : %1$d:00 – %2$d:00</string>
     <string name="heartbeat_model">Modèle</string>
-    <string name="heartbeat_model_desc">Modèle utilisé pour le heartbeat : %s</string>
+    <string name="heartbeat_model_desc">Modèle utilisé pour le heartbeat. Remplace le modèle de la conversation ; laisser sur Défaut pour l\'hériter.</string>
     <string name="heartbeat_custom_prompt">Invite personnalisée</string>
     <string name="heartbeat_custom_prompt_desc">Instructions supplémentaires pour la vérification heartbeat (%d caractères)</string>
     <string name="heartbeat_conversation">Conversation</string>

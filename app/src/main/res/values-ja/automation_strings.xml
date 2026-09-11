@@ -88,7 +88,7 @@
     <string name="heartbeat_active_hours">アクティブ時間帯</string>
     <string name="heartbeat_active_hours_desc">ハートビートを実行できる時間帯: %1$d:00 – %2$d:00</string>
     <string name="heartbeat_model">モデル</string>
-    <string name="heartbeat_model_desc">ハートビートに使用するモデル: %s</string>
+    <string name="heartbeat_model_desc">ハートビートに使用するモデル。会話のモデルを上書きします。継承するには「デフォルト」のままにしてください。</string>
     <string name="heartbeat_custom_prompt">カスタムプロンプト</string>
     <string name="heartbeat_custom_prompt_desc">ハートビートチェックへの追加指示 (%d文字)</string>
     <string name="heartbeat_conversation">会話</string>

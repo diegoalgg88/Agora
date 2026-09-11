@@ -1363,7 +1363,7 @@
     <string name="heartbeat_active_hours">活跃时段</string>
     <string name="heartbeat_active_hours_desc">可运行心跳的时间窗口：%1$d:00 – %2$d:00</string>
     <string name="heartbeat_model">模型</string>
-    <string name="heartbeat_model_desc">用于心跳的模型：%s</string>
+    <string name="heartbeat_model_desc">用于心跳的模型。会覆盖对话的模型；保持“默认”即可继承。</string>
     <string name="heartbeat_custom_prompt">自定义提示词</string>
     <string name="heartbeat_custom_prompt_desc">心跳检查的附加说明（%d 个字符）</string>
     <string name="automation_sms">短信</string>

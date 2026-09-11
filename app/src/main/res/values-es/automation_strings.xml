@@ -89,7 +89,7 @@
     <string name="heartbeat_active_hours">Horas activas</string>
     <string name="heartbeat_active_hours_desc">Ventana de tiempo para heartbeat: %1$d:00 – %2$d:00</string>
     <string name="heartbeat_model">Modelo</string>
-    <string name="heartbeat_model_desc">Modelo para heartbeat: %s</string>
+    <string name="heartbeat_model_desc">Modelo usado para el heartbeat. Sobrescribe el modelo de la conversación; deja Default para heredarlo.</string>
     <string name="heartbeat_custom_prompt">Prompt personalizado</string>
     <string name="heartbeat_custom_prompt_desc">Instrucciones adicionales para la comprobación (%d caracteres)</string>
     <string name="heartbeat_conversation">Conversación</string>
