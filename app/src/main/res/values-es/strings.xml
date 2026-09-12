@@ -1231,6 +1231,28 @@
     <string name="skills_edit">Editar habilidad</string>
     <string name="skills_delete_title">¿Eliminar habilidad?</string>
     <string name="skills_delete_message">¿Seguro que quieres eliminar \'%1$s\'? Esta acción no se puede deshacer.</string>
+    <string name="skills_add_from_github">Desde URL de GitHub</string>
+    <string name="skills_add_from_github_desc">Descarga una habilidad desde un repositorio o carpeta de GitHub.</string>
+    <string name="skills_github_url">URL de GitHub</string>
+    <string name="skills_github_hint">owner/repo, owner/repo/path o una URL completa de github.com</string>
+    <string name="skills_install">Instalar</string>
+    <string name="skills_installed">%1$s instalada</string>
+    <string name="skills_installed_bundled_skipped">%1$s instalada (%2$d archivos adjuntos omitidos — solo se guarda el documento de la habilidad)</string>
+    <string name="skills_installed_with_bundled">%1$s instalada con %2$d archivos adjuntos</string>
+    <string name="skills_marketplace_browse">Explorar catálogos</string>
+    <string name="skills_marketplace_browse_desc">Descubre e instala habilidades creadas por la comunidad.</string>
+    <string name="skills_marketplaces_title">Catálogos</string>
+    <string name="skills_marketplace_available">Habilidades disponibles</string>
+    <string name="skills_marketplace_curated">Catálogos verificados</string>
+    <string name="skills_marketplace_installable">Habilidades instalables</string>
+    <string name="skills_marketplace_error">Error al cargar las habilidades</string>
+    <string name="skills_marketplace_empty">No se encontraron habilidades</string>
+    <string name="skills_marketplace_search">Buscar habilidades</string>
+    <string name="skills_marketplace_search_empty">Ninguna habilidad coincide con la búsqueda</string>
+    <string name="skills_marketplace_installed">Instalada</string>
+    <string name="skills_marketplace_load_failed">No se pudo cargar el catálogo</string>
+    <string name="skills_install_failed">No se pudo instalar %1$s: %2$s</string>
+    <string name="skills_requires_shell">Requiere la herramienta Shell (scripts adjuntos)</string>
     <string name="tool_list_skills">Listar habilidades</string>
     <string name="tool_read_skill">Leer habilidad</string>
     <string name="tool_create_skill">Crear habilidad</string>
@@ -1247,4 +1269,7 @@
     <string name="composer_clear_failed">El mensaje se envió, pero no se pudo borrar el borrador.</string>
     <string name="models_show_provider_name">Mostrar nombre del proveedor</string>
     <string name="models_show_provider_name_desc">Añadir el nombre del proveedor al nombre del modelo.</string>
+    <string name="mcp_tavily_auth">Autenticación Tavily</string>
+    <string name="mcp_tavily_api_key">Clave API de Tavily</string>
+    <string name="mcp_tavily_api_key_desc">Obtén tu clave API en https://tavily.com/api-keys. Se añadirá como ?tavilyApiKey=... a la URL del servidor.</string>
 </resources>

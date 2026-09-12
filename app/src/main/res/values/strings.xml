@@ -1239,6 +1239,28 @@
     <string name="skills_edit">Edit Skill</string>
     <string name="skills_delete_title">Delete Skill?</string>
     <string name="skills_delete_message">Are you sure you want to delete \'%1$s\'? This cannot be undone.</string>
+    <string name="skills_add_from_github">From GitHub URL</string>
+    <string name="skills_add_from_github_desc">Download a skill from a GitHub repository or folder.</string>
+    <string name="skills_github_url">GitHub URL</string>
+    <string name="skills_github_hint">owner/repo, owner/repo/path, or a full github.com URL</string>
+    <string name="skills_install">Install</string>
+    <string name="skills_installed">Installed %1$s</string>
+    <string name="skills_installed_bundled_skipped">Installed %1$s (%2$d bundled files skipped — only the skill document is stored)</string>
+    <string name="skills_installed_with_bundled">Installed %1$s with %2$d bundled files</string>
+    <string name="skills_marketplace_browse">Browse Marketplaces</string>
+    <string name="skills_marketplace_browse_desc">Discover and install community-created skills.</string>
+    <string name="skills_marketplaces_title">Marketplaces</string>
+    <string name="skills_marketplace_available">Available Skills</string>
+    <string name="skills_marketplace_curated">Curated Marketplaces</string>
+    <string name="skills_marketplace_installable">Installable Skills</string>
+    <string name="skills_marketplace_error">Error Loading Skills</string>
+    <string name="skills_marketplace_empty">No Skills Found</string>
+    <string name="skills_marketplace_search">Search skills</string>
+    <string name="skills_marketplace_search_empty">No skills match your search</string>
+    <string name="skills_marketplace_installed">Installed</string>
+    <string name="skills_marketplace_load_failed">Failed to load marketplace</string>
+    <string name="skills_install_failed">Failed to install %1$s: %2$s</string>
+    <string name="skills_requires_shell">Requires Shell tool (scripts bundled)</string>
     <string name="tool_list_skills">List skills</string>
     <string name="tool_read_skill">Read skill</string>
     <string name="tool_create_skill">Create skill</string>
@@ -1249,4 +1271,7 @@
     <string name="local_model_limitations_body">Local models are limited by the memory available on mobile devices. Context size is one of the main constraints. Context often includes the system prompt, tool or function definitions, and skills. To reduce initial context use, open the three-dot menu beside the model selector and enable Low Context Mode.</string>
     <string name="models_show_provider_name">Show Provider name</string>
     <string name="models_show_provider_name_desc">Append the Provider name to the model name.</string>
+    <string name="mcp_tavily_auth">Tavily Authentication</string>
+    <string name="mcp_tavily_api_key">Tavily API Key</string>
+    <string name="mcp_tavily_api_key_desc">Get your API key from https://tavily.com/api-keys. It will be appended as ?tavilyApiKey=... to the server URL.</string>
 </resources>

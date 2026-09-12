@@ -10,6 +10,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextOverflow
 import com.newoether.agora.ui.theme.ChatType
@@ -74,13 +75,25 @@ internal fun ToolSummaryText(
                 lastSummary.value = summary
             }
         }
+        val isStreaming = streaming && presentation.isActive && isCurrentState && !transition.isRunning
+
+        val dots = remember { mutableStateOf("") }
+        LaunchedEffect(isStreaming) {
+            if (isStreaming) {
+                var count = 0
+                while (true) {
+                    kotlinx.coroutines.delay(500)
+                    count = (count + 1) % 4
+                    dots.value = ".".repeat(count)
+                }
+            } else {
+                dots.value = ""
+            }
+        }
+
         StreamingMutedText(
-            text = renderedSummary,
-            streaming =
-                streaming &&
-                    presentation.isActive &&
-                    isCurrentState &&
-                    !transition.isRunning,
+            text = renderedSummary + dots.value,
+            streaming = isStreaming,
         )
     }
 }

@@ -32,6 +32,7 @@ import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Save
+import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.SwapHoriz
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -464,16 +465,29 @@ private fun McpServerEditor(
             },
         )
     }
+    var tavilyApiKey by remember(initial.id) { mutableStateOf("") }
+    val isTavilyUrl = remember(draft.url) {
+        draft.url.lowercase().contains("mcp.tavily.com")
+    }
     val parsedHeaders = remember(headerRows) { buildMcpHeaders(headerRows) }
     val validUrl = remember(draft.url) { isValidMcpUrl(draft.url) }
     val canSave = draft.name.isNotBlank() && validUrl
     val scrollState = rememberScrollState()
+
+    fun buildUrlWithTavilyKey(url: String, apiKey: String): String {
+        if (!isTavilyUrl || apiKey.isBlank()) return url
+        val cleanUrl = url.trim()
+        val separator = if (cleanUrl.contains("?")) "&" else "?"
+        return "$cleanUrl${separator}tavilyApiKey=${apiKey.trim()}"
+    }
+
     fun save() {
         if (!canSave) return
+        val finalUrl = buildUrlWithTavilyKey(draft.url.trim(), tavilyApiKey)
         onSave(
             draft.copy(
                 name = draft.name.trim(),
-                url = draft.url.trim(),
+                url = finalUrl,
                 headers = parsedHeaders,
             ),
         )
@@ -501,8 +515,8 @@ private fun McpServerEditor(
         SettingsGroupColumn {
             SettingsGroup(
                 title = stringResource(R.string.mcp_connection),
-                items = listOf(
-                    {
+                items = buildList {
+                    add {
                         SettingsIconContent(icon = Icons.Default.SwapHoriz) {
                             Text(
                                 stringResource(R.string.mcp_transport),
@@ -527,8 +541,8 @@ private fun McpServerEditor(
                                 allowLabelOverflow = true,
                             )
                         }
-                    },
-                    {
+                    }
+                    add {
                         SettingsIconContent(icon = Icons.Default.Label) {
                             McpLabeledField(
                                 label = stringResource(R.string.mcp_name),
@@ -536,8 +550,8 @@ private fun McpServerEditor(
                                 onValueChange = { draft = draft.copy(name = it) },
                             )
                         }
-                    },
-                    {
+                    }
+                    add {
                         SettingsIconContent(icon = Icons.Default.Link) {
                             McpLabeledField(
                                 label = stringResource(R.string.mcp_url),
@@ -552,8 +566,21 @@ private fun McpServerEditor(
                                 keyboardType = KeyboardType.Uri,
                             )
                         }
-                    },
-                ),
+                    }
+                    if (isTavilyUrl) {
+                        add {
+                            SettingsIconContent(icon = Icons.Default.Key) {
+                                McpLabeledField(
+                                    label = stringResource(R.string.mcp_tavily_api_key),
+                                    value = tavilyApiKey,
+                                    onValueChange = { tavilyApiKey = it },
+                                    isError = false,
+                                    supportingText = stringResource(R.string.mcp_tavily_api_key_desc),
+                                )
+                            }
+                        }
+                    }
+                },
             )
             SettingsGroup(
                 title = stringResource(R.string.mcp_headers),

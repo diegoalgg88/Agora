@@ -6,6 +6,9 @@
     <string name="mcp_no_servers">尚無 MCP 伺服器</string>
     <string name="mcp_no_servers_desc">新增 Streamable HTTP 或 SSE 端點後，即可在對話中使用其工具。</string>
     <string name="mcp_add_server">新增 MCP 伺服器</string>
+    <string name="mcp_custom_server">自訂伺服器</string>
+    <string name="mcp_custom_server_desc">從零開始設定新的 MCP 伺服器</string>
+    <string name="mcp_popular_servers">熱門伺服器</string>
     <string name="mcp_edit_server">編輯 MCP 伺服器</string>
     <string name="mcp_delete_title">刪除 MCP 伺服器？</string>
     <string name="mcp_delete_message">刪除 %1$s 並移除其工具？</string>

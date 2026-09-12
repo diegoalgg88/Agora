@@ -1336,6 +1336,28 @@
     <string name="skills_edit">编辑技能</string>
     <string name="skills_delete_title">删除技能？</string>
     <string name="skills_delete_message">确定要删除 \'%1$s\' 吗？此操作无法撤销。</string>
+    <string name="skills_add_from_github">从 GitHub URL</string>
+    <string name="skills_add_from_github_desc">从 GitHub 仓库或文件夹下载技能。</string>
+    <string name="skills_github_url">GitHub URL</string>
+    <string name="skills_github_hint">owner/repo、owner/repo/path 或完整的 github.com URL</string>
+    <string name="skills_install">安装</string>
+    <string name="skills_installed">已安装 %1$s</string>
+    <string name="skills_installed_bundled_skipped">已安装 %1$s（跳过 %2$d 个附带文件 — 仅保存技能文档）</string>
+    <string name="skills_installed_with_bundled">已安装 %1$s，包含 %2$d 个附带文件</string>
+    <string name="skills_marketplace_browse">浏览市场</string>
+    <string name="skills_marketplace_browse_desc">发现并安装社区创建的技能。</string>
+    <string name="skills_marketplaces_title">市场</string>
+    <string name="skills_marketplace_available">可用技能</string>
+    <string name="skills_marketplace_curated">精选市场</string>
+    <string name="skills_marketplace_installable">可安装的技能</string>
+    <string name="skills_marketplace_error">加载技能出错</string>
+    <string name="skills_marketplace_empty">未找到技能</string>
+    <string name="skills_marketplace_search">搜索技能</string>
+    <string name="skills_marketplace_search_empty">没有符合搜索条件的技能</string>
+    <string name="skills_marketplace_installed">已安装</string>
+    <string name="skills_marketplace_load_failed">加载市场失败</string>
+    <string name="skills_install_failed">安装 %1$s 失败：%2$s</string>
+    <string name="skills_requires_shell">需要 Shell 工具 (捆绑脚本)</string>
     <string name="tool_list_skills">列出技能</string>
     <string name="tool_read_skill">读取技能</string>
     <string name="tool_create_skill">创建技能</string>
@@ -1352,6 +1374,9 @@
     <string name="composer_clear_failed">消息已发送，但无法清除草稿。</string>
     <string name="models_show_provider_name">显示 Provider 名称</string>
     <string name="models_show_provider_name_desc">在模型名称后附加服务商名称。</string>
+    <string name="mcp_tavily_auth">Tavily 认证</string>
+    <string name="mcp_tavily_api_key">Tavily API 密钥</string>
+    <string name="mcp_tavily_api_key_desc">从 https://tavily.com/api-keys 获取 API 密钥。它将作为 ?tavilyApiKey=... 附加到服务器 URL。</string>
     <!-- Daemon Mode, Heartbeat, SMS and Notifications -->
     <string name="automation_daemon_mode">守护进程模式</string>
     <string name="automation_daemon_mode_desc">保持前台服务运行，以便应用未打开时后台任务（心跳、SMS 轮询、通知）仍能继续</string>

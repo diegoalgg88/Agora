@@ -6,6 +6,9 @@
     <string name="mcp_no_servers">Không có máy chủ MCP</string>
     <string name="mcp_no_servers_desc">Thêm điểm cuối Streamable HTTP hoặc SSE để dùng các công cụ của máy chủ trong cuộc trò chuyện.</string>
     <string name="mcp_add_server">Thêm máy chủ MCP</string>
+    <string name="mcp_custom_server">Máy chủ tùy chỉnh</string>
+    <string name="mcp_custom_server_desc">Cấu hình máy chủ MCP mới từ đầu</string>
+    <string name="mcp_popular_servers">Máy chủ phổ biến</string>
     <string name="mcp_edit_server">Chỉnh sửa máy chủ MCP</string>
     <string name="mcp_delete_title">Xóa máy chủ MCP?</string>
     <string name="mcp_delete_message">Xóa %1$s và các công cụ của máy chủ?</string>

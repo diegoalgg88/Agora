@@ -10,6 +10,7 @@ import java.io.IOException
 class SkillManager(context: Context) {
     private val skillDir = File(context.filesDir, "skill_db").also { it.mkdirs() }
     private val metaFile = File(skillDir, "skill_meta.json")
+    private val sandboxSkillsDir = File(context.filesDir, "sandbox-home/skills").also { it.mkdirs() }
     private val json = Json { ignoreUnknownKeys = true; prettyPrint = true }
     private val metadata = DescriptionMetadataStore(metaFile, json)
     private val _catalogRevision = MutableStateFlow(0L)
@@ -19,6 +20,14 @@ class SkillManager(context: Context) {
     data class SkillFileInfo(
         val name: String,
         val description: String = "",
+        val bundledFileCount: Int = 0,
+    )
+
+    /**
+     * Result of installing a downloaded skill.
+     */
+    data class SkillInstallResult(
+        val file: SkillFileInfo,
     )
 
     @Synchronized
@@ -26,7 +35,13 @@ class SkillManager(context: Context) {
         val values = metadata.read()
         return skillDir.listFiles()
             ?.filter { it.extension == "md" }
-            ?.map { SkillFileInfo(it.name, values[it.name].orEmpty()) }
+            ?.map { file ->
+                val bundledDir = File(sandboxSkillsDir, file.name.removeSuffix(".md"))
+                val bundledCount = if (bundledDir.exists() && bundledDir.isDirectory) {
+                    bundledDir.listFiles()?.count { it.isFile } ?: 0
+                } else 0
+                SkillFileInfo(file.name, values[file.name].orEmpty(), bundledCount)
+            }
             ?.sortedBy { it.name }
             .orEmpty()
     }
@@ -185,6 +200,17 @@ class SkillManager(context: Context) {
             throw error
         }
 
+        // Rename bundled files directory if the skill file was renamed
+        if (renamed) {
+            val oldSkillId = file.name.removeSuffix(".md")
+            val newSkillId = target.name.removeSuffix(".md")
+            val oldBundledDir = File(sandboxSkillsDir, oldSkillId)
+            val newBundledDir = File(sandboxSkillsDir, newSkillId)
+            if (oldBundledDir.exists()) {
+                oldBundledDir.renameTo(newBundledDir)
+            }
+        }
+
         if (replacementContent != null || renamed || metadataChanged) {
             _catalogRevision.value += 1
         }
@@ -216,8 +242,23 @@ class SkillManager(context: Context) {
                 throw error
             }
         }
+
+        // Delete bundled files from sandbox skills directory
+        val skillId = file.name.removeSuffix(".md")
+        val bundledDir = File(sandboxSkillsDir, skillId)
+        if (bundledDir.exists()) {
+            deleteRecursively(bundledDir)
+        }
+
         _catalogRevision.value += 1
         return "Deleted ${file.name}"
+    }
+
+    private fun deleteRecursively(file: File) {
+        if (file.isDirectory) {
+            file.listFiles()?.forEach { deleteRecursively(it) }
+        }
+        file.delete()
     }
 
     private fun updateDescription(
@@ -253,25 +294,38 @@ class SkillManager(context: Context) {
 
     suspend fun browseMarketplace(marketplace: SkillMarketplace): Result<List<RegistrySkillEntry>> = registry.browseMarketplace(marketplace)
 
-    suspend fun installFromGitHub(owner: String, repo: String, ref: String, path: String): Result<SkillFileInfo> =
+    suspend fun installFromGitHub(owner: String, repo: String, ref: String, path: String): Result<SkillInstallResult> =
         registry.fetchSkillFiles(SkillSource.GitHub(owner, repo, ref, path)).mapCatching { install(it) }
 
-    suspend fun installFromRegistryEntry(entry: RegistrySkillEntry): Result<SkillFileInfo> =
+    suspend fun installFromRegistryEntry(entry: RegistrySkillEntry): Result<SkillInstallResult> =
         installFromGitHub(entry.owner, entry.repo, entry.ref, entry.skillPath)
 
-    internal fun install(downloaded: DownloadedSkill): SkillFileInfo {
+    @Synchronized
+    internal fun install(downloaded: DownloadedSkill): SkillInstallResult {
         val file = resolveFile(downloaded.id)
+        require(!file.exists()) { "Skill already installed: ${file.name}" }
         val values = metadata.read()
         file.writeText(downloaded.rawSkillMd)
         values[file.name] = downloaded.description
         metadata.write(values)
-        
-        // For bundled files, if Agora doesn't enforce a sandbox dir, we could just ignore them
-        // or write them. Agora's skills.md contract says "SkillManager owns app-private skill_db Markdown files".
-        // So we will just write the main SKILL.md.
+
+        // Write bundled files to sandbox skills directory
+        if (downloaded.files.isNotEmpty()) {
+            val skillId = downloaded.id
+            val bundledDir = File(sandboxSkillsDir, skillId)
+            bundledDir.mkdirs()
+            for ((relPath, content) in downloaded.files) {
+                val safe = relPath.split('/', '\\').filterNot { it.isEmpty() || it == ".." }
+                if (safe.isEmpty()) continue
+                val targetFile = File(bundledDir, safe.joinToString("/"))
+                targetFile.parentFile?.mkdirs()
+                targetFile.writeText(content)
+            }
+        }
 
         _catalogRevision.value += 1
-        return SkillFileInfo(file.name, downloaded.description)
+        val bundledCount = downloaded.files.size
+        return SkillInstallResult(SkillFileInfo(file.name, downloaded.description, bundledCount))
     }
 }
 

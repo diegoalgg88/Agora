@@ -1231,6 +1231,28 @@
     <string name="skills_edit">Modifier la compétence</string>
     <string name="skills_delete_title">Supprimer la compétence ?</string>
     <string name="skills_delete_message">Voulez-vous vraiment supprimer \'%1$s\' ? Cette action est irréversible.</string>
+    <string name="skills_add_from_github">Depuis une URL GitHub</string>
+    <string name="skills_add_from_github_desc">Téléchargez une compétence depuis un dépôt ou dossier GitHub.</string>
+    <string name="skills_github_url">URL GitHub</string>
+    <string name="skills_github_hint">owner/repo, owner/repo/path ou une URL github.com complète</string>
+    <string name="skills_install">Installer</string>
+    <string name="skills_installed">%1$s installée</string>
+    <string name="skills_installed_bundled_skipped">%1$s installée (%2$d fichiers joints ignorés — seul le document de la compétence est enregistré)</string>
+    <string name="skills_installed_with_bundled">%1$s installée avec %2$d fichiers joints</string>
+    <string name="skills_marketplace_browse">Parcourir les catalogues</string>
+    <string name="skills_marketplace_browse_desc">Découvrez et installez des compétences créées par la communauté.</string>
+    <string name="skills_marketplaces_title">Catalogues</string>
+    <string name="skills_marketplace_available">Compétences disponibles</string>
+    <string name="skills_marketplace_curated">Catalogues vérifiés</string>
+    <string name="skills_marketplace_installable">Compétences installables</string>
+    <string name="skills_marketplace_error">Erreur de chargement des compétences</string>
+    <string name="skills_marketplace_empty">Aucune compétence trouvée</string>
+    <string name="skills_marketplace_search">Rechercher des compétences</string>
+    <string name="skills_marketplace_search_empty">Aucune compétence ne correspond à votre recherche</string>
+    <string name="skills_marketplace_installed">Installée</string>
+    <string name="skills_marketplace_load_failed">Échec du chargement du catalogue</string>
+    <string name="skills_install_failed">Échec de l\'installation de %1$s : %2$s</string>
+    <string name="skills_requires_shell">Nécessite l\'outil Shell (scripts inclus)</string>
     <string name="tool_list_skills">Lister les compétences</string>
     <string name="tool_read_skill">Lire la compétence</string>
     <string name="tool_create_skill">Créer une compétence</string>
@@ -1247,4 +1269,7 @@
     <string name="composer_clear_failed">Le message a été envoyé, mais le brouillon n’a pas pu être effacé.</string>
     <string name="models_show_provider_name">Afficher le nom du fournisseur</string>
     <string name="models_show_provider_name_desc">Ajouter le nom du fournisseur après le nom du modèle.</string>
+    <string name="mcp_tavily_auth">Authentification Tavily</string>
+    <string name="mcp_tavily_api_key">Clé API Tavily</string>
+    <string name="mcp_tavily_api_key_desc">Obtenez votre clé API sur https://tavily.com/api-keys. Elle sera ajoutée comme ?tavilyApiKey=... à l\'URL du serveur.</string>
 </resources>

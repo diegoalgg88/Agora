@@ -2,16 +2,22 @@ package com.newoether.agora.ui.settings
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Store
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,8 +28,11 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.newoether.agora.R
 import com.newoether.agora.data.RegistrySkillEntry
 import com.newoether.agora.data.SkillMarketplace
 import com.newoether.agora.data.curatedSkillMarketplaces
@@ -43,8 +52,25 @@ fun SettingsSkillMarketplacePage(
     var loadedSkills by remember { mutableStateOf<List<RegistrySkillEntry>?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var searchQuery by remember { mutableStateOf("") }
+    var installedIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var installInFlight by remember { mutableStateOf<String?>(null) }
+
+    fun refreshInstalled() {
+        scope.launch {
+            installedIds = withContext(Dispatchers.IO) {
+                runCatching {
+                    viewModel.skillManager.listFiles()
+                        .map { it.name.removeSuffix(".md") }
+                        .toSet()
+                }.getOrDefault(emptySet())
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { refreshInstalled() }
 
     LaunchedEffect(selectedMarketplace) {
         val marketplace = selectedMarketplace
@@ -52,14 +78,19 @@ fun SettingsSkillMarketplacePage(
             isLoading = true
             errorMessage = null
             loadedSkills = null
+            searchQuery = ""
             try {
                 val result = withContext(Dispatchers.IO) {
                     viewModel.skillManager.browseMarketplace(marketplace)
                 }
                 result.onSuccess { loadedSkills = it }
-                    .onFailure { errorMessage = it.localizedMessage ?: "Failed to load marketplace" }
+                    .onFailure {
+                        errorMessage = it.localizedMessage
+                            ?: context.getString(R.string.skills_marketplace_load_failed)
+                    }
             } catch (e: Exception) {
-                errorMessage = e.localizedMessage ?: "Failed to load marketplace"
+                errorMessage = e.localizedMessage
+                    ?: context.getString(R.string.skills_marketplace_load_failed)
             } finally {
                 isLoading = false
             }
@@ -67,7 +98,11 @@ fun SettingsSkillMarketplacePage(
     }
 
     CollapsingSettingsScaffold(
-        title = if (selectedMarketplace == null) "Marketplaces" else "Available Skills",
+        title = if (selectedMarketplace == null) {
+            stringResource(R.string.skills_marketplaces_title)
+        } else {
+            stringResource(R.string.skills_marketplace_available)
+        },
         onBack = {
             if (selectedMarketplace != null) {
                 selectedMarketplace = null
@@ -81,7 +116,7 @@ fun SettingsSkillMarketplacePage(
         SettingsGroupColumn {
             if (selectedMarketplace == null) {
                 SettingsGroup(
-                    title = "Curated Marketplaces",
+                    title = stringResource(R.string.skills_marketplace_curated),
                     items = curatedSkillMarketplaces.map { marketplace ->
                         {
                             SettingsItem(
@@ -112,8 +147,32 @@ fun SettingsSkillMarketplacePage(
                     }
                 )
             } else {
+                val skills = loadedSkills
+                if (!isLoading && errorMessage == null && !skills.isNullOrEmpty()) {
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        label = { Text(stringResource(R.string.skills_marketplace_search)) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(16.dp),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                val filteredSkills = remember(skills, searchQuery) {
+                    val query = searchQuery.trim().lowercase()
+                    if (query.isEmpty()) {
+                        skills.orEmpty()
+                    } else {
+                        skills.orEmpty().filter {
+                            it.id.lowercase().contains(query) ||
+                                it.description.lowercase().contains(query) ||
+                                it.sourceName.lowercase().contains(query)
+                        }
+                    }
+                }
                 SettingsGroup(
-                    title = "Installable Skills",
+                    title = stringResource(R.string.skills_marketplace_installable),
                     items = buildList {
                         if (isLoading) {
                             add {
@@ -134,7 +193,7 @@ fun SettingsSkillMarketplacePage(
                                 SettingsItem(
                                     headlineContent = {
                                         Text(
-                                            "Error Loading Skills",
+                                            stringResource(R.string.skills_marketplace_error),
                                             color = MaterialTheme.colorScheme.error,
                                         )
                                     },
@@ -146,20 +205,32 @@ fun SettingsSkillMarketplacePage(
                                     },
                                 )
                             }
-                        } else if (loadedSkills?.isEmpty() == true) {
+                        } else if (skills?.isEmpty() == true) {
                             add {
                                 SettingsItem(
                                     headlineContent = {
                                         Text(
-                                            "No Skills Found",
+                                            stringResource(R.string.skills_marketplace_empty),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    },
+                                )
+                            }
+                        } else if (filteredSkills.isEmpty()) {
+                            add {
+                                SettingsItem(
+                                    headlineContent = {
+                                        Text(
+                                            stringResource(R.string.skills_marketplace_search_empty),
                                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     },
                                 )
                             }
                         } else {
-                            loadedSkills?.forEach { skill ->
+                            filteredSkills.forEach { skill ->
                                 add {
+                                    val alreadyInstalled = skill.id in installedIds
                                     SettingsItem(
                                         headlineContent = {
                                             Text(
@@ -168,10 +239,24 @@ fun SettingsSkillMarketplacePage(
                                             )
                                         },
                                         supportingContent = {
-                                            Text(
-                                                skill.description,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            )
+                                            Column {
+                                                Text(
+                                                    skill.description,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                                if (skill.requiresSandbox) {
+                                                    Text(
+                                                        stringResource(R.string.skills_requires_shell),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.tertiary,
+                                                    )
+                                                }
+                                                Text(
+                                                    skill.sourceName,
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                )
+                                            }
                                         },
                                         leadingContent = {
                                             Icon(
@@ -180,22 +265,67 @@ fun SettingsSkillMarketplacePage(
                                                 tint = MaterialTheme.colorScheme.primary,
                                             )
                                         },
-                                        modifier = Modifier.fillMaxWidth().clickable(enabled = installInFlight == null) {
+                                        trailingContent = when {
+                                            installInFlight == skill.id -> {
+                                                {
+                                                    CircularProgressIndicator(
+                                                        modifier = Modifier.size(20.dp),
+                                                        strokeWidth = 2.dp,
+                                                    )
+                                                }
+                                            }
+                                            alreadyInstalled -> {
+                                                {
+                                                    Icon(
+                                                        Icons.Default.Check,
+                                                        contentDescription = stringResource(
+                                                            R.string.skills_marketplace_installed,
+                                                        ),
+                                                        tint = MaterialTheme.colorScheme.primary,
+                                                    )
+                                                }
+                                            }
+                                            else -> null
+                                        },
+                                        modifier = Modifier.fillMaxWidth().clickable(
+                                            enabled = !alreadyInstalled && installInFlight == null,
+                                        ) {
                                             installInFlight = skill.id
                                             scope.launch {
                                                 try {
-                                                    withContext(Dispatchers.IO) {
-                                                        viewModel.skillManager.installFromRegistryEntry(skill)
+                                                    val result = withContext(Dispatchers.IO) {
+                                                        viewModel.skillManager
+                                                            .installFromRegistryEntry(skill)
                                                             .getOrThrow()
                                                     }
-                                                    viewModel.emitSnackbar("Installed ${skill.id}")
+                                                    viewModel.emitSnackbar(
+                                                        if (result.file.bundledFileCount > 0) {
+                                                            context.getString(
+                                                                R.string.skills_installed_with_bundled,
+                                                                result.file.name,
+                                                                result.file.bundledFileCount,
+                                                            )
+                                                        } else {
+                                                            context.getString(
+                                                                R.string.skills_installed,
+                                                                result.file.name,
+                                                            )
+                                                        },
+                                                    )
+                                                    refreshInstalled()
                                                 } catch (e: Exception) {
-                                                    viewModel.emitSnackbar("Failed to install ${skill.id}: ${e.localizedMessage}")
+                                                    viewModel.emitSnackbar(
+                                                        context.getString(
+                                                            R.string.skills_install_failed,
+                                                            skill.id,
+                                                            e.localizedMessage ?: "",
+                                                        ),
+                                                    )
                                                 } finally {
                                                     installInFlight = null
                                                 }
                                             }
-                                        }
+                                        },
                                     )
                                 }
                             }

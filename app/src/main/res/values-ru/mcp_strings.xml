@@ -6,6 +6,9 @@
     <string name="mcp_no_servers">Нет серверов MCP</string>
     <string name="mcp_no_servers_desc">Добавьте конечную точку Streamable HTTP или SSE, чтобы использовать её инструменты в диалогах.</string>
     <string name="mcp_add_server">Добавить MCP-сервер</string>
+    <string name="mcp_custom_server">Пользовательский сервер</string>
+    <string name="mcp_custom_server_desc">Настроить новый MCP-сервер с нуля</string>
+    <string name="mcp_popular_servers">Популярные серверы</string>
     <string name="mcp_edit_server">Изменить сервер MCP</string>
     <string name="mcp_delete_title">Удалить сервер MCP?</string>
     <string name="mcp_delete_message">Удалить %1$s и его инструменты?</string>

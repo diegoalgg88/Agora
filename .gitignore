@@ -20,6 +20,7 @@ build_*.log
 
 # Personal tooling
 /.gemini/
+/.project/
 build*.ps1
 deploy.ps1
 logs/

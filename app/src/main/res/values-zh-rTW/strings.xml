@@ -1239,6 +1239,28 @@
     <string name="skills_edit">編輯技能</string>
     <string name="skills_delete_title">刪除技能？</string>
     <string name="skills_delete_message">確定要刪除 \'%1$s\' 嗎？此操作無法復原。</string>
+    <string name="skills_add_from_github">從 GitHub URL</string>
+    <string name="skills_add_from_github_desc">從 GitHub 儲存庫或資料夾下載技能。</string>
+    <string name="skills_github_url">GitHub URL</string>
+    <string name="skills_github_hint">owner/repo、owner/repo/path 或完整的 github.com URL</string>
+    <string name="skills_install">安裝</string>
+    <string name="skills_installed">已安裝 %1$s</string>
+    <string name="skills_installed_bundled_skipped">已安裝 %1$s（略過 %2$d 個附帶檔案 — 僅儲存技能文件）</string>
+    <string name="skills_installed_with_bundled">已安裝 %1$s，包含 %2$d 個附帶檔案</string>
+    <string name="skills_marketplace_browse">瀏覽市集</string>
+    <string name="skills_marketplace_browse_desc">探索並安裝社群建立的技能。</string>
+    <string name="skills_marketplaces_title">市集</string>
+    <string name="skills_marketplace_available">可用技能</string>
+    <string name="skills_marketplace_curated">精選市集</string>
+    <string name="skills_marketplace_installable">可安裝的技能</string>
+    <string name="skills_marketplace_error">載入技能時發生錯誤</string>
+    <string name="skills_marketplace_empty">找不到技能</string>
+    <string name="skills_marketplace_search">搜尋技能</string>
+    <string name="skills_marketplace_search_empty">沒有符合搜尋條件的技能</string>
+    <string name="skills_marketplace_installed">已安裝</string>
+    <string name="skills_marketplace_load_failed">無法載入市集</string>
+    <string name="skills_install_failed">安裝 %1$s 失敗：%2$s</string>
+    <string name="skills_requires_shell">需要 Shell 工具 (捆綁腳本)</string>
     <string name="tool_list_skills">列出技能</string>
     <string name="tool_read_skill">讀取技能</string>
     <string name="tool_create_skill">建立技能</string>
@@ -1255,4 +1277,7 @@
     <string name="composer_clear_failed">訊息已傳送，但無法清除草稿。</string>
     <string name="models_show_provider_name">顯示 Provider 名稱</string>
     <string name="models_show_provider_name_desc">在模型名稱後附加服務供應商名稱。</string>
+    <string name="mcp_tavily_auth">Tavily 驗證</string>
+    <string name="mcp_tavily_api_key">Tavily API 金鑰</string>
+    <string name="mcp_tavily_api_key_desc">從 https://tavily.com/api-keys 取得 API 金鑰。它會作為 ?tavilyApiKey=... 附加到伺服器 URL。</string>
 </resources>

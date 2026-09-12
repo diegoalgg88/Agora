@@ -7,12 +7,12 @@ object SkillFrontmatterParser {
         data class Err(val reason: String) : Result
     }
 
-    private val idRegex = Regex("^[a-z0-9-]+$")
+    private val idRegex = Regex("^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
     fun parse(markdown: String): Result {
         val lines = markdown.lines()
         if (lines.isEmpty() || lines[0].trim() != "---") {
-            return Result.Ok(id = "", description = "", body = markdown)
+            return Result.Err("Missing frontmatter (must start with '---')")
         }
         var endIdx = -1
         for (i in 1 until lines.size) {
@@ -22,7 +22,7 @@ object SkillFrontmatterParser {
             }
         }
         if (endIdx == -1) {
-            return Result.Ok(id = "", description = "", body = markdown)
+            return Result.Err("Frontmatter not closed (expected a second '---')")
         }
 
         var id = ""
@@ -43,6 +43,8 @@ object SkillFrontmatterParser {
         if (id.isEmpty()) return Result.Err("Missing 'name' field in frontmatter")
         if (id.length > 64) return Result.Err("Name exceeds 64 characters")
         if (!idRegex.matches(id)) return Result.Err("Name must contain only lowercase letters, digits, and hyphens")
+        if (description.isEmpty()) return Result.Err("Missing 'description' field in frontmatter")
+        if (description.length > 1024) return Result.Err("Description exceeds 1024 characters")
 
         val body = lines.drop(endIdx + 1).joinToString("\n").trim()
         return Result.Ok(id, description, body)

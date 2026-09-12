@@ -210,11 +210,16 @@ internal fun CompactSegmentBlock(
         generationActive = generationActive,
     )
     val showLoading = compactSegmentShowsLoading(cardHasActiveContent, generationActive, isCurrentCard)
-    val collapsedTitle = compactSegmentDisplayTitle(
+    val baseCollapsedTitle = compactSegmentDisplayTitle(
         segs = segs,
         message = message,
         useLiveStatus = useLiveStatus,
     )
+    val collapsedTitle = if (!isThinking && !hasThought && toolCount > 1) {
+        "$toolCount Tools · $baseCollapsedTitle"
+    } else {
+        baseCollapsedTitle
+    }
     val collapsedIcon = when {
         showLoading -> CompactSegmentIcon.LOADING
         !isThinking && !hasThought && toolCount > 0 -> CompactSegmentIcon.TOOL

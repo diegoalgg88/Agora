@@ -6,6 +6,9 @@
     <string name="mcp_no_servers">No hay servidores MCP</string>
     <string name="mcp_no_servers_desc">Añade un endpoint HTTP transmisible o SSE para usar sus herramientas en las conversaciones.</string>
     <string name="mcp_add_server">Añadir servidor MCP</string>
+    <string name="mcp_custom_server">Servidor personalizado</string>
+    <string name="mcp_custom_server_desc">Configura un nuevo servidor MCP desde cero</string>
+    <string name="mcp_popular_servers">Servidores populares</string>
     <string name="mcp_edit_server">Editar servidor MCP</string>
     <string name="mcp_delete_title">¿Eliminar servidor MCP?</string>
     <string name="mcp_delete_message">¿Eliminar %1$s y quitar sus herramientas?</string>

@@ -1231,6 +1231,28 @@
     <string name="skills_edit">تعديل المهارة</string>
     <string name="skills_delete_title">حذف المهارة؟</string>
     <string name="skills_delete_message">هل أنت متأكد أنك تريد حذف \'%1$s\'؟ لا يمكن التراجع عن هذا.</string>
+    <string name="skills_add_from_github">من رابط GitHub</string>
+    <string name="skills_add_from_github_desc">نزّل مهارة من مستودع أو مجلد GitHub.</string>
+    <string name="skills_github_url">رابط GitHub</string>
+    <string name="skills_github_hint">owner/repo أو owner/repo/path أو رابط github.com كامل</string>
+    <string name="skills_install">تثبيت</string>
+    <string name="skills_installed">تم تثبيت %1$s</string>
+    <string name="skills_installed_bundled_skipped">تم تثبيت %1$s (تم تخطي %2$d ملفات مرفقة — يتم حفظ مستند المهارة فقط)</string>
+    <string name="skills_installed_with_bundled">تم تثبيت %1$s مع %2$d ملفات مرفقة</string>
+    <string name="skills_marketplace_browse">تصفح المتاجر</string>
+    <string name="skills_marketplace_browse_desc">اكتشف وثبّت مهارات أنشأها المجتمع.</string>
+    <string name="skills_marketplaces_title">المتاجر</string>
+    <string name="skills_marketplace_available">المهارات المتاحة</string>
+    <string name="skills_marketplace_curated">متاجر منتقاة</string>
+    <string name="skills_marketplace_installable">مهارات قابلة للتثبيت</string>
+    <string name="skills_marketplace_error">خطأ في تحميل المهارات</string>
+    <string name="skills_marketplace_empty">لم يتم العثور على مهارات</string>
+    <string name="skills_marketplace_search">البحث في المهارات</string>
+    <string name="skills_marketplace_search_empty">لا توجد مهارات تطابق بحثك</string>
+    <string name="skills_marketplace_installed">مثبتة</string>
+    <string name="skills_marketplace_load_failed">فشل تحميل المتجر</string>
+    <string name="skills_install_failed">فشل تثبيت %1$s: %2$s</string>
+    <string name="skills_requires_shell">يتطلب أداة Shell (البرامج النصية مرفقة)</string>
     <string name="tool_list_skills">عرض المهارات</string>
     <string name="tool_read_skill">قراءة المهارة</string>
     <string name="tool_create_skill">إنشاء مهارة</string>
@@ -1247,4 +1269,7 @@
     <string name="composer_clear_failed">تم إرسال الرسالة، ولكن تعذر مسح المسودة.</string>
     <string name="models_show_provider_name">إظهار اسم المزوّد</string>
     <string name="models_show_provider_name_desc">إضافة اسم المزوّد بعد اسم النموذج.</string>
+    <string name="mcp_tavily_auth">مصادقة Tavily</string>
+    <string name="mcp_tavily_api_key">مفتاح API الخاص بـ Tavily</string>
+    <string name="mcp_tavily_api_key_desc">احصل على مفتاح API الخاص بك من https://tavily.com/api-keys. سيتم إضافته كـ ?tavilyApiKey=... إلى عنوان URL الخادم.</string>
 </resources>

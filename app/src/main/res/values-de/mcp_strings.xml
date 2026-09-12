@@ -6,6 +6,9 @@
     <string name="mcp_no_servers">Keine MCP-Server</string>
     <string name="mcp_no_servers_desc">Füge einen Streamable-HTTP- oder SSE-Endpunkt hinzu, um dessen Tools in Unterhaltungen zu verwenden.</string>
     <string name="mcp_add_server">MCP-Server hinzufügen</string>
+    <string name="mcp_custom_server">Benutzerdefinierter Server</string>
+    <string name="mcp_custom_server_desc">Einen neuen MCP-Server von Grund auf konfigurieren</string>
+    <string name="mcp_popular_servers">Beliebte Server</string>
     <string name="mcp_edit_server">MCP-Server bearbeiten</string>
     <string name="mcp_delete_title">MCP-Server löschen?</string>
     <string name="mcp_delete_message">%1$s löschen und seine Tools entfernen?</string>

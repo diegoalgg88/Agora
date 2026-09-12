@@ -6,6 +6,9 @@
     <string name="mcp_no_servers">لا توجد خوادم MCP</string>
     <string name="mcp_no_servers_desc">أضف نقطة نهاية Streamable HTTP أو SSE لإتاحة أدواتها في المحادثات.</string>
     <string name="mcp_add_server">إضافة خادم MCP</string>
+    <string name="mcp_custom_server">خادم مخصص</string>
+    <string name="mcp_custom_server_desc">ضبط خادم MCP جديد من البداية</string>
+    <string name="mcp_popular_servers">الخوادم الشائعة</string>
     <string name="mcp_edit_server">تعديل خادم MCP</string>
     <string name="mcp_delete_title">حذف خادم MCP؟</string>
     <string name="mcp_delete_message">هل تريد حذف %1$s وإزالة أدواته؟</string>

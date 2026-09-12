@@ -1237,6 +1237,28 @@
     <string name="skills_edit">Sửa kỹ năng</string>
     <string name="skills_delete_title">Xóa kỹ năng?</string>
     <string name="skills_delete_message">Bạn có chắc muốn xóa \'%1$s\' không? Hành động này không thể hoàn tác.</string>
+    <string name="skills_add_from_github">Từ URL GitHub</string>
+    <string name="skills_add_from_github_desc">Tải kỹ năng từ kho lưu trữ hoặc thư mục GitHub.</string>
+    <string name="skills_github_url">URL GitHub</string>
+    <string name="skills_github_hint">owner/repo, owner/repo/path hoặc URL github.com đầy đủ</string>
+    <string name="skills_install">Cài đặt</string>
+    <string name="skills_installed">Đã cài đặt %1$s</string>
+    <string name="skills_installed_bundled_skipped">Đã cài đặt %1$s (đã bỏ qua %2$d tệp đính kèm — chỉ lưu tài liệu kỹ năng)</string>
+    <string name="skills_installed_with_bundled">Đã cài đặt %1$s với %2$d tệp đính kèm</string>
+    <string name="skills_marketplace_browse">Duyệt chợ ứng dụng</string>
+    <string name="skills_marketplace_browse_desc">Khám phá và cài đặt các kỹ năng do cộng đồng tạo ra.</string>
+    <string name="skills_marketplaces_title">Chợ ứng dụng</string>
+    <string name="skills_marketplace_available">Kỹ năng khả dụng</string>
+    <string name="skills_marketplace_curated">Chợ ứng dụng được tuyển chọn</string>
+    <string name="skills_marketplace_installable">Kỹ năng có thể cài đặt</string>
+    <string name="skills_marketplace_error">Lỗi tải kỹ năng</string>
+    <string name="skills_marketplace_empty">Không tìm thấy kỹ năng</string>
+    <string name="skills_marketplace_search">Tìm kiếm kỹ năng</string>
+    <string name="skills_marketplace_search_empty">Không có kỹ năng nào khớp với tìm kiếm</string>
+    <string name="skills_marketplace_installed">Đã cài đặt</string>
+    <string name="skills_marketplace_load_failed">Không tải được chợ ứng dụng</string>
+    <string name="skills_install_failed">Không cài đặt được %1$s: %2$s</string>
+    <string name="skills_requires_shell">Cần công cụ Shell (scripts đi kèm)</string>
     <string name="tool_list_skills">Liệt kê kỹ năng</string>
     <string name="tool_read_skill">Đọc kỹ năng</string>
     <string name="tool_create_skill">Tạo kỹ năng</string>
@@ -1253,4 +1275,7 @@
     <string name="composer_clear_failed">Đã gửi tin nhắn nhưng không thể xóa bản nháp.</string>
     <string name="models_show_provider_name">Hiện tên nhà cung cấp</string>
     <string name="models_show_provider_name_desc">Thêm tên nhà cung cấp sau tên mô hình.</string>
+    <string name="mcp_tavily_auth">Xác thực Tavily</string>
+    <string name="mcp_tavily_api_key">Khóa API Tavily</string>
+    <string name="mcp_tavily_api_key_desc">Lấy khóa API tại https://tavily.com/api-keys. Khóa sẽ được thêm như ?tavilyApiKey=... vào URL máy chủ.</string>
 </resources>

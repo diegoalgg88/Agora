@@ -25,7 +25,7 @@ val curatedSkillMarketplaces = listOf(
         name = "Superpowers",
         owner = "obra",
         repo = "superpowers",
-        skills = listOf("brainstorming", "writing-plans")
+        skills = listOf("skills/brainstorming", "skills/writing-plans")
     )
 )
 
@@ -46,7 +46,7 @@ data class RegistrySkillEntry(
     val ref: String,
     val skillPath: String,
     val requiresSandbox: Boolean,
-    val sourceName: String? = null,
+    val sourceName: String,
 )
 
 data class DownloadedSkill(

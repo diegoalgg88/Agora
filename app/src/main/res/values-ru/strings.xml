@@ -1231,6 +1231,28 @@
     <string name="skills_edit">Изменить навык</string>
     <string name="skills_delete_title">Удалить навык?</string>
     <string name="skills_delete_message">Вы уверены, что хотите удалить \'%1$s\'? Это действие нельзя отменить.</string>
+    <string name="skills_add_from_github">По URL GitHub</string>
+    <string name="skills_add_from_github_desc">Скачайте навык из репозитория или папки GitHub.</string>
+    <string name="skills_github_url">URL GitHub</string>
+    <string name="skills_github_hint">owner/repo, owner/repo/path или полный URL github.com</string>
+    <string name="skills_install">Установить</string>
+    <string name="skills_installed">%1$s установлен</string>
+    <string name="skills_installed_bundled_skipped">%1$s установлен (пропущено прилагаемых файлов: %2$d — сохраняется только документ навыка)</string>
+    <string name="skills_installed_with_bundled">%1$s установлен с %2$d прилагаемыми файлами</string>
+    <string name="skills_marketplace_browse">Обзор каталогов</string>
+    <string name="skills_marketplace_browse_desc">Находите и устанавливайте навыки, созданные сообществом.</string>
+    <string name="skills_marketplaces_title">Каталоги</string>
+    <string name="skills_marketplace_available">Доступные навыки</string>
+    <string name="skills_marketplace_curated">Проверенные каталоги</string>
+    <string name="skills_marketplace_installable">Доступные для установки</string>
+    <string name="skills_marketplace_error">Ошибка загрузки навыков</string>
+    <string name="skills_marketplace_empty">Навыки не найдены</string>
+    <string name="skills_marketplace_search">Поиск навыков</string>
+    <string name="skills_marketplace_search_empty">По вашему запросу ничего не найдено</string>
+    <string name="skills_marketplace_installed">Установлен</string>
+    <string name="skills_marketplace_load_failed">Не удалось загрузить каталог</string>
+    <string name="skills_install_failed">Не удалось установить %1$s: %2$s</string>
+    <string name="skills_requires_shell">Требуется Shell-инструмент (включены скрипты)</string>
     <string name="tool_list_skills">Показать навыки</string>
     <string name="tool_read_skill">Прочитать навык</string>
     <string name="tool_create_skill">Создать навык</string>
@@ -1247,4 +1269,7 @@
     <string name="composer_clear_failed">Сообщение отправлено, но не удалось очистить черновик.</string>
     <string name="models_show_provider_name">Показывать имя провайдера</string>
     <string name="models_show_provider_name_desc">Добавлять имя провайдера после имени модели.</string>
+    <string name="mcp_tavily_auth">Аутентификация Tavily</string>
+    <string name="mcp_tavily_api_key">API-ключ Tavily</string>
+    <string name="mcp_tavily_api_key_desc">Получите API-ключ на https://tavily.com/api-keys. Он будет добавлен как ?tavilyApiKey=... к URL сервера.</string>
 </resources>

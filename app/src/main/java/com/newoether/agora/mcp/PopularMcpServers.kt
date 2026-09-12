@@ -83,6 +83,34 @@ val popularMcpServers = listOf(
         url = "https://subwayinfo.nyc/mcp",
         description = "Real-time NYC transit info",
     ),
+    PopularMcpServer(
+        name = "Tavily",
+        url = "https://mcp.tavily.com/mcp/",
+        description = "AI-powered web search, extraction, and research (requires Tavily API key as query param ?tavilyApiKey=...)",
+        headers = emptyMap(),
+        requiresAuth = true,
+    ),
+    PopularMcpServer(
+        name = "SERPAPI",
+        url = "https://mcp.serpapi.com/mcp",
+        description = "100+ search engines (Google, Bing, Maps, Shopping, etc.)",
+        headers = mapOf("Authorization" to "Bearer "),
+        requiresAuth = true,
+    ),
+    PopularMcpServer(
+        name = "Composio",
+        url = "https://backend.composio.dev/tool_router/trs_lh-L2MDIOwDZ/mcp",
+        description = "150+ apps (Gmail, Slack, GitHub, Notion, Linear, etc.) via single MCP",
+        headers = mapOf("x-api-key" to ""),
+        requiresAuth = true,
+    ),
+    PopularMcpServer(
+        name = "OpenWeather",
+        url = "https://mcp.openweathermap.org/mcp",
+        description = "Current weather, forecasts, and historical data worldwide",
+        headers = mapOf("Authorization" to "Bearer "),
+        requiresAuth = true,
+    ),
 )
 
 /** Merge [defaults] into [existing], keeping any header key the user already set (case-insensitive). */

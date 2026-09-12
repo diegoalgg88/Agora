@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.supervisorScope
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import java.util.concurrent.ConcurrentHashMap
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -93,6 +94,8 @@ class ShellToolProvider(
 
     private val sandbox = sandboxFactory?.create()
     private val durableJobs = ShellDurableJobExecutor()
+    /** Per-conversation persistent shell state (CWD) for the Local Sandbox only. */
+    private val sandboxShellStates = ConcurrentHashMap<String, SandboxShellState>()
 
     /**
      * Optional user-confirmation gate for state-changing operations. The isolated local sandbox
@@ -174,12 +177,12 @@ class ShellToolProvider(
     private suspend fun getBackend(serverName: String, ctx: GenerationContext): Backend? {
         // Local Sandbox
         if (serverName.equals("Local Sandbox", ignoreCase = true) && ctx.sandboxEnabled) {
-            if (sandbox?.isAvailable() == true) return SandboxBackend(sandbox)
+            if (sandbox?.isAvailable() == true) return SandboxBackend(sandbox, ctx.conversationId?.let { sandboxShellStates.getOrPut(it) { SandboxShellState() } })
             if (sandbox != null) return null
         }
         if (serverName.isBlank()) {
             if (ctx.sandboxEnabled && sandbox?.isAvailable() == true) {
-                return SandboxBackend(sandbox)
+                return SandboxBackend(sandbox, ctx.conversationId?.let { sandboxShellStates.getOrPut(it) { SandboxShellState() } })
             }
         }
         val device = resolveShellDevice(serverName, ctx) ?: return null

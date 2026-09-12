@@ -13,6 +13,8 @@ import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
@@ -264,20 +266,66 @@ internal class SshBackend(override val device: ShellDeviceConfig) : Backend {
     override fun close() { client.close() }
 }
 
-internal class SandboxBackend(sandbox: SandboxManager?) : Backend {
+/**
+ * Per-conversation mutable shell state for the Local Sandbox.
+ * Tracks the current working directory across separate tool calls.
+ * Thread-safe via its own Mutex; only one sandbox command runs at a time per conversation.
+ */
+internal class SandboxShellState {
+    private val mutex = Mutex()
+    private var workdir: String = ""
+
+    suspend fun <T> withState(block: suspend (currentWorkdir: String, update: (String) -> Unit) -> T): T =
+        mutex.withLock {
+            block(workdir) { newWorkdir -> workdir = newWorkdir }
+        }
+}
+
+internal class SandboxBackend(sandbox: SandboxManager?, private val shellState: SandboxShellState? = null) : Backend {
     override val device: ShellDeviceConfig? get() = null
     private val mgr = sandbox ?: throw IllegalStateException("Sandbox not available")
 
     override suspend fun executeCommand(cmd: String, workdir: String, timeoutMs: Int): String {
         if (!mgr.isAvailable()) return jsonError("execute_shell_command", "Local Sandbox is not installed.")
         return try {
-            val result = mgr.executeCommand(cmd, workdir, timeoutMs)
-            buildJsonObject {
-                put("type", "execute_shell_command"); put("server", "Local Sandbox"); put("command", cmd)
-                put("exit_code", result.exitCode)
-                result.warning?.let { put("warning", it) }
-                put("output", (result.stdout + if (result.stderr.isNotBlank()) "\n${result.stderr}" else "").trimEnd())
-            }.toString()
+            val CWD_SENTINEL = "__AGORA_CWD__:"
+            if (shellState != null) {
+                shellState.withState { persistedWorkdir, updateWorkdir ->
+                    // Use the persisted CWD if the caller did not supply an explicit one.
+                    val effectiveWorkdir = workdir.ifBlank { persistedWorkdir }
+                    // Wrap the command to emit the new CWD after completion.
+                    val wrapped = "{ $cmd; }; printf '\\n${CWD_SENTINEL}%s\\n' \"\$(pwd)\""
+                    val result = mgr.executeCommand(wrapped, effectiveWorkdir, timeoutMs)
+                    // Parse and strip the CWD sentinel line from stdout.
+                    val lines = (result.stdout + if (result.stderr.isNotBlank()) "\n${result.stderr}" else "").trimEnd()
+                    val sentinelIdx = lines.lastIndexOf("\n${CWD_SENTINEL}")
+                    val newCwd: String?
+                    val cleanOutput: String
+                    if (sentinelIdx >= 0) {
+                        val afterSentinel = lines.substring(sentinelIdx + 1 + CWD_SENTINEL.length).trim()
+                        newCwd = afterSentinel.takeIf { it.isNotBlank() }
+                        cleanOutput = lines.substring(0, sentinelIdx).trimEnd()
+                    } else {
+                        newCwd = null
+                        cleanOutput = lines
+                    }
+                    if (newCwd != null) updateWorkdir(newCwd)
+                    buildJsonObject {
+                        put("type", "execute_shell_command"); put("server", "Local Sandbox"); put("command", cmd)
+                        put("exit_code", result.exitCode)
+                        result.warning?.let { put("warning", it) }
+                        put("output", cleanOutput)
+                    }.toString()
+                }
+            } else {
+                val result = mgr.executeCommand(cmd, workdir, timeoutMs)
+                buildJsonObject {
+                    put("type", "execute_shell_command"); put("server", "Local Sandbox"); put("command", cmd)
+                    put("exit_code", result.exitCode)
+                    result.warning?.let { put("warning", it) }
+                    put("output", (result.stdout + if (result.stderr.isNotBlank()) "\n${result.stderr}" else "").trimEnd())
+                }.toString()
+            }
         } catch (cancelled: CancellationException) {
             throw cancelled
         } catch (e: Exception) {

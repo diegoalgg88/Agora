@@ -1231,6 +1231,28 @@
     <string name="skills_edit">スキルを編集</string>
     <string name="skills_delete_title">スキルを削除しますか？</string>
     <string name="skills_delete_message">\'%1$s\' を削除しますか？この操作は元に戻せません。</string>
+    <string name="skills_add_from_github">GitHub URL から</string>
+    <string name="skills_add_from_github_desc">GitHub リポジトリまたはフォルダーからスキルをダウンロードします。</string>
+    <string name="skills_github_url">GitHub URL</string>
+    <string name="skills_github_hint">owner/repo、owner/repo/path、または完全な github.com URL</string>
+    <string name="skills_install">インストール</string>
+    <string name="skills_installed">%1$s をインストールしました</string>
+    <string name="skills_installed_bundled_skipped">%1$s をインストールしました（%2$d 個の付属ファイルはスキップ — スキル文書のみ保存されます）</string>
+    <string name="skills_installed_with_bundled">%1$s を %2$d 個の付属ファイルと共にインストールしました</string>
+    <string name="skills_marketplace_browse">マーケットプレイスを参照</string>
+    <string name="skills_marketplace_browse_desc">コミュニティ作成のスキルを見つけてインストールします。</string>
+    <string name="skills_marketplaces_title">マーケットプレイス</string>
+    <string name="skills_marketplace_available">利用可能なスキル</string>
+    <string name="skills_marketplace_curated">厳選されたマーケットプレイス</string>
+    <string name="skills_marketplace_installable">インストール可能なスキル</string>
+    <string name="skills_marketplace_error">スキルの読み込みエラー</string>
+    <string name="skills_marketplace_empty">スキルが見つかりません</string>
+    <string name="skills_marketplace_search">スキルを検索</string>
+    <string name="skills_marketplace_search_empty">検索に一致するスキルがありません</string>
+    <string name="skills_marketplace_installed">インストール済み</string>
+    <string name="skills_marketplace_load_failed">マーケットプレイスの読み込みに失敗しました</string>
+    <string name="skills_install_failed">%1$s のインストールに失敗しました: %2$s</string>
+    <string name="skills_requires_shell">シェルツールが必要 (スクリプト同梱)</string>
     <string name="tool_list_skills">スキルを一覧表示</string>
     <string name="tool_read_skill">スキルを読む</string>
     <string name="tool_create_skill">スキルを作成</string>
@@ -1247,4 +1269,7 @@
     <string name="composer_clear_failed">メッセージは送信されましたが、下書きを消去できませんでした。</string>
     <string name="models_show_provider_name">プロバイダー名を表示</string>
     <string name="models_show_provider_name_desc">モデル名の後にプロバイダー名を追加します。</string>
+    <string name="mcp_tavily_auth">Tavily認証</string>
+    <string name="mcp_tavily_api_key">Tavily APIキー</string>
+    <string name="mcp_tavily_api_key_desc">APIキーは https://tavily.com/api-keys から取得できます。サーバーURLに ?tavilyApiKey=... として追加されます。</string>
 </resources>

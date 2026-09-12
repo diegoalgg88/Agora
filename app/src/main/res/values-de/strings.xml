@@ -1231,6 +1231,28 @@
     <string name="skills_edit">Skill bearbeiten</string>
     <string name="skills_delete_title">Skill löschen?</string>
     <string name="skills_delete_message">Möchtest du \'%1$s\' wirklich löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="skills_add_from_github">Von GitHub-URL</string>
+    <string name="skills_add_from_github_desc">Lade einen Skill aus einem GitHub-Repository oder -Ordner herunter.</string>
+    <string name="skills_github_url">GitHub-URL</string>
+    <string name="skills_github_hint">owner/repo, owner/repo/path oder eine vollständige github.com-URL</string>
+    <string name="skills_install">Installieren</string>
+    <string name="skills_installed">%1$s installiert</string>
+    <string name="skills_installed_bundled_skipped">%1$s installiert (%2$d mitgelieferte Dateien übersprungen — nur das Skill-Dokument wird gespeichert)</string>
+    <string name="skills_installed_with_bundled">%1$s mit %2$d mitgelieferten Dateien installiert</string>
+    <string name="skills_marketplace_browse">Marktplätze durchsuchen</string>
+    <string name="skills_marketplace_browse_desc">Entdecke und installiere von der Community erstellte Skills.</string>
+    <string name="skills_marketplaces_title">Marktplätze</string>
+    <string name="skills_marketplace_available">Verfügbare Skills</string>
+    <string name="skills_marketplace_curated">Kuratierte Marktplätze</string>
+    <string name="skills_marketplace_installable">Installierbare Skills</string>
+    <string name="skills_marketplace_error">Fehler beim Laden der Skills</string>
+    <string name="skills_marketplace_empty">Keine Skills gefunden</string>
+    <string name="skills_marketplace_search">Skills suchen</string>
+    <string name="skills_marketplace_search_empty">Keine Skills entsprechen deiner Suche</string>
+    <string name="skills_marketplace_installed">Installiert</string>
+    <string name="skills_marketplace_load_failed">Marktplatz konnte nicht geladen werden</string>
+    <string name="skills_install_failed">%1$s konnte nicht installiert werden: %2$s</string>
+    <string name="skills_requires_shell">Benötigt Shell-Tool (Skripte enthalten)</string>
     <string name="tool_list_skills">Skills auflisten</string>
     <string name="tool_read_skill">Skill lesen</string>
     <string name="tool_create_skill">Skill erstellen</string>
@@ -1247,4 +1269,7 @@
     <string name="composer_clear_failed">Nachricht gesendet, aber der Entwurf konnte nicht gelöscht werden.</string>
     <string name="models_show_provider_name">Anbieternamen anzeigen</string>
     <string name="models_show_provider_name_desc">Den Anbieternamen an den Modellnamen anhängen.</string>
+    <string name="mcp_tavily_auth">Tavily-Authentifizierung</string>
+    <string name="mcp_tavily_api_key">Tavily API-Schlüssel</string>
+    <string name="mcp_tavily_api_key_desc">API-Schlüssel von https://tavily.com/api-keys holen. Er wird als ?tavilyApiKey=... an die Server-URL angehängt.</string>
 </resources>

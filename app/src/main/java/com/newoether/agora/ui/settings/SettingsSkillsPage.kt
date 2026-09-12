@@ -459,16 +459,16 @@ fun SettingsSkillsPage(
                     },
             )
             SettingsItem(
-                headlineContent = { Text("Add from GitHub URL", fontWeight = FontWeight.Medium) },
-                supportingContent = { Text("Download a skill from a GitHub repository or file", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                headlineContent = { Text(stringResource(R.string.skills_add_from_github), fontWeight = FontWeight.Medium) },
+                supportingContent = { Text(stringResource(R.string.skills_add_from_github_desc), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 leadingContent = { Icon(Icons.Default.Link, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 modifier = Modifier.fillMaxWidth().clickable(enabled = !addSkillActionInFlight) {
                     runAddSkillAction { showGithubDialog = true }
                 }
             )
             SettingsItem(
-                headlineContent = { Text("Browse Marketplaces", fontWeight = FontWeight.Medium) },
-                supportingContent = { Text("Discover and install community-created skills", color = MaterialTheme.colorScheme.onSurfaceVariant) },
+                headlineContent = { Text(stringResource(R.string.skills_marketplace_browse), fontWeight = FontWeight.Medium) },
+                supportingContent = { Text(stringResource(R.string.skills_marketplace_browse_desc), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                 leadingContent = { Icon(Icons.Default.Store, contentDescription = null, tint = MaterialTheme.colorScheme.primary) },
                 modifier = Modifier.fillMaxWidth().clickable(enabled = !addSkillActionInFlight) {
                     runAddSkillAction { showMarketplaces = true }
@@ -802,7 +802,7 @@ fun SettingsSkillsPage(
             },
             title = {
                 Text(
-                    "Add from GitHub",
+                    stringResource(R.string.skills_add_from_github),
                     fontWeight = FontWeight.Bold,
                 )
             },
@@ -811,10 +811,16 @@ fun SettingsSkillsPage(
                     OutlinedTextField(
                         value = githubUrl,
                         onValueChange = { githubUrl = it },
-                        label = { Text("GitHub URL") },
+                        label = { Text(stringResource(R.string.skills_github_url)) },
                         singleLine = true,
                         shape = RoundedCornerShape(16.dp),
                         modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = stringResource(R.string.skills_github_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
                 }
             },
@@ -831,11 +837,23 @@ fun SettingsSkillsPage(
                                     val installed = withContext(Dispatchers.IO) {
                                         runCatching {
                                             viewModel.skillManager.installFromGitHub(parsed.owner, parsed.repo, parsed.ref, parsed.path)
+                                                .getOrThrow()
                                         }
                                     }
-                                    installed.onSuccess {
+                                    installed.onSuccess { result ->
                                         showGithubDialog = false
                                         githubUrl = ""
+                                        viewModel.emitSnackbar(
+                                            if (result.file.bundledFileCount > 0) {
+                                                context.getString(
+                                                    R.string.skills_installed_with_bundled,
+                                                    result.file.name,
+                                                    result.file.bundledFileCount,
+                                                )
+                                            } else {
+                                                context.getString(R.string.skills_installed, result.file.name)
+                                            },
+                                        )
                                     }.onFailure { error ->
                                         reportSkillFailure("Unable to install skill from GitHub", error)
                                     }
@@ -846,7 +864,7 @@ fun SettingsSkillsPage(
                     },
                     enabled = githubUrl.isNotBlank() && !skillOperationInFlight,
                 ) {
-                    Text("Install")
+                    Text(stringResource(R.string.skills_install))
                 }
             },
             dismissButton = {

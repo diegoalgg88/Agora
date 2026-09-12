@@ -37,7 +37,7 @@ class CurrentApprovedFeatureSourceContractTest {
             skillSheet.indexOf("DialogWindowEdgeToEdge()") <
                 skillSheet.indexOf("text = stringResource(R.string.skills_add)"),
         )
-        assertEquals(2, Regex("supportingContent =").findAll(skillSheet).count())
+        assertEquals(4, Regex("supportingContent =").findAll(skillSheet).count())
         assertTrue(skillSheet.contains("R.string.skills_add_from_markdown_desc"))
         assertTrue(skillSheet.contains("R.string.skills_add_manually_desc"))
         assertTrue(skillSheet.contains("Icons.Default.Description"))
