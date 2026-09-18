@@ -1,0 +1,1 @@
+{"setup":{"model":"models/gemini-2.5-flash-native-audio-preview-09-2025","generationConfig":{"responseModalities":["AUDIO"],"speechConfig":{"voiceConfig":{"prebuiltVoiceConfig":{"voiceName":"Kore"}}}},"inputAudioTranscription":{},"outputAudioTranscription":{},"sessionResumption":{},"contextWindowCompression":{"slidingWindow":{}}}}

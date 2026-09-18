@@ -61,22 +61,18 @@ internal data class LiveRealtimeInputConfig(
 )
 
 /**
- * Server-side VAD tuning (https://ai.google.dev/api/live#automaticactivitydetection). Google's
- * own defaults (LOW/LOW, no explicit padding/silence) favor never cutting the user off over
- * responsiveness. Agora tunes toward a snappier back-and-forth instead:
- * - HIGH end-of-speech sensitivity: commit end-of-turn sooner after the user stops talking.
- * - HIGH start-of-speech sensitivity + small prefixPaddingMs: start capturing the turn quickly
- *   without needing a long confirmed run of speech first.
- * - Reduced silenceDurationMs (500 ms vs. Google's unconfigured default, which runs close to a
- *   second): this is the single biggest lever for "the AI takes a while to respond" (owner
- *   report, 2026-09-17) at some risk of committing end-of-turn during a mid-sentence pause.
+ * Server-side VAD tuning (https://ai.google.dev/api/live#automaticactivitydetection). Field
+ * defaults here mirror [VoiceSensitivity.BALANCED] as a safety net for any caller that
+ * constructs this without going through the Settings-driven sensitivity preset; the actual
+ * values Agora sends always come from the user's chosen [VoiceSensitivity] (see
+ * `GeminiLiveClient.connect`).
  */
 @Serializable
 internal data class LiveAutomaticActivityDetection(
     @SerialName("startOfSpeechSensitivity") val startOfSpeechSensitivity: String = "START_SENSITIVITY_HIGH",
-    @SerialName("endOfSpeechSensitivity") val endOfSpeechSensitivity: String = "END_SENSITIVITY_HIGH",
-    @SerialName("prefixPaddingMs") val prefixPaddingMs: Int = 20,
-    @SerialName("silenceDurationMs") val silenceDurationMs: Int = 500,
+    @SerialName("endOfSpeechSensitivity") val endOfSpeechSensitivity: String = "END_SENSITIVITY_LOW",
+    @SerialName("prefixPaddingMs") val prefixPaddingMs: Int = 50,
+    @SerialName("silenceDurationMs") val silenceDurationMs: Int = 700,
 )
 
 /** Present-but-empty marker object, per the reference. `unused` must never serialize:
@@ -214,3 +210,53 @@ internal data class LiveSessionResumptionUpdate(
 /** Normalizes a user-facing model id to the `models/<id>` form the setup frame requires. */
 internal fun normalizeLiveModelId(modelId: String): String =
     modelId.trim().removePrefix("models/").takeIf { it.isNotEmpty() }?.let { "models/$it" } ?: modelId.trim()
+
+/**
+ * User-facing voice-sensitivity presets, mapped to the [LiveAutomaticActivityDetection] wire
+ * values. Exposed as a Settings choice (not a hardcoded constant) because the original Fase 4
+ * default (RESPONSIVE-equivalent: HIGH end sensitivity, 500 ms silence) cut users off mid-
+ * sentence for normal speaking pace/pauses (owner report, 2026-09-17) — no single fixed value
+ * suits every speaker, room, or language.
+ */
+internal enum class VoiceSensitivity(
+    val startOfSpeechSensitivity: String,
+    val endOfSpeechSensitivity: String,
+    val prefixPaddingMs: Int,
+    val silenceDurationMs: Int,
+) {
+    /** Waits the longest before ending a turn; best for slower speakers, noisier rooms, or
+     *  anyone who pauses mid-sentence to think. */
+    PATIENT(
+        startOfSpeechSensitivity = "START_SENSITIVITY_LOW",
+        endOfSpeechSensitivity = "END_SENSITIVITY_LOW",
+        prefixPaddingMs = 100,
+        silenceDurationMs = 900,
+    ),
+
+    /** Default: starts capturing quickly, but does not end the turn on an ordinary
+     *  mid-sentence pause. */
+    BALANCED(
+        startOfSpeechSensitivity = "START_SENSITIVITY_HIGH",
+        endOfSpeechSensitivity = "END_SENSITIVITY_LOW",
+        prefixPaddingMs = 50,
+        silenceDurationMs = 700,
+    ),
+
+    /** Fastest turn-taking — the original Fase 4 v1 default (2026-09-17). Can cut off slower
+     *  speech or brief thinking pauses; opt-in for people who want the snappiest back-and-forth. */
+    RESPONSIVE(
+        startOfSpeechSensitivity = "START_SENSITIVITY_HIGH",
+        endOfSpeechSensitivity = "END_SENSITIVITY_HIGH",
+        prefixPaddingMs = 20,
+        silenceDurationMs = 500,
+    ),
+    ;
+
+    companion object {
+        val DEFAULT = BALANCED
+
+        /** Falls back to [DEFAULT] for a blank/unknown/legacy stored value. */
+        fun fromStorageValue(value: String?): VoiceSensitivity =
+            entries.find { it.name == value } ?: DEFAULT
+    }
+}

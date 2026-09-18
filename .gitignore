@@ -38,3 +38,9 @@ app/src/fdroid/jniLibs/arm64-v8a/
 /.claude/
 signing.properties
 AGENTS.md
+
+# Transient research artifacts (Kai replication / live-voice debugging)
+memory_report.txt
+.qwen/tmp/
+tmp/kai.apk
+tmp/websocat.*.exe

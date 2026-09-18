@@ -1,5 +1,6 @@
 package com.newoether.agora.service
 
+import android.app.ForegroundServiceStartNotAllowedException
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -130,6 +131,22 @@ internal class ForegroundOwnerLeases {
     }
 
     /**
+     * Called when onCreate()'s startForeground() call itself fails asynchronously — notably
+     * ForegroundServiceStartNotAllowedException on Android 15+ when the per-type (dataSync)
+     * rolling time budget (~6h/24h) is exhausted. This differs from [startRequestFailed]: that
+     * one rolls back a single synchronous acquirer before the platform Service even exists, but
+     * this can fire with any number of owners already registered by the time the async onCreate()
+     * promotion runs and fails. The platform Service instance is going away via stopSelf()
+     * regardless, so lifecycle resets to STOPPED unconditionally; otherwise a stale
+     * STARTING/RUNNING state would silently swallow every later acquireLease() until process
+     * death, well past whenever the platform's own time budget resets.
+     */
+    fun foregroundPromotionFailed() = synchronized(lock) {
+        latestStartId = null
+        lifecycleState = ForegroundServiceLifecycleState.STOPPED
+    }
+
+    /**
      * Runs from the next main-loop turn after onDestroy(). Only now is the old ServiceRecord safe
      * to replace; owners may have appeared or disappeared while destruction was in progress.
      */
@@ -170,6 +187,12 @@ class AgoraForegroundService : Service() {
         // relying solely on `instance?.applicationContext` is circular and always fails cold.
         @Volatile private var appContextRef: Context? = null
         private val ownerLeases = ForegroundOwnerLeases()
+        // Set when onCreate()'s startForeground() is denied for time-budget reasons (Android 15+).
+        // Prevents a tight restart loop: completeServiceDestroyed() would otherwise immediately
+        // retry startService() for any owner still holding a lease, re-hitting the same denial
+        // every time until the platform's own multi-hour budget resets.
+        @Volatile private var foregroundDeniedUntilMs: Long = 0L
+        private const val FOREGROUND_DENIED_COOLDOWN_MS = 5 * 60 * 1000L
 
         /** Acquires a lease on the shared foreground service. Returns false if duplicate owner or start failed. */
         fun acquireLease(owner: String): Boolean {
@@ -201,6 +224,12 @@ class AgoraForegroundService : Service() {
         }
 
         private fun startService(): Boolean {
+            val now = System.currentTimeMillis()
+            if (now < foregroundDeniedUntilMs) {
+                CrashReporter.note("FGS.start skipped: cooling down after time-budget denial")
+                DebugLog.w(TAG, "Skipping FGS start: cooling down after a prior time-budget denial")
+                return false
+            }
             val appContext = appContextRef ?: instance?.applicationContext ?: return false
             val intent = Intent(appContext, AgoraForegroundService::class.java)
             val info = ActivityManager.RunningAppProcessInfo()
@@ -360,19 +389,41 @@ class AgoraForegroundService : Service() {
         CrashReporter.note("FGS.onCreate")
         createGenerationChannel(this)
         val notification = buildGenerationNotification(currentText ?: getString(R.string.generating_response))
-        // Must NOT catch exceptions here: if startForeground() fails, the real
-        // exception (SecurityException, ForegroundServiceStartNotAllowed, etc.)
-        // must propagate so Crashlytics/logs capture it. Catching + stopSelf()
-        // leaves the system's 5-second timeout to fire, which only surfaces the
-        // useless ForegroundServiceDidNotStartInTimeException instead.
-        ServiceCompat.startForeground(
-            this,
-            NOTIFICATION_ID,
-            notification,
-            foregroundServiceType()
-        )
-        foregroundStarted = true
-        CrashReporter.note("FGS.startForeground ok")
+        try {
+            ServiceCompat.startForeground(
+                this,
+                NOTIFICATION_ID,
+                notification,
+                foregroundServiceType()
+            )
+            foregroundStarted = true
+            CrashReporter.note("FGS.startForeground ok")
+        } catch (e: ForegroundServiceStartNotAllowedException) {
+            // Android 15+ enforces a rolling per-app time budget for dataSync/mediaProcessing FGS
+            // types (~6h/24h); once exhausted, every startForeground() call for that type throws
+            // this until the budget resets. Expected platform behavior for heavy automation/
+            // background-generation usage, not a code bug — must degrade gracefully instead of
+            // crashing the whole process. Unlike other unexpected failures here (kept uncaught
+            // deliberately, see below), this specific type is safe and expected to catch.
+            // Generation itself is unaffected: the actual work runs in GenerationManager's own
+            // coroutine, independent of this notification/keep-alive wrapper; without FGS
+            // protection the process is just more exposed to being killed while backgrounded.
+            // (ForegroundServiceStartNotAllowedException exists since API 31; referencing it here
+            // is safe on minSdk 24 — older platforms never throw it, so this catch is simply
+            // never entered there.)
+            CrashReporter.note("FGS.startForeground denied: ${e.javaClass.simpleName} ${e.message}")
+            DebugLog.w(TAG, "Foreground promotion denied (time budget likely exhausted); degrading without FGS", e)
+            foregroundStarted = false
+            foregroundDeniedUntilMs = System.currentTimeMillis() + FOREGROUND_DENIED_COOLDOWN_MS
+            ownerLeases.foregroundPromotionFailed()
+            stopSelf()
+            return
+        }
+        // Must NOT catch anything else here: any other startForeground() failure (SecurityException,
+        // missing notification channel, bad ServiceInfo type, etc.) is a real code/config bug that
+        // must propagate so Crashlytics/logs capture it. Catching + stopSelf() for those would leave
+        // the system's 5-second timeout to fire, which only surfaces the useless
+        // ForegroundServiceDidNotStartInTimeException instead.
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
