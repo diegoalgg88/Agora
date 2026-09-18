@@ -1,6 +1,6 @@
 # Import & Export
 
-Open **Settings → Import & Export** to move or back up Agora data.
+Open **Settings → Memory & Data → Data Control** to move or back up Agora data.
 
 ## Agora Archives
 
@@ -10,7 +10,7 @@ A `.agora` file is a versioned ZIP archive (currently format version 4). Dependi
 - attachments, tool media, and draft media;
 - active memory, saved memories, and Skills;
 - system prompts;
-- application settings (including UI preferences and Automation configurations like Daemon, SMS polling, Heartbeat, and Notification whitelist), and an imported custom font;
+- application settings (including UI preferences, Automation configurations like Daemon, SMS polling, Heartbeat, and the Notification whitelist, plus System Assistant and Live Voice behavior toggles), and an imported custom font;
 - provider API keys and other secrets, only when explicitly selected.
 
 !!! warning "Protect archives that contain secrets"

@@ -4,7 +4,8 @@ This document describes the current repository architecture. It intentionally av
 line counts and exhaustive file inventories because those became stale faster than the
 contracts they were meant to explain.
 
-Normative development behavior is indexed by `.harness/PROJECTS.md`. Before changing Agora, read
+Normative development behavior is indexed by `development/README.md` (the module-contract
+registry). Before changing Agora, read
 `development/README.md` and every applicable module contract; for message generation, Run
 boundaries, Provider context, Compact, and Regenerate, `development/message-generation.md` is the
 authoritative contract when older descriptive prose conflicts.
@@ -27,7 +28,7 @@ ChatViewModel ── MessageGenerationController ── ConversationStateRegistr
    │                    ▼
    │               LlmProvider implementations
    │
-   ├── ConversationRepository ── Room (v22)
+   ├── ConversationRepository ── Room (v35)
    ├── SettingsRepository ───── DataStore
    └── MemoryManager / attachment files / export and backup files
 ```
@@ -52,9 +53,11 @@ those instances instead of building competing stacks.
 | `app/src/main/java/.../api` | Provider protocol adapters and streaming event model |
 | `app/src/main/java/.../tool` | Memory, RAG, web, shell, image, and automation tools |
 | `app/src/main/java/.../data` | Room, DataStore, backup, import/export, attachment ownership |
-| `app/src/main/java/.../mcp` | MCP transports, protocol client, server registry, and tool discovery |
+| `app/src/main/java/.../mcp` | MCP transports, protocol client, server registry, popular-server catalog, and tool discovery |
 | `app/src/main/java/.../automation` | Tasks, loops, scheduling, execution serialization |
-| `app/src/main/java/.../service` | Foreground generation and WorkManager entry points |
+| `app/src/main/java/.../assistant` | System-assistant entry points (VoiceInteractionService/Session, `ACTION_ASSIST` activity), shared overlay state, Assist-API capture, and the Gemini Live API voice-call stack (`assistant/live/`) |
+| `app/src/main/java/.../daemon` | Heartbeat scheduler, SMS poller, and notification-listener integration that feed the shared headless generation pipeline |
+| `app/src/main/java/.../service` | Foreground generation, automation, and microphone foreground-service entry points |
 | `app/src/main/java/.../sandbox` | Shared sandbox interfaces |
 | `app/src/fdroid` | PRoot-backed sandbox implementation |
 | `app/src/play` | Play flavor implementation without bundled PRoot binaries |
@@ -65,7 +68,7 @@ those instances instead of building competing stacks.
 | `docs` | User-facing MkDocs documentation |
 
 There are two store flavors, `fdroid` and `play`. The application currently targets
-Android API 36, supports API 24 and newer, and builds arm64 native artifacts.
+Android API 36, supports API 26 and newer, and builds arm64 native artifacts.
 
 ## 3. State ownership
 
@@ -105,7 +108,8 @@ Branch operations must preserve these invariants:
 2. Forks copy file-backed attachments into fork-owned storage.
 3. Deletion removes a file only after Room confirms that no message or draft still
    references it.
-4. Orphan cleanup covers normal message storage and `fork-attachments`.
+4. Orphan cleanup covers normal message storage, `fork-attachments`, and the assistant
+   screenshot staging directory (`filesDir/attachments/assistant/`).
 
 `ConversationBranchPath`, `ConversationForkShareService`, and
 `MessageAttachmentCloneSession` implement these rules.
@@ -354,45 +358,61 @@ Tool providers are capability-oriented:
 
 - memory file operations;
 - conversation search/RAG;
-- web search and fetch;
+- web search and fetch (DuckDuckGo, Kagi, Serper, Tavily, SearXNG, Brave backends, with
+  private-address blocking on `web_fetch`);
 - remote shell and file operations, including durable Conch jobs;
-- discovered MCP server tools;
+- discovered MCP server tools, plus a curated popular-server catalog with one-tap add;
 - image generation;
-- persistent Task and conversation Loop automation controls.
+- persistent Task and conversation Loop automation controls;
+- skill file management (list/read/create/edit/delete Markdown skills projected into the
+  system prompt as a catalog);
+- assistant device actions (`set_alarm`, calendar CRUD, `open_file`, `open_url`,
+  `get_location_from_ip`, `get_local_time`, `send_notification`). Destructive actions
+  (alarm/calendar writes) are staged in `AssistantActionEntity` and execute only after the
+  user taps **Approve** in the chat banner — never directly from a model call;
+- fdroid-only SMS read/send and notification record search.
 
 Provider signatures are opaque protocol state. A segment records the originating
 provider, and signatures must never be replayed into another provider protocol.
 
 ## 7. Persistence
 
-Room database version 22 contains six entities:
+Room database version 35 contains twenty entities:
 
-- `conversations`;
-- `runs`;
-- `messages`;
+- `conversations`, `runs`, `messages` (the conversation graph);
 - `embeddings`;
-- `tasks`;
-- `loops`.
+- `tasks`, `loops` (automation);
+- `NewChatPersistEntity`, `ConversationSettingsTransferEntity`,
+  `ConversationSettingsImportTransferEntity`, `MaintenanceDebtEntity`;
+- `SemanticIndexLedgerEntity`, `SemanticIndexWorkEntity` (embedding-cache ledger);
+- `HeartbeatLogEntity`;
+- `SmsMessageEntity`, `SmsSyncStateEntity`, `SmsDraftEntity`, `SmsPendingEntity`;
+- `NotificationRecordEntity`, `NotificationSyncStateEntity`;
+- `AssistantActionEntity` (staged device-action approvals).
 
 Room stores Run ancestry/status/pass state, the conversation graph, selected message and Run
-branches, durable streaming checkpoints, automation state, and embedding metadata. The unique
+branches, durable streaming checkpoints, automation state, embedding metadata, heartbeat logs
+(the five newest), the SMS high-water-mark/pending queue, a capped notification record store,
+and staged assistant device actions. The unique
 `(conversationId, activeSlot)` index prevents two durable live Runs for one conversation.
 `appendToolRoundToRun` is one protocol-atomic transaction: it accepts only the current ACTIVE slot
 and expected pass, validates a one-to-one ordered request/result batch, and treats only an exact
 complete replay of the same message ids as idempotent. Partial or conflicting replay fails closed.
 Migrations are explicit and schema snapshots are committed under `app/schemas`; v16→v17
-introduced Runs, and the current chain continues through v22.
+introduced Runs, and the current chain continues through v35 (v34→v35 adds `assistant_actions`).
 
 The local persistence declarations are split by responsibility without creating competing DAOs:
 
 - `ChatEntities.kt` contains Room entities, converters, query projections, and pure tool-round
   validation;
-- `ChatDao.kt` is the sole `@Dao`, extends the two stateless declaration surfaces below, and owns
+- `ChatDao.kt` is the sole `@Dao`, extends the stateless declaration surfaces below, and owns
   common graph/Run/embedding/export declarations plus cross-domain transactions;
 - `ChatContextCompactDao.kt` owns only atomic same-row fresh-Run Recompact substitution, target-only
   Compact deletion, necessary graph rewiring, and their narrow declarations;
 - `ChatAutomationDao.kt` owns the inherited Task and Loop row declarations;
-- `ChatDatabase.kt` is only the v22 Room composition root and migration chain.
+- `ChatHeartbeatSmsDao.kt` owns heartbeat-log, SMS, notification, and assistant-action
+  declarations;
+- `ChatDatabase.kt` is only the v35 Room composition root and migration chain.
 
 DataStore holds user settings, provider/model configuration, API-key references, appearance,
 generation defaults, tool toggles, backup settings, and per-conversation overrides. `SecretCrypto`
@@ -424,6 +444,79 @@ the shared mailbox contract.
 One-shot schedules preserve explicit past dates so validation can reject them. The
 scheduler must not silently reinterpret an expired date as next year.
 
+### 8.1 Daemons: heartbeat, SMS, and notifications
+
+The daemon layer (`daemon/` and `automation/`) feeds the same headless pipeline; it never
+creates a second generation path:
+
+- `DaemonController` leases the existing `AgoraForegroundService` (`dataSync` type) — it does
+  not start a second foreground service.
+- `HeartbeatScheduler` runs a 60-second loop that checks the heartbeat due-gate
+  (interval + active hours, midnight wrap supported), polls SMS when enabled, and skips
+  notifications (they are push-driven through the notification listener). An in-flight flag
+  prevents a manual **Run now** from overlapping the scheduled cycle.
+- The heartbeat builds its prompt (`HeartbeatPromptBuilder` — tasks, loops, promotions, pending
+  SMS, pending notifications, previous results) and executes through
+  `TaskExecutionEngine.runOnce` with `requestKind = "heartbeat"`.
+- The fdroid flavor implements `SmsReaderImpl`/`SmsSenderImpl` (Telephony/SmsManager, multipart
+  send) and `AgoraNotificationListenerService` (app-whitelist filtered, self/system
+  notifications blocked, 5000-record cap); the play flavor ships no-op counterparts.
+- `SmsPoller` uses a persisted high-water mark (`lastSeenId`) plus a backoff interval gated by
+  `max(lastSync, lastAttempt)`, so a failing poll waits out the interval instead of hammering.
+- Heartbeat logs are capped at the five newest rows; logged error text is capped (300 chars) so
+  message text never leaks into durable failure logs.
+- Daemon, SMS, heartbeat, and notification-whitelist settings are portable through
+  `PortableSettingsArchive`.
+
+### 8.2 System assistant
+
+The system assistant is a system-level entry point into the ordinary chat pipeline — not a
+tool and not automation (`development/system-assistant.md` is the module contract). It produces
+normal conversations with `origin = "assistant"` that appear in the ordinary list.
+
+Two device-dependent entry paths share one overlay implementation
+(`AssistantOverlayState`/`AssistantOverlayContent` in `assistant/AssistantOverlay.kt`):
+
+- **Stock Android:** the system binds `AgoraVoiceInteractionService` →
+  `AgoraVoiceInteractionSession` renders the overlay and receives Assist-API screen context
+  (`AssistStructure` text, 8 KB cap, plus a screenshot persisted as PNG under
+  `filesDir/attachments/assistant/`). `AssistantOemCompat` disables this pair on Samsung One UI,
+  where declaring both paths breaks the side-button picker.
+- **Samsung One UI:** the assistant picker lists only `ACTION_ASSIST` activities, so
+  `AssistantActivity` (translucent, `singleTask`) hosts the same overlay; no Assist-API data is
+  available on this path.
+
+Sending routes through `TaskExecutionEngine.runOnce` — the same headless single-shot engine
+used by automation. A `Busy` outcome is surfaced as a distinct overlay status with the prompt
+preserved for retry. Each activation creates a fresh conversation unless the reuse toggle is on.
+Every overlay activation enqueues an attachment-orphan reconcile, and the ordinary
+`AttachmentOrphanSweeper` sweep includes `filesDir/attachments/assistant/` (1 h minimum age,
+transactional Room-reference check); there is no parallel deletion path. Voice input uses
+`SpeechRecognizer` (on-device on API 31+, network fallback) through a permission trampoline
+activity because session windows cannot host permission dialogs; dictated text replaces only
+the dictated segment, so a typed prefix survives.
+
+### 8.3 Live voice calls
+
+Voice-to-voice calls (`assistant/live/`, `ui/assistant/VoiceModeActivity`) use the Gemini Live
+API WebSocket as a **transport only**. `LiveVoiceSessionController` orchestrates
+`LiveAudioCapture` (16 kHz PCM16, ~32 ms frames, echo canceller when available) →
+`GeminiLiveClient` (one physical connection, automatic reconnection with the
+session-resumption handle) → `LiveAudioPlayback` (24 kHz PCM16; barge-in flushes queued
+frames). A microphone foreground service (`LiveVoiceForegroundService`,
+`foregroundServiceType="microphone"`, `START_NOT_STICKY`) keeps the process alive during a call
+and is started only from the call screen — never from background or automation.
+
+The scoped transport exception: completed turns persist through
+`ChatDao.createCompletedRunWithMessages` — one fresh Run born terminal (COMPLETED) with a
+USER + MODEL pair from the server's input/output transcriptions — never through the ordinary
+generation pipeline. Room stays the durable truth; there is no second generation, queue, or
+Stop path. Audio is never persisted; a turn interrupted by barge-in is dropped, and an
+unfinished spoken turn at hang-up persists with an empty model reply rather than being lost.
+`setMuted` gates only outgoing mic frames — it never sends `audioStreamEnd`, because that frame
+commits the pending user turn and would interrupt in-flight model generation. Live captions on
+the call screen come from the pure `LiveTranscriptLog` (display state only).
+
 ## 9. Native, sandbox, and remote shell
 
 The native layer exposes:
@@ -433,8 +526,8 @@ The native layer exposes:
 - the F-Droid PRoot bridge.
 
 The F-Droid sandbox runs commands with concurrent output collection and an actual
-wall-clock timeout. The shared glob matcher is implemented without API-26-only
-`java.nio.file` APIs so the API 24 minimum remains real.
+wall-clock timeout. The shared glob matcher (`util/PortableGlobMatcher`) is implemented
+without `java.nio.file` glob APIs so its behavior is identical on every supported API level.
 
 Remote shell supports Conch HTTP jobs and direct SSH with host-key trust. Conch requests use signed ephemeral-key/AES-GCM application-layer protection when an API key is configured; blank-key servers receive plain JSON and rely on HTTPS for transport confidentiality. Commands start as durable jobs: foreground execution is a bounded wait
 on the same process, and a timeout returns its job id instead of killing or replaying it. Separate
@@ -445,7 +538,7 @@ SDK.
 
 ## 10. Data portability and recovery
 
-`.agora` export/import supports selective categories, including automation configurations (Daemon, SMS, Heartbeat, and Notifications). Third-party importers support
+`.agora` export/import supports selective categories, including automation configurations (Daemon, SMS, Heartbeat, and Notifications) and assistant/live-voice behavior toggles. Third-party importers support
 ChatGPT and Claude exports. Auto backup uses WorkManager and configurable retention.
 
 Recovery rules:
@@ -482,7 +575,9 @@ High-risk changes require focused tests in addition to the full gate:
 - latest-wins UI buffer behavior;
 - branch path closure and attachment cloning/deletion;
 - task schedule boundary behavior;
-- API-24-compatible glob and process timeout behavior.
+- API-26-compatible glob and process timeout behavior;
+- heartbeat due-gate boundaries (active-hours midnight wrap), SMS high-water-mark polling, and
+  live-voice turn persistence (barge-in drop, hang-up flush, mute gating).
 
 ## 12. Architectural invariants
 

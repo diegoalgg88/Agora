@@ -53,7 +53,7 @@ import com.newoether.agora.util.gradientBlur
 import com.newoether.agora.ui.chat.bottombar.CHAT_BOTTOM_BAR_OUTER_SHAPE
 import com.newoether.agora.ui.chat.bottombar.ChatBottomBar
 import com.newoether.agora.ui.chat.bottombar.LoopStatusBackdrop
-import com.newoether.agora.ui.chat.composables.PendingSmsBanner
+import com.newoether.agora.ui.chat.composables.PendingDeviceActionBanners
 import com.newoether.agora.ui.components.AnimatedBlobBackground
 import com.newoether.agora.ui.components.clearFocusOnTap
 import com.newoether.agora.ui.components.TypewriterMode
@@ -108,6 +108,7 @@ fun ChatApp(
     val compactRetainCount by viewModel.settings.contextCompactRetainCount.collectAsState()
     val compactThresholdPercent by
         viewModel.settings.contextCompactThresholdPercent.collectAsState()
+    val liveVoiceEnabled by viewModel.settings.liveVoiceEnabled.collectAsState()
     val manualCompactDialogVisible = rememberSaveable { mutableStateOf(false) }
     val dialogState = rememberChatAppDialogState(manualCompactDialogVisible)
     val queuedSends by viewModel.queuedSends.collectAsState()
@@ -422,6 +423,7 @@ fun ChatApp(
                             !isNewChatMode && currentConversationId != null && !isLoading &&
                                 !shareSelectionActive,
                         systemPromptEnabled = !conversationControls.lowContextModeEnabled,
+                        voiceCallEnabled = liveVoiceEnabled,
                         onNavigateBack = onNavigateBack,
                         onOpenDrawer = {
                             if (drawerEnabled) {
@@ -449,6 +451,7 @@ fun ChatApp(
                             conversationInteraction.activateSearch()
                         },
                         onSystemPromptClick = dialogState::showPrompt,
+                        onVoiceCall = { context.startActivity(android.content.Intent(context, com.newoether.agora.ui.assistant.VoiceModeActivity::class.java)) },
                         onForkConversation = { pendingForkRequest = ForkConversationRequest(messageId = null) },
                         onShareConversation = {
                             conversationInteraction.dismissSearch()
@@ -862,7 +865,7 @@ fun ChatApp(
                             .navigationBarsPadding()
                             .imePadding()
                     ) {
-                        PendingSmsBanner(viewModel = viewModel)
+                        PendingDeviceActionBanners(viewModel = viewModel)
                         // This is a sibling behind the complete outer bar, not a child of the
                         // composer. Its lower overflow is therefore occluded by the 28dp Surface
                         // and shadow below.
@@ -927,12 +930,7 @@ fun ChatApp(
                         onShellToggle = { enabled -> haptics.toggle(enabled); viewModel.updateConversationSetting(conversationControls.settingsOwnerId) { it.copy(shellEnabled = enabled) } },
                         showLowContextMode = conversationControls.showLowContextMode,
                         lowContextModeEnabled = conversationControls.lowContextModeEnabled,
-                        onLowContextModeToggle = { enabled ->
-                            haptics.toggle(enabled)
-                            viewModel.updateConversationSetting(conversationControls.settingsOwnerId) {
-                                it.copy(lowContextModeEnabled = enabled)
-                            }
-                        },
+                        onLowContextModeToggle = { enabled -> haptics.toggle(enabled); viewModel.updateConversationSetting(conversationControls.settingsOwnerId) { it.copy(lowContextModeEnabled = enabled) } },
                         // The model row owns its selection tick. Repeating it here produced the
                         // previous double buzz for one physical tap.
                         onModelSelect = { viewModel.setActiveModel(it) },

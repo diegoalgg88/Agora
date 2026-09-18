@@ -14,7 +14,7 @@ This document describes the complete build process for the Agora Android applica
 |-----------|---------|---------|
 | **WSL (Windows Subsystem for Linux)** | Arch Linux | Runs `build-proot.sh` for native binary compilation |
 | **Android NDK** | r28 (28.2.13676358) | Cross-compiles native code (llama.cpp, proot, talloc) for arm64-v8a |
-| **Android SDK** | API 36 (compile/target), minSdk 24 | Builds the Android application |
+| **Android SDK** | API 36 (compile/target), minSdk 26 | Builds the Android application |
 | **JDK** | 21 | Required by Gradle and Android SDK tools |
 | **Gradle** | 9.5.1 (via wrapper) | Build orchestration |
 | **Kotlin** | 2.3.21 | Application language |

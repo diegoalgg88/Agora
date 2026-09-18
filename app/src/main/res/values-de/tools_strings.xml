@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">Werkzeuge</string>
+    <string name="settings_tools_desc">Assistenten-Aktionen auf dem Gerät: Alarme, Kalendertermine, Dateien, Standort, Uhrzeit, Links und Benachrichtigungen</string>
+    <string name="settings_tools_group_assistant">Assistent-Tools</string>
+    <string name="settings_tool_set_alarm">Wecker setzen</string>
+    <string name="settings_tool_set_alarm_desc">Alarmen und Timer in der Clock-App des Geräts festlegen</string>
+    <string name="settings_tool_open_file">Datei öffnen</string>
+    <string name="settings_tool_open_file_desc">Sandkasten-Dateien in der Standard-Android-App öffnen</string>
+    <string name="settings_tool_create_calendar_event">Kalenderereignis erstellen</string>
+    <string name="settings_tool_create_calendar_event_desc">Ereignisse zum Kalender des Geräts hinzufügen</string>
+    <string name="settings_tool_list_calendar_events">Kalendertermine auflisten</string>
+    <string name="settings_tool_list_calendar_events_desc">Kommende Termine aus dem Gerätekalender lesen</string>
+    <string name="settings_tool_update_calendar_event">Kalendertermin bearbeiten</string>
+    <string name="settings_tool_update_calendar_event_desc">Bestehende Termine im Gerätekalender ändern</string>
+    <string name="settings_tool_delete_calendar_event">Kalendertermin löschen</string>
+    <string name="settings_tool_delete_calendar_event_desc">Termine aus dem Gerätekalender entfernen</string>
+    <string name="settings_tool_get_location">Standort abrufen</string>
+    <string name="settings_tool_get_location_desc">Ungefähren Standort des Geräts (Stadtebene) über die IP-Adresse über den Dienst ipwho.is schätzen</string>
+    <string name="settings_tool_get_local_time">Lokale Zeit abrufen</string>
+    <string name="settings_tool_get_local_time_desc">Aktuelle Gerätezit und Zeitzonendaten abrufen</string>
+    <string name="settings_tool_open_url">URL öffnen</string>
+    <string name="settings_tool_open_url_desc">Link im Browser oder Standard-App öffnen</string>
+    <string name="settings_tool_send_notification">Benachrichtigung senden</string>
+    <string name="settings_tool_send_notification_desc">Benachrichtigung auf dem Gerät posten</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="one">%d Server</item>
+        <item quantity="other">%d Server</item>
+    </plurals>
+</resources>

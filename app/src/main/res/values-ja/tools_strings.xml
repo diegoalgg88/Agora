@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">ツール</string>
+    <string name="settings_tools_desc">アシスタントのデバイス操作: アラーム、カレンダーイベント、ファイル、位置情報、時刻、リンク、通知</string>
+    <string name="settings_tools_group_assistant">アシスタントツール</string>
+    <string name="settings_tool_set_alarm">アラームの設定</string>
+    <string name="settings_tool_set_alarm_desc">デバイス時計アプリでアラームとカウントダウンタイマーを設定</string>
+    <string name="settings_tool_open_file">ファイルを開く</string>
+    <string name="settings_tool_open_file_desc">サンドボックスファイルをデフォルトのAndroidアプリで開く</string>
+    <string name="settings_tool_create_calendar_event">カレンダーイベントの作成</string>
+    <string name="settings_tool_create_calendar_event_desc">デバイスカレンダーにイベントを追加</string>
+    <string name="settings_tool_list_calendar_events">カレンダーイベントの一覧</string>
+    <string name="settings_tool_list_calendar_events_desc">デバイスカレンダーの今後のイベントを読み込む</string>
+    <string name="settings_tool_update_calendar_event">カレンダーイベントの更新</string>
+    <string name="settings_tool_update_calendar_event_desc">デバイスカレンダーの既存のイベントを変更</string>
+    <string name="settings_tool_delete_calendar_event">カレンダーイベントの削除</string>
+    <string name="settings_tool_delete_calendar_event_desc">デバイスカレンダーからイベントを削除</string>
+    <string name="settings_tool_get_location">場所の取得</string>
+    <string name="settings_tool_get_location_desc">ipwho.is サービスを使用してデバイスのIPアドレスからおおよその場所（市区町村レベル）を推定</string>
+    <string name="settings_tool_get_local_time">ローカルタイムの取得</string>
+    <string name="settings_tool_get_local_time_desc">現在のデバイス時刻とタイムゾーン情報を取得</string>
+    <string name="settings_tool_open_url">URLを開く</string>
+    <string name="settings_tool_open_url_desc">リンクをブラウザまたはデフォルトアプリで開く</string>
+    <string name="settings_tool_send_notification">通知の送信</string>
+    <string name="settings_tool_send_notification_desc">デバイスに通知をポスト</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="other">%d サーバー</item>
+    </plurals>
+</resources>

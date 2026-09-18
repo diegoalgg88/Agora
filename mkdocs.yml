@@ -60,6 +60,8 @@ plugins:
             Local Models: 本地模型
             PDF Import: PDF 导入
             Data Portability: 数据迁移
+            System Assistant: 系统助手
+            Live Voice Call: 实时语音通话
             FAQ: 常见问题
             Models: 模型
             Manage Models: 管理模型
@@ -99,6 +101,8 @@ plugins:
             Local Models: 本機模型
             PDF Import: PDF 匯入
             Data Portability: 資料可攜性
+            System Assistant: 系統助手
+            Live Voice Call: 即時語音通話
             FAQ: 常見問題
             Models: 模型
             Manage Models: 管理模型
@@ -138,6 +142,8 @@ plugins:
             Local Models: Modelos Locales
             PDF Import: Importación PDF
             Data Portability: Portabilidad de Datos
+            System Assistant: Asistente del Sistema
+            Live Voice Call: Llamada de Voz en Vivo
             FAQ: Preguntas Frecuentes
             Models: Modelos
             Manage Models: Gestionar Modelos
@@ -176,6 +182,8 @@ plugins:
             Local Models: Modèles Locaux
             PDF Import: Importation PDF
             Data Portability: Portabilité des Données
+            System Assistant: Assistant Système
+            Live Voice Call: Appel Vocal en Direct
             FAQ: FAQ
             Models: Modèles
             Manage Models: Gérer les Modèles
@@ -214,6 +222,8 @@ plugins:
             Local Models: Lokale Modelle
             PDF Import: PDF-Import
             Data Portability: Datenportabilität
+            System Assistant: System-Assistent
+            Live Voice Call: Live-Sprachanruf
             FAQ: FAQ
             Models: Modelle
             Manage Models: Modelle Verwalten
@@ -252,6 +262,8 @@ plugins:
             Local Models: Локальные Модели
             PDF Import: Импорт PDF
             Data Portability: Переносимость Данных
+            System Assistant: Системный ассистент
+            Live Voice Call: Голосовой звонок в реальном времени
             FAQ: ЧаВо
             Models: Модели
             Manage Models: Управление Моделями
@@ -290,6 +302,8 @@ plugins:
             Local Models: Modelos Locais
             PDF Import: Importação PDF
             Data Portability: Portabilidade de Dados
+            System Assistant: Assistente do Sistema
+            Live Voice Call: Chamada de Voz ao Vivo
             FAQ: Perguntas Frequentes
             Models: Modelos
             Manage Models: Gerenciar Modelos
@@ -328,6 +342,8 @@ plugins:
             Local Models: ローカルモデル
             PDF Import: PDF インポート
             Data Portability: データポータビリティ
+            System Assistant: システムアシスタント
+            Live Voice Call: ライブ音声通話
             FAQ: よくある質問
             Models: モデル
             Manage Models: モデル管理
@@ -366,6 +382,8 @@ plugins:
             Local Models: 로컬 모델
             PDF Import: PDF 가져오기
             Data Portability: 데이터 이식성
+            System Assistant: 시스템 어시스턴트
+            Live Voice Call: 라이브 음성 통화
             FAQ: 자주 묻는 질문
             Models: 모델
             Manage Models: 모델 관리
@@ -407,6 +425,8 @@ plugins:
             Local Models: النماذج المحلية
             PDF Import: استيراد PDF
             Data Portability: نقل البيانات
+            System Assistant: مساعد النظام
+            Live Voice Call: مكالمة صوتية مباشرة
             FAQ: الأسئلة الشائعة
             Models: النماذج
             Manage Models: إدارة النماذج
@@ -465,6 +485,8 @@ nav:
       - Memory & Cache: memory.md
       - Skills: skills.md
   - Local Models: local-model.md
+  - System Assistant: assistant.md
+  - Live Voice Call: live-voice.md
   - PDF Import: pdf-import.md
   - Data Portability: import-export.md
   - Network Proxy: proxy.md

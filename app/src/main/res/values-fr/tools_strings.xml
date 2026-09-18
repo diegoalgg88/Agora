@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">Outils</string>
+    <string name="settings_tools_desc">Actions de l\'assistant sur l\'appareil : alarmes, événements de calendrier, fichiers, position, heure, liens et notifications</string>
+    <string name="settings_tools_group_assistant">Outils assistant</string>
+    <string name="settings_tool_set_alarm">Définir une alarme</string>
+    <string name="settings_tool_set_alarm_desc">Définir des alarmes et des minuteries dans l\'application horloge du dispositif</string>
+    <string name="settings_tool_open_file">Ouvrir un fichier</string>
+    <string name="settings_tool_open_file_desc">Ouvrir des fichiers sandbox dans l\'application Android par défaut</string>
+    <string name="settings_tool_create_calendar_event">Créer un événement de calendrier</string>
+    <string name="settings_tool_create_calendar_event_desc">Ajouter des événements au calendrier du dispositif</string>
+    <string name="settings_tool_list_calendar_events">Lister les événements du calendrier</string>
+    <string name="settings_tool_list_calendar_events_desc">Lire les événements à venir du calendrier du dispositif</string>
+    <string name="settings_tool_update_calendar_event">Modifier un événement du calendrier</string>
+    <string name="settings_tool_update_calendar_event_desc">Modifier des événements existants du calendrier du dispositif</string>
+    <string name="settings_tool_delete_calendar_event">Supprimer un événement du calendrier</string>
+    <string name="settings_tool_delete_calendar_event_desc">Retirer des événements du calendrier du dispositif</string>
+    <string name="settings_tool_get_location">Obtenir l\'emplacement</string>
+    <string name="settings_tool_get_location_desc">Estimer l\'emplacement approximatif du dispositif (niveau ville) à partir de son adresse IP via le service ipwho.is</string>
+    <string name="settings_tool_get_local_time">Obtenir l\'heure locale</string>
+    <string name="settings_tool_get_local_time_desc">Obtenir l\'heure actuelle et les informations de fuseau horaire du dispositif</string>
+    <string name="settings_tool_open_url">Ouvrir une URL</string>
+    <string name="settings_tool_open_url_desc">Ouvrir un lien dans le navigateur ou l\'application par défaut</string>
+    <string name="settings_tool_send_notification">Envoyer une notification</string>
+    <string name="settings_tool_send_notification_desc">Publier une notification sur le dispositif</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="one">%d serveur</item>
+        <item quantity="other">%d serveurs</item>
+    </plurals>
+</resources>

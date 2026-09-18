@@ -12,6 +12,16 @@
     <uses-permission android:name="android.permission.CAMERA" />
     <!-- Optional user-granted access; exact automation remains off by default. -->
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
+    <!-- Assistant alarm tool: ACTION_SET_ALARM/ACTION_SET_TIMER require the caller to hold this
+         normal (install-time) permission. -->
+    <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
+    <!-- Assistant calendar tool: requested at runtime only when the user enables it. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+    <uses-permission android:name="android.permission.WRITE_CALENDAR" />
+    <!-- System assistant overlay voice input: requested at runtime from the assistant UI. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+    <!-- Live voice calls: microphone foreground service (Android 14+ requirement). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MICROPHONE" />
     <!-- Saving images to the gallery on pre-Q only; Q+ uses scoped MediaStore (no permission). -->
     <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" android:maxSdkVersion="28" />
 
@@ -72,11 +82,79 @@
             android:foregroundServiceType="dataSync"
             android:exported="false" />
 
+        <!-- Trampoline that hosts the RECORD_AUDIO runtime dialog from the assistant overlay
+             (session windows cannot show permission dialogs). -->
+        <activity
+            android:name=".assistant.AssistantVoicePermissionActivity"
+            android:exported="false"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar" />
+
+        <!-- System assistant entry point: the OS only binds this when the user picks
+             Agora as the default digital assistant app. Gives Gemini-parity overlay UX
+             (VoiceInteractionSession, screen context capture) on stock Android/Pixel and most
+             OEMs. Disabled at RUNTIME on Samsung only, by AssistantOemCompat — see that class
+             for the confirmed One UI conflict this avoids. Do NOT statically disable this in the
+             manifest again for OEM reasons; that regresses every non-Samsung device. -->
+        <service
+            android:name=".assistant.AgoraVoiceInteractionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION">
+            <meta-data
+                android:name="android.voice_interaction"
+                android:resource="@xml/assistant_interaction_service" />
+            <intent-filter>
+                <action android:name="android.service.voice.VoiceInteractionService" />
+            </intent-filter>
+        </service>
+
+        <!-- Overlay session factory the system binds when showing the assistant. Same runtime
+             Samsung exception as AgoraVoiceInteractionService above (AssistantOemCompat). -->
+        <service
+            android:name=".assistant.AgoraVoiceInteractionSessionService"
+            android:exported="true"
+            android:permission="android.permission.BIND_VOICE_INTERACTION" />
+
+        <!-- Assistant entry point used everywhere via ACTION_ASSIST: the sole mechanism on
+             Samsung (see AssistantOemCompat), and a fallback elsewhere for OEM pickers that
+             enumerate candidates via queryIntentActivities(ACTION_ASSIST) instead of
+             RoleManager. Translucent so it reads as an overlay. NOT excluded from recents:
+             some OEM side-button pickers cannot resolve a friendly app label for activities
+             flagged excludeFromRecents, showing "None" even though the app icon still resolves
+             via the RoleManager-assigned package. -->
+        <activity
+            android:name=".assistant.AssistantActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.ASSIST" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
+
         <!-- WorkManager owns the foreground lifecycle for scheduled automation runs. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+
+        <!-- Live voice call: keeps microphone capture alive while VoiceModeActivity goes to
+             background. Only ever started from the foreground call screen. -->
+        <service
+            android:name=".assistant.live.LiveVoiceForegroundService"
+            android:foregroundServiceType="microphone"
+            android:exported="false" />
+
+        <!-- Voice-to-voice call screen (Gemini Live WebSocket). Internal entry, launched by the
+             assistant overlay's "Call" button. -->
+        <activity
+            android:name=".ui.assistant.VoiceModeActivity"
+            android:exported="false"
+            android:excludeFromRecents="true"
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.Agora" />
 
         <!-- Fires a scheduled task; internal only. -->
         <receiver

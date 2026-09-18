@@ -166,6 +166,8 @@ class AttachmentOrphanSweeperTest {
             val orphanCamera = oldFile(File(root, "images"), "camera_orphan")
             val orphanRunInput = oldFile(File(root, "run-inputs"), "run_orphan")
             val orphanFork = oldFile(File(root, "fork-attachments"), "fork_orphan")
+            val orphanAssistantScreenshot = oldFile(File(root, "attachments/assistant"), "screen_orphan")
+            val attachedAssistantScreenshot = oldFile(File(root, "attachments/assistant"), "screen_attached")
             val freshEligible = file(root, "vid_fresh", NOW - 30 * 60 * 1000L)
             val unrelatedRoot = oldFile(root, "notes.txt")
             val unrelatedImage = oldFile(File(root, "images"), "thumbnail_other")
@@ -175,7 +177,7 @@ class AttachmentOrphanSweeperTest {
             } returns listOf(
                 MessageAttachmentReference(
                     id = "message",
-                    images = listOf(fileUri(messageImage)),
+                    images = listOf(fileUri(messageImage), attachedAssistantScreenshot.absolutePath),
                     attachmentMeta = Json.encodeToString(
                         AttachmentMeta(
                             listOf(
@@ -246,13 +248,13 @@ class AttachmentOrphanSweeperTest {
                 newChatLocal,
                 newChatFrame,
                 newChatRendered,
+                attachedAssistantScreenshot,
                 freshEligible,
                 unrelatedRoot,
                 unrelatedImage,
             ).forEach { retained -> assertTrue(retained.absolutePath, retained.exists()) }
-            listOf(orphanRoot, orphanCamera, orphanRunInput, orphanFork).forEach { deleted ->
-                assertFalse(deleted.absolutePath, deleted.exists())
-            }
+            listOf(orphanRoot, orphanCamera, orphanRunInput, orphanFork, orphanAssistantScreenshot)
+                .forEach { deleted -> assertFalse(deleted.absolutePath, deleted.exists()) }
             coVerify(exactly = 1) {
                 conversations.getMessageAttachmentReferencesPage(null, 64)
             }

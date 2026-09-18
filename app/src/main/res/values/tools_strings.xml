@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">Tools</string>
+    <string name="settings_tools_desc">Assistant device actions: alarms, calendar events, files, location, time, links, and notifications</string>
+    <string name="settings_tools_group_assistant">Assistant Tools</string>
+    <string name="settings_tool_set_alarm">Set Alarm</string>
+    <string name="settings_tool_set_alarm_desc">Set alarms and countdown timers in the device clock app</string>
+    <string name="settings_tool_open_file">Open File</string>
+    <string name="settings_tool_open_file_desc">Open sandbox files in the default Android app</string>
+    <string name="settings_tool_create_calendar_event">Create Calendar Event</string>
+    <string name="settings_tool_create_calendar_event_desc">Add events to the device calendar</string>
+    <string name="settings_tool_list_calendar_events">List Calendar Events</string>
+    <string name="settings_tool_list_calendar_events_desc">Read upcoming events from the device calendar</string>
+    <string name="settings_tool_update_calendar_event">Update Calendar Event</string>
+    <string name="settings_tool_update_calendar_event_desc">Change existing events in the device calendar</string>
+    <string name="settings_tool_delete_calendar_event">Delete Calendar Event</string>
+    <string name="settings_tool_delete_calendar_event_desc">Remove events from the device calendar</string>
+    <string name="settings_tool_get_location">Get Location</string>
+    <string name="settings_tool_get_location_desc">Estimate the device\'s approximate location (city-level) from its IP address via the ipwho.is service</string>
+    <string name="settings_tool_get_local_time">Get Local Time</string>
+    <string name="settings_tool_get_local_time_desc">Get current device time and timezone info</string>
+    <string name="settings_tool_open_url">Open URL</string>
+    <string name="settings_tool_open_url_desc">Open a link in the browser or default app</string>
+    <string name="settings_tool_send_notification">Send Notification</string>
+    <string name="settings_tool_send_notification_desc">Post a notification on the device</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="one">%d server</item>
+        <item quantity="other">%d servers</item>
+    </plurals>
+</resources>

@@ -369,6 +369,8 @@ class TaskExecutionEngine(
         foregroundServiceManagedExternally: Boolean = false,
         precondition: suspend () -> Boolean = { true },
         requestKind: String = "task",
+        images: List<String> = emptyList(),
+        attachmentMeta: String? = null,
     ): Result = automationExecutionGate.withExecution {
         executionCoordinator.withAutomationConversationLock(conversationId) {
             settings.awaitInitialLoad()
@@ -382,6 +384,8 @@ class TaskExecutionEngine(
                     foregroundServiceManagedExternally = foregroundServiceManagedExternally,
                     precondition = precondition,
                     requestKind = requestKind,
+                    images = images,
+                    attachmentMeta = attachmentMeta,
                 )
             }
         }
@@ -423,6 +427,8 @@ class TaskExecutionEngine(
         foregroundServiceManagedExternally: Boolean,
         precondition: suspend () -> Boolean,
         requestKind: String,
+        images: List<String> = emptyList(),
+        attachmentMeta: String? = null,
     ): Result {
         require(requestKind.isNotBlank())
         settings.awaitInitialLoad()
@@ -598,6 +604,8 @@ class TaskExecutionEngine(
                     userMessageId = userMessageId,
                     modelMessageId = modelMessageId,
                     userText = userText,
+                    images = images,
+                    attachmentMeta = attachmentMeta,
                     modelId = generationSnapshot.selectedModelId,
                     userTimestamp = now,
                     touchConversationOnAdmission = false,

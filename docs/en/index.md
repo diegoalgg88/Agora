@@ -23,6 +23,8 @@ Agora is an Android BYOK client for provider-hosted and on-device language model
 - [Agentic Tools](tools.md)
 - [MCP Servers](mcp.md)
 - [Automation](automation.md)
+- [System Assistant](assistant.md)
+- [Live Voice Call](live-voice.md)
 - [Web Search](web-search.md)
 - [Remote Shell / Conch](shell.md)
 - [Sandbox](sandbox.md)

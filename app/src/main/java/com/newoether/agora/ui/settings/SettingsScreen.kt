@@ -249,6 +249,7 @@ private val baseSettingsGroups = listOf(
         SettingsCategory("imagegen", R.string.settings_image_gen, R.string.settings_image_gen_desc, Icons.Default.AddPhotoAlternate),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_tools, items = listOf(
+        SettingsCategory("tools", R.string.settings_tools, R.string.settings_tools_desc, Icons.Default.Build),
         SettingsCategory("websearch", R.string.settings_web_search, R.string.settings_web_search_desc, Icons.Default.Language),
         SettingsCategory("search", R.string.search_title, R.string.search_desc, Icons.Default.Search),
         SettingsCategory("shell", R.string.shell_title, R.string.shell_desc, Icons.Default.Terminal),
@@ -262,6 +263,10 @@ private val baseSettingsGroups = listOf(
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
+    )),
+    SettingsGroupData(titleRes = R.string.settings_group_assistant, items = listOf(
+        SettingsCategory("assistant", R.string.settings_assistant, R.string.settings_assistant_desc, Icons.Default.SmartToy),
+        SettingsCategory("liveVoice", R.string.settings_live_voice, R.string.settings_live_voice_desc, Icons.Default.GraphicEq),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_memory_data, items = listOf(
         SettingsCategory("memory", R.string.settings_memory, R.string.settings_memory_desc, Icons.Default.Description),
@@ -327,10 +332,13 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "generation" -> SettingsGenerationPage(viewModel, onBack = { selectedCategory = null })
                 "context" -> SettingsContextPage(viewModel, onBack = { selectedCategory = null })
                 "websearch" -> SettingsWebSearchPage(viewModel, onBack = { selectedCategory = null })
+                "tools" -> SettingsToolsPage(viewModel, onBack = { selectedCategory = null })
                 "imagegen" -> SettingsImageGenPage(viewModel, onBack = { selectedCategory = null })
                 "shell" -> SettingsShellPage(viewModel, onBack = { selectedCategory = null })
                 "mcp" -> SettingsMcpPage(viewModel, onBack = { selectedCategory = null })
                 "automation" -> SettingsAutomationPage(viewModel, onBack = { selectedCategory = null })
+                "assistant" -> SettingsAssistantPage(viewModel, onBack = { selectedCategory = null })
+                "liveVoice" -> SettingsLiveVoicePage(viewModel, onBack = { selectedCategory = null })
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })
                 "language" -> SettingsLanguagePage(viewModel, onBack = { selectedCategory = null })
                 "titlegen" -> SettingsTitleGenPage(viewModel, onBack = { selectedCategory = null })

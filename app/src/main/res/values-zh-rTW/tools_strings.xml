@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">工具</string>
+    <string name="settings_tools_desc">助理裝置操作：鬧鐘、行事曆事件、檔案、位置、時間、連結和通知</string>
+    <string name="settings_tools_group_assistant">助手工具</string>
+    <string name="settings_tool_set_alarm">設定提醒</string>
+    <string name="settings_tool_set_alarm_desc">在設備時鐘應用中設定鬧鐘和計數器</string>
+    <string name="settings_tool_open_file">開啟檔案</string>
+    <string name="settings_tool_open_file_desc">在預設的 Android 應用程式中開啟沙箱檔案</string>
+    <string name="settings_tool_create_calendar_event">建立行事曆活動</string>
+    <string name="settings_tool_create_calendar_event_desc">新增活動到設備行事曆</string>
+    <string name="settings_tool_list_calendar_events">列出行事曆活動</string>
+    <string name="settings_tool_list_calendar_events_desc">讀取設備行事曆中即將到來的活動</string>
+    <string name="settings_tool_update_calendar_event">更新行事曆活動</string>
+    <string name="settings_tool_update_calendar_event_desc">變更設備行事曆中的現有活動</string>
+    <string name="settings_tool_delete_calendar_event">刪除行事曆活動</string>
+    <string name="settings_tool_delete_calendar_event_desc">從設備行事曆中移除活動</string>
+    <string name="settings_tool_get_location">取得位置</string>
+    <string name="settings_tool_get_location_desc">透過 ipwho.is 服務根據設備 IP 位址估算大致位置（城市層級）</string>
+    <string name="settings_tool_get_local_time">取得本地時間</string>
+    <string name="settings_tool_get_local_time_desc">取得當前設備時間和時區資訊</string>
+    <string name="settings_tool_open_url">開啟網址</string>
+    <string name="settings_tool_open_url_desc">在瀏覽器或預設應用程式中開啟連結</string>
+    <string name="settings_tool_send_notification">傳送通知</string>
+    <string name="settings_tool_send_notification_desc">在設備上發布通知</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="other">%d 個伺服器</item>
+    </plurals>
+</resources>

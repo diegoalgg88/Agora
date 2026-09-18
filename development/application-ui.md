@@ -567,7 +567,8 @@ content without an entrance transition. A newer title interrupts in-flight clip 
 retargets the same owners from their current values without queuing. Reduced Motion snaps the clip
 boundary while retaining the component-owned `200 ms` opacity Crossfade.
 `animateContentSize` does not participate. The existing 180 dp internal title maximum, 20 dp trailing
-title padding, 16 dp actions gap, 98 dp actions width, ellipsis, icon geometry, search transition,
+title padding, 16 dp actions gap, 98 dp actions width (142 dp while the Live voice-call entry is
+enabled — the width stays fixed per state and is never flexibly compressed), ellipsis, icon geometry, search transition,
 title resolution, click behavior, and persistence remain unchanged.
 
 ## 25. Task History return continuity and drawer focus threshold

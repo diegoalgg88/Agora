@@ -822,6 +822,15 @@ class ConversationRepository(
         if (scheduled) scheduleMaintenance()
     }
 
+    /** Enqueues an attachment-orphan reconcile for callers that stage app-private files with no
+     *  durable owner yet (e.g. assist screenshots). The sweeper's transactional reference check
+     *  keeps any copy that became message-owned between enqueue and sweep. */
+    suspend fun scheduleAttachmentReconcile() {
+        var scheduled = false
+        withMaintenanceTransaction { scheduled = enqueueAttachmentReconcile() }
+        if (scheduled) scheduleMaintenance()
+    }
+
     /** Enqueues exact paths whose non-draft owner has already been settled by the caller. */
     suspend fun deleteUnreferencedDraftAttachmentFiles(
         attachments: List<SelectedAttachment>,

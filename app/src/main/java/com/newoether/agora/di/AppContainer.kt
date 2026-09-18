@@ -248,7 +248,12 @@ class AppContainer(
             // HeartbeatScheduler runs the heartbeat prompt through this same engine; without
             // these, promote_learning/SMS/notification tools would be invisible during a
             // heartbeat run even though they're wired into the interactive ChatViewModel.
-            extraToolProviders = listOf(heartbeatToolProvider, smsToolProvider, notificationToolProvider),
+            extraToolProviders = listOf(
+                heartbeatToolProvider,
+                smsToolProvider,
+                notificationToolProvider,
+                assistantDeviceToolProvider,
+            ),
         )
     }
 
@@ -459,6 +464,19 @@ class AppContainer(
         NotificationToolProvider(notificationStore, notificationReader)
     }
 
+    val assistantActionStore: com.newoether.agora.data.AssistantActionStore by lazy {
+        com.newoether.agora.data.AssistantActionStore(chatDao, database)
+    }
+
+    val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider by lazy {
+        com.newoether.agora.tool.AssistantDeviceToolProvider(
+            appContext,
+            settingsRepository,
+            sandboxManagerFactory,
+            assistantActionStore,
+        )
+    }
+
     // ── ViewModel Factory ─────────────────────────────────────
 
     fun chatViewModelFactory(): ChatViewModelFactory =
@@ -470,6 +488,6 @@ class AppContainer(
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, mcpToolProvider, taskExecutionEngine,
             heartbeatToolProvider, smsToolProvider, smsDraftStore, smsStore, smsPoller, smsSender,
-            notificationToolProvider,
+            notificationToolProvider, assistantDeviceToolProvider,
         )
 }

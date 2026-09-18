@@ -1,6 +1,7 @@
 package com.newoether.agora
 
 import android.app.Application
+import com.newoether.agora.assistant.AssistantOemCompat
 import com.newoether.agora.data.local.ChatDatabase
 import com.newoether.agora.di.AppContainer
 import com.newoether.agora.diagnostics.DeveloperDiagnostics
@@ -59,6 +60,7 @@ class AgoraApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         CrashReporter.install(this)
+        AssistantOemCompat.applyOnFirstRun(this)
         startupScope.launch {
             try {
                 DeveloperDiagnostics.initialize(noBackupFilesDir, startupScope)

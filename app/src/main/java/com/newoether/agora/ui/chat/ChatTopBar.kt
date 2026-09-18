@@ -24,6 +24,7 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
@@ -82,6 +83,7 @@ internal fun ChatTopBar(
     searchMatchCount: Int = 0,
     conversationActionsEnabled: Boolean = false,
     systemPromptEnabled: Boolean = true,
+    voiceCallEnabled: Boolean = false,
     onNavigateBack: (() -> Unit)? = null,
     onOpenDrawer: () -> Unit,
     onSearchQueryChange: (String) -> Unit = {},
@@ -90,6 +92,7 @@ internal fun ChatTopBar(
     onSearchDismiss: () -> Unit = {},
     onSearchClick: () -> Unit = {},
     onSystemPromptClick: () -> Unit,
+    onVoiceCall: () -> Unit = {},
     onForkConversation: () -> Unit = {},
     onShareConversation: () -> Unit = {},
     onNewChat: () -> Unit,
@@ -462,17 +465,26 @@ internal fun ChatTopBar(
 
                 Spacer(modifier = Modifier.width(16.dp))
 
-                // Actions capsule: system prompt + new chat
+                // Actions capsule: voice call (when enabled) + system prompt + new chat
                 ChatTopBarCapsule(
                     modifier = Modifier
                         .fillMaxHeight()
-                        .width(98.dp)
+                        .width(if (voiceCallEnabled) 142.dp else 98.dp)
                 ) {
                     Row(
                         modifier = Modifier.fillMaxHeight(),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Spacer(modifier = Modifier.width(5.dp))
+                        if (voiceCallEnabled) {
+                            IconButton(onClick = onVoiceCall, modifier = Modifier.size(44.dp)) {
+                                Icon(
+                                    Icons.Default.Phone,
+                                    contentDescription = stringResource(R.string.assistant_overlay_call),
+                                    modifier = Modifier.size(26.dp),
+                                )
+                            }
+                        }
                         IconButton(onClick = onNewChat, modifier = Modifier.size(44.dp)) {
                             Icon(Icons.Default.Add, contentDescription = stringResource(R.string.new_chat), modifier = Modifier.size(30.dp))
                         }

@@ -4,7 +4,7 @@ Agora 可以連接遠端 MCP 伺服器，並把伺服器提供的工具交給支
 
 ## 新增伺服器
 
-1. 開啟**設定 → MCP**。
+1. 開啟**設定 → 工具 → MCP**。
 2. 點選**新增 MCP 伺服器**。
 3. 選擇 **Streamable HTTP** 或 **SSE**。
 4. 輸入顯示名稱，以及以 http:// 或 https:// 開頭的伺服器 URL。
@@ -13,6 +13,12 @@ Agora 可以連接遠端 MCP 伺服器，並把伺服器提供的工具交給支
 Streamable HTTP 是目前的傳輸方式；SSE 用於相容舊版 MCP 伺服器。
 
 自訂標頭值使用與 API 金鑰相同的機密設定儲存：通常由 Android Keystore AES-GCM 封裝，但舊值或加密失敗時可能為明文。其中可能包含授權權杖，請保護裝置與匯出檔案，且不要新增伺服器不需要的標頭。
+
+## 熱門伺服器
+
+**熱門伺服器**區段列出精選的知名公共 MCP 伺服器目錄 —— 文件查詢（Context7、MDN、DeepWiki）、網路搜尋（Parallel Search、Jina AI、Tavily）、行情與天氣（Yahoo Finance、CoinGecko、Open-Meteo、OpenWeather）、機票（Kiwi.com）、詐騙檢查（Malwarebytes）、繪圖（tldraw）、網域（Find-A-Domain）和交通資訊（SubwayInfo NYC）。點選即可一鍵新增伺服器；URL 和建議的預設標頭會自動填入。
+
+部分條目需要 API 金鑰（例如 Jina AI、Tavily、SERPAPI、Composio、OpenWeather）。按提示輸入金鑰，其儲存保護與其他機密一致。從目錄新增的伺服器與手動新增的伺服器行為完全一致：可隨時啟用、停用、編輯或刪除。
 
 ## 連線與工具探索
 

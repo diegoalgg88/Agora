@@ -22,7 +22,10 @@ import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.encodeToString
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.util.concurrent.TimeUnit
+
+private const val MAX_FETCH_REDIRECTS = 5
 
 internal fun searxngSearchUrl(configuredBaseUrl: String, query: String): String {
     val baseUrl = configuredBaseUrl.ifBlank { "https://searx.be" }.trimEnd('/')
@@ -318,10 +321,7 @@ class WebSearchToolProvider : ToolProvider {
         } catch (_: Exception) { null } ?: 8000).coerceIn(1, 100_000)
 
         return try {
-            val html = HttpClient.fetchModels(url, mapOf(
-                "User-Agent" to Constants.WEB_FETCH_USER_AGENT,
-                "Accept" to "text/html,application/xhtml+xml,*/*"
-            ), callTimeoutMillis = Constants.NETWORK_TOOL_TIMEOUT_MS)
+            val html = fetchWithSsrfGuard(url)
                 ?: return buildJsonObject { put("type", "web_fetch"); put("url", url); put("error", "no_response") }.toString()
             val fullText = htmlToReadableText(html)
             val text = fullText.take(maxChars)
@@ -332,6 +332,13 @@ class WebSearchToolProvider : ToolProvider {
                 put("truncated", fullText.length > text.length)
                 put("totalChars", fullText.length)
             }.toString()
+        } catch (e: SsrfBlockedException) {
+            buildJsonObject {
+                put("type", "web_fetch")
+                put("url", url)
+                put("error", "blocked_host")
+                put("message", e.message ?: "")
+            }.toString()
         } catch (e: Exception) {
             buildJsonObject {
                 put("type", "web_fetch")
@@ -340,6 +347,72 @@ class WebSearchToolProvider : ToolProvider {
                 put("message", e.message ?: "")
             }.toString()
         }
+    }
+
+    private class SsrfBlockedException(host: String) :
+        Exception("Blocked private or loopback host: $host")
+
+    /**
+     * GET [initialUrl] following up to 5 redirects manually, validating every hop against
+     * the SSRF blocklist. OkHttp's automatic redirect following is disabled here because it
+     * would let a public URL redirect into the device's local network without any check.
+     */
+    private fun fetchWithSsrfGuard(initialUrl: String): String? {
+        val client = HttpClient.client.newBuilder()
+            .followRedirects(false)
+            .followSslRedirects(false)
+            .callTimeout(Constants.NETWORK_TOOL_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .build()
+        var url = initialUrl
+        repeat(MAX_FETCH_REDIRECTS + 1) {
+            val current = url.toHttpUrlOrNull() ?: return null
+            if (current.scheme != "http" && current.scheme != "https") return null
+            if (current.username.isNotEmpty()) return null
+            if (isBlockedHost(current.host)) throw SsrfBlockedException(current.host)
+            val request = okhttp3.Request.Builder()
+                .url(current)
+                .get()
+                .header("User-Agent", Constants.WEB_FETCH_USER_AGENT)
+                .header("Accept", "text/html,application/xhtml+xml,*/*")
+                .build()
+            client.newCall(request).execute().use { response ->
+                if (response.code in 300..399) {
+                    val location = response.header("Location") ?: return null
+                    val resolved = current.resolve(location) ?: return null
+                    url = resolved.toString()
+                    return@repeat
+                }
+                return if (response.isSuccessful) response.body?.string() else null
+            }
+        }
+        return null
+    }
+
+    /**
+     * True for loopback, private, link-local, and otherwise non-public hosts. Prevents the
+     * model from using web_fetch to reach the device's local network or internal services.
+     */
+    private fun isBlockedHost(host: String): Boolean {
+        val h = host.lowercase().trim('[', ']')
+        if (h.isEmpty()) return true
+        if (h == "localhost" || h.endsWith(".localhost")) return true
+        if (h == "::1" || h == "0:0:0:0:0:0:0:1") return true
+        if (h.startsWith("fe80:") || h.startsWith("fc") || h.startsWith("fd")) return true
+        val octets = h.split(".")
+        if (octets.size == 4 && octets.all { it.toIntOrNull() != null }) {
+            val a = octets[0].toInt()
+            val b = octets[1].toInt()
+            return when {
+                a == 127 -> true
+                a == 10 -> true
+                a == 0 -> true
+                a == 169 && b == 254 -> true
+                a == 192 && b == 168 -> true
+                a == 172 && b in 16..31 -> true
+                else -> false
+            }
+        }
+        return false
     }
 
     /**

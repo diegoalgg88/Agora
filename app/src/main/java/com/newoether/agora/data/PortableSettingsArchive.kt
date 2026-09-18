@@ -115,6 +115,57 @@ internal object PortableSettingsArchive {
         put("shellConfirmEnabled", JsonPrimitive(sm.shellConfirmEnabled.first()))
         putEncoded("shellDevices", sm.shellDevices.first().map(ShellDeviceConfig::withoutSecrets))
         put("automationToolsEnabled", JsonPrimitive(sm.automationToolsEnabled.first()))
+        put("assistantSetAlarmEnabled", JsonPrimitive(sm.assistantTools.setAlarmEnabled.first()))
+        put("assistantOpenFileEnabled", JsonPrimitive(sm.assistantTools.openFileEnabled.first()))
+        put(
+            "assistantCreateCalendarEventEnabled",
+            JsonPrimitive(sm.assistantTools.createCalendarEventEnabled.first()),
+        )
+        put(
+            "assistantListCalendarEventsEnabled",
+            JsonPrimitive(sm.assistantTools.listCalendarEventsEnabled.first()),
+        )
+        put(
+            "assistantUpdateCalendarEventEnabled",
+            JsonPrimitive(sm.assistantTools.updateCalendarEventEnabled.first()),
+        )
+        put(
+            "assistantDeleteCalendarEventEnabled",
+            JsonPrimitive(sm.assistantTools.deleteCalendarEventEnabled.first()),
+        )
+        put("assistantGetLocationEnabled", JsonPrimitive(sm.assistantTools.getLocationEnabled.first()))
+        put("assistantGetLocalTimeEnabled", JsonPrimitive(sm.assistantTools.getLocalTimeEnabled.first()))
+        put("assistantOpenUrlEnabled", JsonPrimitive(sm.assistantTools.openUrlEnabled.first()))
+        put(
+            "assistantSendNotificationEnabled",
+            JsonPrimitive(sm.assistantTools.sendNotificationEnabled.first()),
+        )
+        put(
+            "assistantReuseConversationEnabled",
+            JsonPrimitive(sm.assistantTools.reuseConversationEnabled.first()),
+        )
+        put(
+            "assistantAttachScreenshotEnabled",
+            JsonPrimitive(sm.assistantTools.attachScreenshotEnabled.first()),
+        )
+        put(
+            "assistantIncludeScreenTextEnabled",
+            JsonPrimitive(sm.assistantTools.includeScreenTextEnabled.first()),
+        )
+        put(
+            "assistantVoiceInputEnabled",
+            JsonPrimitive(sm.assistantTools.voiceInputEnabled.first()),
+        )
+        put(
+            "liveVoiceEnabled",
+            JsonPrimitive(sm.assistantTools.voiceToVoiceEnabled.first()),
+        )
+        put(
+            "liveVoiceReuseConversationEnabled",
+            JsonPrimitive(sm.assistantTools.voiceToVoiceReuseConversationEnabled.first()),
+        )
+        put("liveVoiceModelId", JsonPrimitive(sm.assistantTools.voiceToVoiceModelId.first()))
+        put("liveVoiceVoiceName", JsonPrimitive(sm.assistantTools.voiceToVoiceVoiceName.first()))
         put("exactExecutionEnabled", JsonPrimitive(sm.exactExecutionEnabled.first()))
         put("automationWakeLockEnabled", JsonPrimitive(sm.automationWakeLockEnabled.first()))
         
@@ -417,6 +468,44 @@ internal object PortableSettingsArchive {
             )
         }
         obj.boolean("automationToolsEnabled")?.let { sm.saveAutomationToolsEnabled(it) }
+        obj.boolean("assistantSetAlarmEnabled")?.let { sm.assistantTools.saveSetAlarmEnabled(it) }
+        obj.boolean("assistantOpenFileEnabled")?.let { sm.assistantTools.saveOpenFileEnabled(it) }
+        obj.boolean("assistantCreateCalendarEventEnabled")?.let {
+            sm.assistantTools.saveCreateCalendarEventEnabled(it)
+        }
+        obj.boolean("assistantListCalendarEventsEnabled")?.let {
+            sm.assistantTools.saveListCalendarEventsEnabled(it)
+        }
+        obj.boolean("assistantUpdateCalendarEventEnabled")?.let {
+            sm.assistantTools.saveUpdateCalendarEventEnabled(it)
+        }
+        obj.boolean("assistantDeleteCalendarEventEnabled")?.let {
+            sm.assistantTools.saveDeleteCalendarEventEnabled(it)
+        }
+        obj.boolean("assistantGetLocationEnabled")?.let { sm.assistantTools.saveGetLocationEnabled(it) }
+        obj.boolean("assistantGetLocalTimeEnabled")?.let { sm.assistantTools.saveGetLocalTimeEnabled(it) }
+        obj.boolean("assistantOpenUrlEnabled")?.let { sm.assistantTools.saveOpenUrlEnabled(it) }
+        obj.boolean("assistantSendNotificationEnabled")?.let {
+            sm.assistantTools.saveSendNotificationEnabled(it)
+        }
+        obj.boolean("assistantReuseConversationEnabled")?.let {
+            sm.assistantTools.saveReuseConversationEnabled(it)
+        }
+        obj.boolean("assistantAttachScreenshotEnabled")?.let {
+            sm.assistantTools.saveAttachScreenshotEnabled(it)
+        }
+        obj.boolean("assistantIncludeScreenTextEnabled")?.let {
+            sm.assistantTools.saveIncludeScreenTextEnabled(it)
+        }
+        obj.boolean("assistantVoiceInputEnabled")?.let {
+            sm.assistantTools.saveVoiceInputEnabled(it)
+        }
+        obj.boolean("liveVoiceEnabled")?.let { sm.assistantTools.saveVoiceToVoiceEnabled(it) }
+        obj.boolean("liveVoiceReuseConversationEnabled")?.let {
+            sm.assistantTools.saveVoiceToVoiceReuseConversationEnabled(it)
+        }
+        obj.string("liveVoiceModelId")?.let { sm.assistantTools.saveVoiceToVoiceModelId(it) }
+        obj.string("liveVoiceVoiceName")?.let { sm.assistantTools.saveVoiceToVoiceVoiceName(it) }
         obj.boolean("exactExecutionEnabled")?.let { sm.saveExactExecutionEnabled(it) }
         obj.boolean("automationWakeLockEnabled")?.let {
             sm.saveAutomationWakeLockEnabled(it)

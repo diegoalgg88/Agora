@@ -5,6 +5,7 @@ import com.newoether.agora.model.ChatConversation
 import com.newoether.agora.model.ConversationCommand
 import com.newoether.agora.model.ConversationRuntimeReducer
 import com.newoether.agora.model.MessageSegment
+import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.model.RunEffect
 import com.newoether.agora.model.RunEndReason
 import com.newoether.agora.model.RunRecoveryPolicy
@@ -506,6 +507,59 @@ interface ChatDao :
 
     @Update(entity = MessageEntity::class)
     suspend fun updateMessageCheckpoint(checkpoint: MessageStreamCheckpoint): Int
+
+    /**
+     * Live voice turn commit (plan Phase 4 §10.4): one USER + one terminal MODEL row under a
+     * fresh Run that begins and ends COMPLETED in the same transaction. This is the explicitly
+     * scoped exception to the ordinary generation pipeline — the Live WebSocket is a second
+     * *transport* into the ordinary graph, not a second pipeline: Room stays the only durable
+     * truth, runs obey the live-slot fence, and branch selections stay integral.
+     */
+    @Transaction
+    suspend fun createCompletedRunWithMessages(
+        run: RunEntity,
+        messages: List<MessageEntity>,
+        messageSelectionUpdates: Map<String?, String>,
+        conversationModelId: String,
+        at: Long,
+    ): Boolean {
+        require(run.status == RunStatus.COMPLETED && run.activeSlot == null)
+        require(messages.size == 2) { "A live turn is exactly one USER and one MODEL row" }
+        require(messages.all { it.runId == run.id && it.status == MessageStatus.SUCCESS })
+        require(messages.map { it.runSequence } == listOf(0L, 1L))
+        val conversation = checkNotNull(getConversation(run.conversationId)) {
+            "Conversation ${run.conversationId} does not exist"
+        }
+        check(getLiveRun(run.conversationId) == null) {
+            "Conversation ${run.conversationId} already has a live Run"
+        }
+        require(conversationModelId.isNotBlank())
+        val insertedMessageIds = messages.mapTo(mutableSetOf()) { it.id }
+        require(messageSelectionUpdates.values.all { it in insertedMessageIds }) {
+            "A new Run may only select messages committed in the same transaction"
+        }
+        insertRun(run)
+        messages.forEach { insertMessage(it) }
+        val messageSelections = decodeSelectionMap(conversation.selectedBranchesJson).apply {
+            putAll(messageSelectionUpdates)
+        }
+        val runSelections = decodeSelectionMap(conversation.selectedRunBranchesJson).apply {
+            put(run.parentRunId, run.id)
+        }
+        check(
+            updateConversationForRunAdmission(
+                conversationId = run.conversationId,
+                selectedBranchesJson = encodeSelectionMap(messageSelections),
+                selectedRunBranchesJson = encodeSelectionMap(runSelections),
+                modelId = conversationModelId,
+                at = at,
+                touchConversationOnAdmission = true,
+            ) == 1
+        ) { "Conversation ${run.conversationId} disappeared during live turn commit" }
+        setConversationUnreadGeneration(run.conversationId, true)
+        return true
+    }
+
 
     @Query("DELETE FROM conversations WHERE id = :conversationId")
     suspend fun deleteConversation(conversationId: String)

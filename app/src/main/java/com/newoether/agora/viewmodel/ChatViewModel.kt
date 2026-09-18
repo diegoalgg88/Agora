@@ -90,7 +90,7 @@ class ChatViewModel(
     private val heartbeatToolProvider: HeartbeatToolProvider, private val smsToolProvider: SmsToolProvider,
     private val smsDraftStore: com.newoether.agora.data.SmsDraftStore, private val smsStore: com.newoether.agora.data.SmsStore, private val smsPoller: com.newoether.agora.data.SmsPoller, private val smsSender: com.newoether.agora.sms.SmsSender,
     private val notificationToolProvider: com.newoether.agora.tool.NotificationToolProvider,
-) : AndroidViewModel(application) {
+    private val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider,) : AndroidViewModel(application) {
     val settings: SettingsRepository = settingsRepository
     val smsUi: SmsUiBridge = SmsUiBridge(smsDraftStore, smsStore, smsPoller, smsSender, viewModelScope)
 
@@ -274,7 +274,7 @@ class ChatViewModel(
             skillManager = skillManager,
             context = appContext,
             sandboxFactory = sandboxFactory,
-            additionalToolProviders = listOf(automationToolProvider, mcpToolProvider, heartbeatToolProvider, smsToolProvider, notificationToolProvider),
+            additionalToolProviders = listOf(automationToolProvider, mcpToolProvider, heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider),
             customProviders = { settings.customProviders.value },
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).

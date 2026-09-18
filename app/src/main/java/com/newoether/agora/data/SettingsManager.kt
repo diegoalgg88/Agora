@@ -50,7 +50,7 @@ internal fun migrateUnmodifiedBuiltInDefault(
     }
 }
 
-private val Context.dataStore by preferencesDataStore(
+internal val Context.dataStore by preferencesDataStore(
     name = "settings", produceMigrations = { listOf(modelProviderNamesMigration) },
 )
 
@@ -217,6 +217,8 @@ class SettingsManager(val context: Context) {
 
     val shellEnabled: Flow<Boolean> = context.dataStore.data.map { it[SHELL_ENABLED] ?: true }
     val automationToolsEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTOMATION_TOOLS_ENABLED] ?: false }
+    /** Assistant device-action tool toggles live in their own store (source-size policy). */
+    val assistantTools: AssistantToolSettings = AssistantToolSettings(context)
     val exactExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[EXACT_EXECUTION_ENABLED] ?: false }
     val automationWakeLockEnabled: Flow<Boolean> =
         context.dataStore.data.map { it[AUTOMATION_WAKE_LOCK_ENABLED] ?: false }
@@ -940,6 +942,7 @@ class SettingsManager(val context: Context) {
             prefs.remove(CUSTOM_PROVIDERS_JSON)
             prefs.remove(SHELL_ENABLED)
             prefs.remove(AUTOMATION_TOOLS_ENABLED)
+            assistantTools.removeAll(prefs)
             prefs.remove(EXACT_EXECUTION_ENABLED)
             prefs.remove(AUTOMATION_WAKE_LOCK_ENABLED)
             prefs.remove(DAEMON_ENABLED)

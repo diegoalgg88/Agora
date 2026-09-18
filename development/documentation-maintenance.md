@@ -28,7 +28,8 @@ The MkDocs language set must match the app's explicit interface languages: en, a
 | `generation.md`, `context.md`, `title-generation.md` | generation/context/title settings, request builders, conversation runtime |
 | `transcription.md`, `image-generation.md`, `pdf-import.md` | respective settings pages, attachment/render pipeline, request builder |
 | `system-prompts.md` | prompt settings/editor, default prompt source, variable resolver |
-| `tools.md`, `web-search.md`, `mcp.md`, `automation.md` | tool registry/settings, MCP repository, Task/Loop scheduling and execution |
+| `tools.md`, `web-search.md`, `mcp.md`, `automation.md` | tool registry/settings, MCP repository and popular-server catalog, Task/Loop scheduling, Heartbeat scheduler/prompt builder, SMS poller, notification listener |
+| `assistant.md`, `live-voice.md` | assistant entry points and overlay state (`assistant/`), Live voice transport (`assistant/live/`), `SettingsAssistantPage`, `SettingsLiveVoicePage` |
 | `shell.md`, `sandbox.md`, `proxy.md` | shell device settings/clients, flavor sandbox manager, shared HTTP client |
 | `search.md`, `embedding.md`, `memory.md` | conversation-search settings, embedding repository, memory tools/storage |
 | `conversations.md` | chat controller/runtime, Room graph DAO, composer and drawer UI |

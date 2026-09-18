@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">أدوات</string>
+    <string name="settings_tools_desc">إجراءات المساعد على الجهاز: التنبيهات وأحداث التقويم والملفات والموقع والوقت والروابط والإشعارات</string>
+    <string name="settings_tools_group_assistant">أدوات المساعد</string>
+    <string name="settings_tool_set_alarm">ضبط المنبه</string>
+    <string name="settings_tool_set_alarm_desc">تعيين المنبهات وعدادات العد التنازلي في تطبيق ساعة الجهاز</string>
+    <string name="settings_tool_open_file">فتح ملف</string>
+    <string name="settings_tool_open_file_desc">فتح ملفات الرمل في التطبيق الافتراضي ل Android</string>
+    <string name="settings_tool_create_calendar_event">إنشاء حدث في التقويم</string>
+    <string name="settings_tool_create_calendar_event_desc">إضافة أحداث إلى تقويم الجهاز</string>
+    <string name="settings_tool_list_calendar_events">عرض أحداث التقويم</string>
+    <string name="settings_tool_list_calendar_events_desc">قراءة الأحداث القادمة من تقويم الجهاز</string>
+    <string name="settings_tool_update_calendar_event">تعديل حدث في التقويم</string>
+    <string name="settings_tool_update_calendar_event_desc">تغيير الأحداث الموجودة في تقويم الجهاز</string>
+    <string name="settings_tool_delete_calendar_event">حذف حدث من التقويم</string>
+    <string name="settings_tool_delete_calendar_event_desc">إزالة الأحداث من تقويم الجهاز</string>
+    <string name="settings_tool_get_location">الحصول على الموقع</string>
+    <string name="settings_tool_get_location_desc">تقدير الموقع التقريبي للجهاز (على مستوى المدينة) من عنوان IP عبر خدمة ipwho.is</string>
+    <string name="settings_tool_get_local_time">الحصول على الوقت المحلي</string>
+    <string name="settings_tool_get_local_time_desc">الحصول على وقت الجهاز الحالي ومعلومات المنطقة الزمنية</string>
+    <string name="settings_tool_open_url">فتح عنوان URL</string>
+    <string name="settings_tool_open_url_desc">فتح رابط في المتصفح أو التطبيق الافتراضي</string>
+    <string name="settings_tool_send_notification">إرسال إشعار</string>
+    <string name="settings_tool_send_notification_desc">نشر إشعار على الجهاز</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="zero">لا خوادم</item>
+        <item quantity="one">خادم واحد</item>
+        <item quantity="two">خادمان</item>
+        <item quantity="few">%d خوادم</item>
+        <item quantity="many">%d خادمًا</item>
+        <item quantity="other">%d خادم</item>
+    </plurals>
+</resources>

@@ -270,7 +270,9 @@ fun CollapsingSettingsLazyScaffold(
         ) {
             item { Spacer(modifier = Modifier.height(titleAreaHeight)) }
             content()
-            item { Spacer(modifier = Modifier.height(32.dp)) }
+            // Clears the bottom-anchored FAB (56dp + 16dp margin) so the last row is
+            // never covered when the list is scrolled to the end.
+            item { Spacer(modifier = Modifier.height(96.dp)) }
         }
         CollapsingSettingsTitleBar(
             title = title,

@@ -39,7 +39,10 @@ Agora is an open-source Android client for using your own model accounts and end
 - **Nine built-in provider types:** OpenAI, Anthropic, Google Gemini, DeepSeek, Qwen/DashScope, OpenRouter, Groq, Ollama, and Local llama.cpp; custom endpoints support OpenAI-compatible, Google, or Anthropic protocols.
 - **Tree-structured conversations:** edit or regenerate earlier messages without discarding alternative branches.
 - **Token-budget context:** 4K–1M estimated-token budgets and non-destructive Compact capsules that retain a verbatim recent suffix.
-- **Agentic tools:** web search, memory, past-conversation RAG, image generation, MCP servers, Tasks/Loops, remote shell/files, durable Conch jobs, and an F-Droid Alpine sandbox.
+- **Agentic tools:** web search, memory, past-conversation RAG, image generation, MCP servers with a curated popular-server catalog, Skills, Tasks/Loops, remote shell/files, durable Conch jobs, and an F-Droid Alpine sandbox.
+- **System assistant:** long-press power to ask from anywhere — screen context, voice dictation, and voice-to-voice calls via the Gemini Live API with live captions.
+- **Assistant device tools:** alarms, calendar events, file/URL opening, IP location, local time, and notifications; destructive actions always require explicit user approval.
+- **Proactive automation:** Heartbeat check-ins with active hours and conversation pinning, SMS read/send, and a notification listener with app whitelist (F-Droid build).
 - **Local intelligence:** GGUF chat models and local embeddings through llama.cpp.
 - **Portable data:** versioned `.agora` ZIP archives, ChatGPT/Claude imports, and scheduled backups.
 - **Customizable UI:** Material 3 themes, fonts, haptics, thinking/tool presentation, and 12 explicit interface languages plus system default.
@@ -48,7 +51,7 @@ Conch application-layer encryption is enabled when an API key is configured. A b
 
 ## Documentation
 
-- 📖 **[User Manual](https://newo-ether.github.io/Agora/)** — 28 maintained manual pages covering setup, providers, Context Compact, MCP, automation, tools, privacy, and data management.
+- 📖 **[User Manual](https://newo-ether.github.io/Agora/)** — 32 maintained manual pages covering setup, providers, Context Compact, MCP, automation, tools, the system assistant, live voice calls, privacy, and data management.
 - 🏗️ **[Architecture Guide](ARCHITECTURE.md)** — current runtime, persistence, providers, tools, and data flows.
 - 🧰 **[Development documentation](development/documentation-maintenance.md)** — internal contracts, baselines, and documentation-maintenance policy.
 

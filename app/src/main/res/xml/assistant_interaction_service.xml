@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Capabilities advertised to the system when Agora is the default assistant.
+     supportsAssist: receives AssistStructure + screenshots via the Assist API.
+     supportsLaunchVoiceAssistFromKeyguard stays off: the overlay is not lockscreen-safe. -->
+<voice-interaction-service xmlns:android="http://schemas.android.com/apk/res/android"
+    android:sessionService="com.newoether.agora.assistant.AgoraVoiceInteractionSessionService"
+    android:supportsAssist="true"
+    android:supportsLaunchVoiceAssistFromKeyguard="false"
+    android:supportsLocalInteraction="false" />

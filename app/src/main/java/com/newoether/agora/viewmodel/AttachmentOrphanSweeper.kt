@@ -24,6 +24,7 @@ internal class AttachmentOrphanSweeper(
         listOf(
             File(filesDirectory, "run-inputs"),
             File(filesDirectory, "fork-attachments"),
+            File(filesDirectory, "attachments/assistant"),
         ).forEach { directory ->
             deleteOldUnreferencedFiles(directory, requiredPrefix = null, referenced, cutoffNow)
         }

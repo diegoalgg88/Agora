@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">도구</string>
+    <string name="settings_tools_desc">어시스턴트 디바이스 작업: 알람, 캘린더 일정, 파일, 위치, 시간, 링크, 알림</string>
+    <string name="settings_tools_group_assistant">보조 도구</string>
+    <string name="settings_tool_set_alarm">알람 설정</string>
+    <string name="settings_tool_set_alarm_desc">디바이스 시계 앱에서 알람 및 카운트다운 설정</string>
+    <string name="settings_tool_open_file">파일 열기</string>
+    <string name="settings_tool_open_file_desc">샌드박스 파일을 기본 Android 앱에서 열기</string>
+    <string name="settings_tool_create_calendar_event">캘린더 이벤트 생성</string>
+    <string name="settings_tool_create_calendar_event_desc">디바이스 캘린더에 이벤트 추가</string>
+    <string name="settings_tool_list_calendar_events">캘린더 일정 목록</string>
+    <string name="settings_tool_list_calendar_events_desc">디바이스 캘린더의 다가오는 일정 읽기</string>
+    <string name="settings_tool_update_calendar_event">캘린더 일정 수정</string>
+    <string name="settings_tool_update_calendar_event_desc">디바이스 캘린더의 기존 일정 변경</string>
+    <string name="settings_tool_delete_calendar_event">캘린더 일정 삭제</string>
+    <string name="settings_tool_delete_calendar_event_desc">디바이스 캘린더에서 일정 제거</string>
+    <string name="settings_tool_get_location">위치 가져오기</string>
+    <string name="settings_tool_get_location_desc">ipwho.is 서비스를 통해 디바이스 IP 주소로 대략적인 위치(도시 수준) 추정</string>
+    <string name="settings_tool_get_local_time">현지 시간 가져오기</string>
+    <string name="settings_tool_get_local_time_desc">현재 디바이스 시간 및 시간대 정보 확인</string>
+    <string name="settings_tool_open_url">URL 열기</string>
+    <string name="settings_tool_open_url_desc">브라우저 또는 기본 앱에서 링크 열기</string>
+    <string name="settings_tool_send_notification">알림 전송</string>
+    <string name="settings_tool_send_notification_desc">디바이스에 알림 게시</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="other">서버 %d개</item>
+    </plurals>
+</resources>

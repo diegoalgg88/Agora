@@ -276,8 +276,12 @@ class OpenAiNativeSearchWiringTest {
             "Spacer(modifier = Modifier.width(16.dp))" in normalBar,
         )
         assertTrue(
-            "actions capsule must retain its full natural width",
-            ".fillMaxHeight()\n                        .width(98.dp)" in normalBar,
+            "actions capsule must reserve a fixed width per voice-call state",
+            ".fillMaxHeight()\n                        .width(if (voiceCallEnabled) 142.dp else 98.dp)" in normalBar,
+        )
+        assertTrue(
+            "voice call entry must stay gated by its Settings toggle",
+            "if (voiceCallEnabled)" in normalBar && "Icons.Default.Phone" in normalBar,
         )
         assertFalse(
             "the old flexible sibling spacer allowed the title to compress the actions capsule",

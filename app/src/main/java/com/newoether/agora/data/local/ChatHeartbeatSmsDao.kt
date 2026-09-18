@@ -4,7 +4,7 @@ import androidx.room.*
 import kotlinx.coroutines.flow.Flow
 
 /**
- * DAO for Heartbeat, SMS, and Notification entities.
+ * DAO for Heartbeat, SMS, Notification, and AssistantAction entities.
  *
  * Separated from ChatDao to keep file sizes under the 999-line limit.
  */
@@ -67,6 +67,26 @@ interface ChatHeartbeatSmsDao {
 
     @Query("DELETE FROM sms_pending WHERE id IN (:ids)")
     suspend fun deletePendingSms(ids: List<Long>): Int
+
+    // ── Assistant pending actions DAO ────────────────────────
+
+    @Query("SELECT * FROM assistant_actions ORDER BY createdAtEpochMs DESC LIMIT 20")
+    fun getAssistantActionsFlow(): Flow<List<AssistantActionEntity>>
+
+    @Upsert
+    suspend fun upsertAssistantAction(action: AssistantActionEntity)
+
+    @Query("UPDATE assistant_actions SET status = :status, lastError = :error WHERE id = :id")
+    suspend fun updateAssistantActionStatus(id: String, status: AssistantActionStatus, error: String?)
+
+    @Query("DELETE FROM assistant_actions WHERE id NOT IN (SELECT id FROM assistant_actions ORDER BY createdAtEpochMs DESC LIMIT :cap)")
+    suspend fun deleteAssistantActionsBeyondCap(cap: Int): Int
+
+    @Query("DELETE FROM assistant_actions WHERE id = :id")
+    suspend fun deleteAssistantAction(id: String): Int
+
+    @Query("DELETE FROM assistant_actions WHERE status != 'PENDING' AND createdAtEpochMs < :cutoff")
+    suspend fun cleanupOldAssistantActions(cutoff: Long): Int
 
     // ── Notification DAO ─────────────────────────────────────
 

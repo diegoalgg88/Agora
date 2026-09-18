@@ -30,4 +30,4 @@ The Alpine sandbox is build-dependent. The F-Droid flavor exposes the sandbox fe
 
 ## How do I back up data?
 
-Use **Settings → Import & Export**. The `.agora` file is a ZIP archive, with selectable categories and optional secrets. See [Import & Export](import-export.md).
+Use **Settings → Memory & Data → Data Control**. The `.agora` file is a ZIP archive, with selectable categories and optional secrets. See [Import & Export](import-export.md).

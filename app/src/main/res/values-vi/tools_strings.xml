@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">Công cụ</string>
+    <string name="settings_tools_desc">Hành động của trợ lý trên thiết bị: báo thức, sự kiện lịch, tệp, vị trí, thời gian, liên kết và thông báo</string>
+    <string name="settings_tools_group_assistant">Công cụ trợ lý</string>
+    <string name="settings_tool_set_alarm">Cài đặt báo thức</string>
+    <string name="settings_tool_set_alarm_desc">Thiết lập các báo thức và đồng hồ đếm ngược trong ứng dụng đồng hồ thiết bị</string>
+    <string name="settings_tool_open_file">Mở tệp</string>
+    <string name="settings_tool_open_file_desc">Mở tệp sandbox trong ứng dụng Android mặc định</string>
+    <string name="settings_tool_create_calendar_event">Tạo sự kiện lịch</string>
+    <string name="settings_tool_create_calendar_event_desc">Thêm các sự kiện vào lịch thiết bị</string>
+    <string name="settings_tool_list_calendar_events">Danh sách sự kiện lịch</string>
+    <string name="settings_tool_list_calendar_events_desc">Đọc các sự kiện sắp tới từ lịch thiết bị</string>
+    <string name="settings_tool_update_calendar_event">Cập nhật sự kiện lịch</string>
+    <string name="settings_tool_update_calendar_event_desc">Thay đổi các sự kiện hiện có trong lịch thiết bị</string>
+    <string name="settings_tool_delete_calendar_event">Xóa sự kiện lịch</string>
+    <string name="settings_tool_delete_calendar_event_desc">Loại bỏ sự kiện khỏi lịch thiết bị</string>
+    <string name="settings_tool_get_location">Lấy vị trí</string>
+    <string name="settings_tool_get_location_desc">Ước tính vị trí gần đúng của thiết bị (cấp thành phố) từ địa chỉ IP qua dịch vụ ipwho.is</string>
+    <string name="settings_tool_get_local_time">Lấy giờ địa phương</string>
+    <string name="settings_tool_get_local_time_desc">Lấy giờ hiện tại và thông tin múi giờ của thiết bị</string>
+    <string name="settings_tool_open_url">Mở URL</string>
+    <string name="settings_tool_open_url_desc">Mở liên kết trong trình duyệt hoặc ứng dụng mặc định</string>
+    <string name="settings_tool_send_notification">Gửi thông báo</string>
+    <string name="settings_tool_send_notification_desc">Đăng một thông báo trên thiết bị</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="other">%d máy chủ</item>
+    </plurals>
+</resources>

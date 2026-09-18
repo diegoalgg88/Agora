@@ -21,6 +21,7 @@ Agora 是 Android BYOK 客户端，支持远程提供商和设备端语言模型
 ## 扩展与数据
 
 - [代理工具](tools.md)、[MCP](mcp.md)、[自动化](automation.md)
+- [系统助手](assistant.md)、[实时语音通话](live-voice.md)
 - [网络搜索](web-search.md)、[远程 Shell](shell.md)、[沙盒](sandbox.md)
 - [对话搜索](search.md)、[嵌入 / RAG](embedding.md)、[记忆](memory.md)、[技能](skills.md)
 - [本地模型](local-model.md)、[PDF 导入](pdf-import.md)、[导入与导出](import-export.md)

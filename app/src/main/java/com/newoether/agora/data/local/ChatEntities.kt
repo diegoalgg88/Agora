@@ -352,6 +352,29 @@ enum class SmsDraftStatus {
     FAILED,
 }
 
+/** Assistant pending-action status, mirroring [SmsDraftStatus] for the approval banner. */
+enum class AssistantActionStatus {
+    PENDING,
+    EXECUTING,
+    DONE,
+    FAILED,
+}
+
+/** Assistant device-action staged by the AI and awaiting the user's approval.
+ *  Nothing runs on the device until the user taps Approve in the chat banner —
+ *  the existence of a pending action is the defensive gate between AI intent
+ *  and real-world effect (alarms, calendar writes), mirroring `sms_drafts`. */
+@Entity(tableName = "assistant_actions")
+data class AssistantActionEntity(
+    @PrimaryKey val id: String,
+    val type: String,
+    val argumentsJson: String,
+    val summary: String,
+    val createdAtEpochMs: Long,
+    val status: AssistantActionStatus = AssistantActionStatus.PENDING,
+    val lastError: String? = null,
+)
+
 /** Heartbeat log entry stored in Room. */
 @Entity(tableName = "heartbeat_logs")
 data class HeartbeatLogEntity(

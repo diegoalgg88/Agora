@@ -4,6 +4,7 @@ import com.newoether.agora.model.ThinkingSegmentDisplayModes
 import com.newoether.agora.model.ContextBudget
 
 import com.newoether.agora.data.ApiKeyEntry
+import com.newoether.agora.data.AssistantToolSettings
 import com.newoether.agora.data.BuiltInPrompts
 import com.newoether.agora.data.DEFAULT_COLOR_SCHEME
 import com.newoether.agora.data.DEFAULT_CONTEXT_COMPACT_ENABLED
@@ -200,6 +201,34 @@ class SettingsRepository(
         hot(settingsManager.debugModelEnabled, false)
     val shellEnabled: StateFlow<Boolean> = hot(settingsManager.shellEnabled, false)
     val automationToolsEnabled: StateFlow<Boolean> = hot(settingsManager.automationToolsEnabled, false)
+    val assistantSetAlarmEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.setAlarmEnabled, false)
+    val assistantOpenFileEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.openFileEnabled, false)
+    val assistantCreateCalendarEventEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.createCalendarEventEnabled, false)
+    val assistantListCalendarEventsEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.listCalendarEventsEnabled, false)
+    val assistantUpdateCalendarEventEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.updateCalendarEventEnabled, false)
+    val assistantDeleteCalendarEventEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.deleteCalendarEventEnabled, false)
+    val assistantGetLocationEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.getLocationEnabled, false)
+    val assistantGetLocalTimeEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.getLocalTimeEnabled, false)
+    val assistantOpenUrlEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.openUrlEnabled, false)
+    val assistantSendNotificationEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.sendNotificationEnabled, false)
+    val assistantReuseConversationEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.reuseConversationEnabled, false)
+    val assistantAttachScreenshotEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.attachScreenshotEnabled, true)
+    val assistantIncludeScreenTextEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.includeScreenTextEnabled, true)
+    val assistantVoiceInputEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.voiceInputEnabled, true)
     val exactExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.exactExecutionEnabled, false)
     val automationWakeLockEnabled: StateFlow<Boolean> =
         hot(settingsManager.automationWakeLockEnabled, false)
@@ -704,6 +733,50 @@ class SettingsRepository(
         scope.launch { settingsManager.saveDebugModelEnabled(enabled) }
     fun setShellEnabled(enabled: Boolean) = scope.launch { settingsManager.saveShellEnabled(enabled) }
     fun setAutomationToolsEnabled(enabled: Boolean) = scope.launch { settingsManager.saveAutomationToolsEnabled(enabled) }
+    fun setAssistantSetAlarmEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveSetAlarmEnabled(enabled) }
+    fun setAssistantOpenFileEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveOpenFileEnabled(enabled) }
+    fun setAssistantCreateCalendarEventEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveCreateCalendarEventEnabled(enabled) }
+    fun setAssistantListCalendarEventsEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveListCalendarEventsEnabled(enabled) }
+    fun setAssistantUpdateCalendarEventEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveUpdateCalendarEventEnabled(enabled) }
+    fun setAssistantDeleteCalendarEventEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveDeleteCalendarEventEnabled(enabled) }
+    fun setAssistantGetLocationEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveGetLocationEnabled(enabled) }
+    fun setAssistantGetLocalTimeEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveGetLocalTimeEnabled(enabled) }
+    fun setAssistantOpenUrlEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveOpenUrlEnabled(enabled) }
+    fun setAssistantSendNotificationEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveSendNotificationEnabled(enabled) }
+    fun setAssistantReuseConversationEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveReuseConversationEnabled(enabled) }
+    fun setAssistantAttachScreenshotEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveAttachScreenshotEnabled(enabled) }
+    fun setAssistantIncludeScreenTextEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveIncludeScreenTextEnabled(enabled) }
+    fun setAssistantVoiceInputEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveVoiceInputEnabled(enabled) }
+    val liveVoiceEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.voiceToVoiceEnabled, false)
+    val liveVoiceReuseConversationEnabled: StateFlow<Boolean> =
+        hot(settingsManager.assistantTools.voiceToVoiceReuseConversationEnabled, true)
+    val liveVoiceModelId: StateFlow<String> =
+        hot(settingsManager.assistantTools.voiceToVoiceModelId, AssistantToolSettings.DEFAULT_LIVE_MODEL_ID)
+    val liveVoiceVoiceName: StateFlow<String> =
+        hot(settingsManager.assistantTools.voiceToVoiceVoiceName, AssistantToolSettings.DEFAULT_LIVE_VOICE_NAME)
+    fun setLiveVoiceEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveVoiceToVoiceEnabled(enabled) }
+    fun setLiveVoiceReuseConversationEnabled(enabled: Boolean) =
+        scope.launch { settingsManager.assistantTools.saveVoiceToVoiceReuseConversationEnabled(enabled) }
+    fun setLiveVoiceModelId(modelId: String) =
+        scope.launch { settingsManager.assistantTools.saveVoiceToVoiceModelId(modelId) }
+    fun setLiveVoiceVoiceName(voiceName: String) =
+        scope.launch { settingsManager.assistantTools.saveVoiceToVoiceVoiceName(voiceName) }
     fun setExactExecutionEnabled(enabled: Boolean) = scope.launch { settingsManager.saveExactExecutionEnabled(enabled) }
     fun setAutomationWakeLockEnabled(enabled: Boolean) =
         scope.launch { settingsManager.saveAutomationWakeLockEnabled(enabled) }

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">Herramientas</string>
+    <string name="settings_tools_desc">Acciones del asistente en el dispositivo: alarmas, eventos de calendario, archivos, ubicación, hora, enlaces y notificaciones</string>
+    <string name="settings_tools_group_assistant">Herramientas del asistente</string>
+    <string name="settings_tool_set_alarm">Configurar alarma</string>
+    <string name="settings_tool_set_alarm_desc">Establecer alarmas y temporizadores en la aplicación de reloj del dispositivo</string>
+    <string name="settings_tool_open_file">Abrir archivo</string>
+    <string name="settings_tool_open_file_desc">Abrir archivos de sandbox en la aplicación predeterminada de Android</string>
+    <string name="settings_tool_create_calendar_event">Crear evento de calendario</string>
+    <string name="settings_tool_create_calendar_event_desc">Añadir eventos al calendario del dispositivo</string>
+    <string name="settings_tool_list_calendar_events">Listar eventos del calendario</string>
+    <string name="settings_tool_list_calendar_events_desc">Leer los próximos eventos del calendario del dispositivo</string>
+    <string name="settings_tool_update_calendar_event">Modificar evento del calendario</string>
+    <string name="settings_tool_update_calendar_event_desc">Cambiar eventos existentes del calendario del dispositivo</string>
+    <string name="settings_tool_delete_calendar_event">Eliminar evento del calendario</string>
+    <string name="settings_tool_delete_calendar_event_desc">Quitar eventos del calendario del dispositivo</string>
+    <string name="settings_tool_get_location">Obtener ubicación</string>
+    <string name="settings_tool_get_location_desc">Estima la ubicación aproximada del dispositivo (nivel ciudad) a partir de su IP mediante el servicio ipwho.is</string>
+    <string name="settings_tool_get_local_time">Obtener hora local</string>
+    <string name="settings_tool_get_local_time_desc">Obtener la hora actual y la información de zona horaria</string>
+    <string name="settings_tool_open_url">Abrir URL</string>
+    <string name="settings_tool_open_url_desc">Abrir un enlace en el navegador o la aplicación predeterminada</string>
+    <string name="settings_tool_send_notification">Enviar notificación</string>
+    <string name="settings_tool_send_notification_desc">Publicar una notificación en el dispositivo</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="one">%d servidor</item>
+        <item quantity="other">%d servidores</item>
+    </plurals>
+</resources>

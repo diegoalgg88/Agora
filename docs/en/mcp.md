@@ -4,7 +4,7 @@ Agora can connect to remote MCP servers and expose their tools to supported chat
 
 ## Add a Server
 
-1. Open **Settings → MCP**.
+1. Open **Settings → Tools → MCP**.
 2. Tap **Add MCP Server**.
 3. Choose **Streamable HTTP** or **SSE**.
 4. Enter a display name and an http:// or https:// server URL.
@@ -13,6 +13,12 @@ Agora can connect to remote MCP servers and expose their tools to supported chat
 Streamable HTTP is the current transport. SSE is available for legacy MCP servers.
 
 Custom header values use the same secret-setting storage as API keys: normally an Android Keystore AES-GCM envelope, with legacy/encryption-failure plaintext fallback. They can contain authorization tokens, so protect the device and exports and do not add headers the server does not require.
+
+## Popular Servers
+
+The **Popular Servers** section lists a curated catalog of well-known public MCP servers — documentation lookups (Context7, MDN, DeepWiki), web search (Parallel Search, Jina AI, Tavily), market and weather data (Yahoo Finance, CoinGecko, Open-Meteo, OpenWeather), flights (Kiwi.com), scam checks (Malwarebytes), diagrams (tldraw), domains (Find-A-Domain), and transit info (SubwayInfo NYC). Tap a server to add it with one action; the URL and any recommended default headers are filled in automatically.
+
+Some entries require an API key (for example Jina AI, Tavily, SERPAPI, Composio, OpenWeather). Enter the key when prompted; it is stored with the same protections as other secrets. Servers you add from the catalog behave exactly like manually added servers: enable, disable, edit, or delete them at any time.
 
 ## Connection and Tool Discovery
 

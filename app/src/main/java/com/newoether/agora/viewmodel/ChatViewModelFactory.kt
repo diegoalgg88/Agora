@@ -60,6 +60,7 @@ class ChatViewModelFactory(
     private val smsPoller: com.newoether.agora.data.SmsPoller,
     private val smsSender: com.newoether.agora.sms.SmsSender,
     private val notificationToolProvider: NotificationToolProvider,
+    private val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider,
 ) : ViewModelProvider.Factory {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(ChatViewModel::class.java)) {
@@ -72,7 +73,7 @@ class ChatViewModelFactory(
                 automationExecutionGate, conversationStateRegistry, shellConfirmationController,
                 mcpRegistry, mcpToolProvider, taskExecutionEngine,
                 heartbeatToolProvider, smsToolProvider, smsDraftStore, smsStore, smsPoller, smsSender,
-                notificationToolProvider,
+                notificationToolProvider, assistantDeviceToolProvider,
             ) as T
         }
         throw IllegalArgumentException("Unknown ViewModel class")

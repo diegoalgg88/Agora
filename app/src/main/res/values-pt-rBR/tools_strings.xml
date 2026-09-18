@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_tools">Ferramentas</string>
+    <string name="settings_tools_desc">Ações do assistente no dispositivo: alarmes, eventos de calendário, arquivos, localização, hora, links e notificações</string>
+    <string name="settings_tools_group_assistant">Ferramentas do assistente</string>
+    <string name="settings_tool_set_alarm">Definir alarme</string>
+    <string name="settings_tool_set_alarm_desc">Definir alarmes e contadores no aplicativo de relógio do dispositivo</string>
+    <string name="settings_tool_open_file">Abrir arquivo</string>
+    <string name="settings_tool_open_file_desc">Abrir arquivos de sandbox no aplicativo Android padrão</string>
+    <string name="settings_tool_create_calendar_event">Criar evento de calendário</string>
+    <string name="settings_tool_create_calendar_event_desc">Adicionar eventos ao calendário do dispositivo</string>
+    <string name="settings_tool_list_calendar_events">Listar eventos do calendário</string>
+    <string name="settings_tool_list_calendar_events_desc">Ler os próximos eventos do calendário do dispositivo</string>
+    <string name="settings_tool_update_calendar_event">Alterar evento do calendário</string>
+    <string name="settings_tool_update_calendar_event_desc">Alterar eventos existentes no calendário do dispositivo</string>
+    <string name="settings_tool_delete_calendar_event">Excluir evento do calendário</string>
+    <string name="settings_tool_delete_calendar_event_desc">Remover eventos do calendário do dispositivo</string>
+    <string name="settings_tool_get_location">Obter localização</string>
+    <string name="settings_tool_get_location_desc">Estimar a localização aproximada do dispositivo (nível de cidade) pelo endereço IP usando o serviço ipwho.is</string>
+    <string name="settings_tool_get_local_time">Obter hora local</string>
+    <string name="settings_tool_get_local_time_desc">Obter hora atual e informações de fuso horário do dispositivo</string>
+    <string name="settings_tool_open_url">Abrir URL</string>
+    <string name="settings_tool_open_url_desc">Abrir um link no navegador ou aplicativo padrão</string>
+    <string name="settings_tool_send_notification">Enviar notificação</string>
+    <string name="settings_tool_send_notification_desc">Publicar uma notificação no dispositivo</string>
+    <plurals name="mcp_servers_count">
+        <item quantity="one">%d servidor</item>
+        <item quantity="other">%d servidores</item>
+    </plurals>
+</resources>
