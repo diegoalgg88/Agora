@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">Die neueste Sprachanruf-Unterhaltung fortsetzen statt pro Anruf eine neue zu erstellen</string>
     <string name="settings_live_voice_model">Live-Modell</string>
     <string name="settings_live_voice_voice_name">Stimmname</string>
+    <string name="settings_live_voice_sensitivity">Sprachempfindlichkeit</string>
+    <string name="settings_live_voice_sensitivity_desc">Wie schnell dein Redeanteil endet, nachdem du aufgehört hast zu sprechen. Wenn es dich mitten im Satz unterbricht, wähle Geduldig.</string>
+    <string name="settings_live_voice_sensitivity_patient">Geduldig</string>
+    <string name="settings_live_voice_sensitivity_balanced">Ausgewogen</string>
+    <string name="settings_live_voice_sensitivity_responsive">Schnell</string>
     <string name="live_voice_conversation_title">Sprachanruf</string>
     <string name="live_voice_connecting">Verbinde…</string>
     <string name="live_voice_listening">Im Gespräch — hört zu</string>

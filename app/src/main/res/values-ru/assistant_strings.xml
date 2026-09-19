@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">Продолжать последний голосовой чат вместо создания нового на каждый звонок</string>
     <string name="settings_live_voice_model">Модель Live</string>
     <string name="settings_live_voice_voice_name">Имя голоса</string>
+    <string name="settings_live_voice_sensitivity">Чувствительность голоса</string>
+    <string name="settings_live_voice_sensitivity_desc">Как быстро звонок завершает вашу реплику после того, как вы перестали говорить. Если вас перебивает на полуслове, выберите вариант «Терпеливый».</string>
+    <string name="settings_live_voice_sensitivity_patient">Терпеливый</string>
+    <string name="settings_live_voice_sensitivity_balanced">Сбалансированный</string>
+    <string name="settings_live_voice_sensitivity_responsive">Быстрый</string>
     <string name="live_voice_conversation_title">Голосовой звонок</string>
     <string name="live_voice_connecting">Соединение…</string>
     <string name="live_voice_listening">Разговор — слушает</string>

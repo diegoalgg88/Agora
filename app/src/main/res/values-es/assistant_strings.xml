@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">Continuar la conversación de voz más reciente en lugar de crear una nueva por llamada</string>
     <string name="settings_live_voice_model">Modelo Live</string>
     <string name="settings_live_voice_voice_name">Nombre de voz</string>
+    <string name="settings_live_voice_sensitivity">Sensibilidad de voz</string>
+    <string name="settings_live_voice_sensitivity_desc">Qué tan rápido termina tu turno la llamada después de que dejas de hablar. Si te corta a media frase, elige Paciente.</string>
+    <string name="settings_live_voice_sensitivity_patient">Paciente</string>
+    <string name="settings_live_voice_sensitivity_balanced">Equilibrado</string>
+    <string name="settings_live_voice_sensitivity_responsive">Rápido</string>
     <string name="live_voice_conversation_title">Llamada de voz</string>
     <string name="live_voice_connecting">Conectando…</string>
     <string name="live_voice_listening">En llamada — escuchando</string>

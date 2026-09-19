@@ -69,6 +69,7 @@ internal class LiveVoiceSessionController(
     @Volatile private var apiKey: String = ""
     @Volatile private var modelId: String = ""
     @Volatile private var voiceName: String = ""
+    @Volatile private var sensitivity: VoiceSensitivity = VoiceSensitivity.DEFAULT
 
     /** Newest persisted MODEL message / Run — the chain parent of the next turn. */
     @Volatile private var leafMessageId: String? = null
@@ -93,6 +94,17 @@ internal class LiveVoiceSessionController(
                 return@launch
             }
             val settings = container.settingsRepository
+            // Cross the documented DataStore-load barrier before reading ANY settings `.value`
+            // below (SettingsRepository.awaitInitialLoad KDoc). Without this, a cold-start call
+            // (process launched straight into VoiceModeActivity, e.g. via the assistant overlay's
+            // 📞 button) can read the eager StateFlow defaults — an empty apiKeys list/activeApiKeyIds
+            // map — before DataStore's real on-disk values arrive, producing a false "no API key"
+            // ENDED even though the user has one configured. That false ENDED, published from this
+            // Dispatchers.Default coroutine, is what races LiveVoiceForegroundService.start() and
+            // used to crash the app (owner report 2026-09-18) before the start→stop ordering fix
+            // in that service; crossing the barrier here removes the root cause instead of just
+            // tolerating the race downstream.
+            settings.awaitInitialLoad()
             val key = activeGoogleApiKey(settings)
             if (key.isNullOrBlank()) {
                 publish(LiveCallState.ENDED, appContext.getString(R.string.live_voice_error_no_api_key))
@@ -103,6 +115,7 @@ internal class LiveVoiceSessionController(
             voiceName = settings.liveVoiceVoiceName.value.ifBlank {
                 LivePrebuiltVoiceConfig.DEFAULT_VOICE_NAME
             }
+            sensitivity = VoiceSensitivity.fromStorageValue(settings.liveVoiceSensitivity.value)
             withContext(Dispatchers.IO) { prepareConversation(container) }
             connect()
         }
@@ -113,7 +126,7 @@ internal class LiveVoiceSessionController(
             apiKey = apiKey,
             events = ::onConnectionEvent,
             onContent = ::onServerContent,
-        ).also { it.connect(modelId, voiceName) }
+        ).also { it.connect(modelId, voiceName, sensitivity = sensitivity) }
     }
 
     private fun onConnectionEvent(event: LiveConnectionEvent) {
@@ -194,7 +207,7 @@ internal class LiveVoiceSessionController(
             val handle = previous.lastResumptionHandle
             previous.close()
             client = previous
-            previous.connect(modelId, voiceName, resumptionHandle = handle)
+            previous.connect(modelId, voiceName, resumptionHandle = handle, sensitivity = sensitivity)
         }
     }
 

@@ -166,6 +166,7 @@ internal object PortableSettingsArchive {
         )
         put("liveVoiceModelId", JsonPrimitive(sm.assistantTools.voiceToVoiceModelId.first()))
         put("liveVoiceVoiceName", JsonPrimitive(sm.assistantTools.voiceToVoiceVoiceName.first()))
+        put("liveVoiceSensitivity", JsonPrimitive(sm.assistantTools.voiceToVoiceSensitivity.first()))
         put("exactExecutionEnabled", JsonPrimitive(sm.exactExecutionEnabled.first()))
         put("automationWakeLockEnabled", JsonPrimitive(sm.automationWakeLockEnabled.first()))
         
@@ -506,6 +507,7 @@ internal object PortableSettingsArchive {
         }
         obj.string("liveVoiceModelId")?.let { sm.assistantTools.saveVoiceToVoiceModelId(it) }
         obj.string("liveVoiceVoiceName")?.let { sm.assistantTools.saveVoiceToVoiceVoiceName(it) }
+        obj.string("liveVoiceSensitivity")?.let { sm.assistantTools.saveVoiceToVoiceSensitivity(it) }
         obj.boolean("exactExecutionEnabled")?.let { sm.saveExactExecutionEnabled(it) }
         obj.boolean("automationWakeLockEnabled")?.let {
             sm.saveAutomationWakeLockEnabled(it)

@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">Reprendre la dernière conversation d\'appel vocal au lieu d\'en créer une nouvelle à chaque appel</string>
     <string name="settings_live_voice_model">Modèle Live</string>
     <string name="settings_live_voice_voice_name">Nom de la voix</string>
+    <string name="settings_live_voice_sensitivity">Sensibilité vocale</string>
+    <string name="settings_live_voice_sensitivity_desc">À quelle vitesse l\'appel met fin à votre tour de parole après que vous ayez arrêté de parler. S\'il vous coupe en milieu de phrase, choisissez Patient.</string>
+    <string name="settings_live_voice_sensitivity_patient">Patient</string>
+    <string name="settings_live_voice_sensitivity_balanced">Équilibré</string>
+    <string name="settings_live_voice_sensitivity_responsive">Réactif</string>
     <string name="live_voice_conversation_title">Appel vocal</string>
     <string name="live_voice_connecting">Connexion…</string>
     <string name="live_voice_listening">En appel — écoute</string>

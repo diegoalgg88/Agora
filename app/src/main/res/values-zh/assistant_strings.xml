@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">继续最近一次语音通话的对话，而不是每次通话都新建</string>
     <string name="settings_live_voice_model">Live 模型</string>
     <string name="settings_live_voice_voice_name">语音名称</string>
+    <string name="settings_live_voice_sensitivity">语音敏感度</string>
+    <string name="settings_live_voice_sensitivity_desc">你停止说话后多久结束你的发言回合。如果常在句子说到一半时被打断，请选择“耐心”。</string>
+    <string name="settings_live_voice_sensitivity_patient">耐心</string>
+    <string name="settings_live_voice_sensitivity_balanced">均衡</string>
+    <string name="settings_live_voice_sensitivity_responsive">迅速</string>
     <string name="live_voice_conversation_title">语音通话</string>
     <string name="live_voice_connecting">连接中…</string>
     <string name="live_voice_listening">通话中 — 正在聆听</string>

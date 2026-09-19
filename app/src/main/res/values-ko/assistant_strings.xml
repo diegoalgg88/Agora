@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">통화할 때마다 새 대화를 만들지 않고 최신 음성 통화 대화를 이어갑니다</string>
     <string name="settings_live_voice_model">Live 모델</string>
     <string name="settings_live_voice_voice_name">음성 이름</string>
+    <string name="settings_live_voice_sensitivity">음성 감도</string>
+    <string name="settings_live_voice_sensitivity_desc">말을 멈추고 난 후 얼마나 빨리 차례를 끝낼지 설정합니다. 문장 중간에 끊기면 "인내심"을 선택하세요.</string>
+    <string name="settings_live_voice_sensitivity_patient">인내심</string>
+    <string name="settings_live_voice_sensitivity_balanced">균형</string>
+    <string name="settings_live_voice_sensitivity_responsive">신속</string>
     <string name="live_voice_conversation_title">음성 통화</string>
     <string name="live_voice_connecting">연결 중…</string>
     <string name="live_voice_listening">통화 중 — 듣고 있습니다</string>

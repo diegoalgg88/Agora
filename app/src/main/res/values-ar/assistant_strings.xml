@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">متابعة أحدث محادثة مكالمة صوتية بدلاً من إنشاء واحدة جديدة لكل مكالمة</string>
     <string name="settings_live_voice_model">نموذج Live</string>
     <string name="settings_live_voice_voice_name">اسم الصوت</string>
+    <string name="settings_live_voice_sensitivity">حساسية الصوت</string>
+    <string name="settings_live_voice_sensitivity_desc">مدى سرعة إنهاء المكالمة لدورك بعد توقفك عن الكلام. إذا كانت تقطعك في منتصف الجملة، اختر "صبور".</string>
+    <string name="settings_live_voice_sensitivity_patient">صبور</string>
+    <string name="settings_live_voice_sensitivity_balanced">متوازن</string>
+    <string name="settings_live_voice_sensitivity_responsive">سريع</string>
     <string name="live_voice_conversation_title">مكالمة صوتية</string>
     <string name="live_voice_connecting">جارٍ الاتصال…</string>
     <string name="live_voice_listening">في مكالمة — يستمع</string>

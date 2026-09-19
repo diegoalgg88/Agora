@@ -1,5 +1,6 @@
 package com.newoether.agora.ui.settings
 
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -9,6 +10,7 @@ import androidx.compose.material.icons.filled.GraphicEq
 import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material.icons.filled.RecordVoiceOver
 import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material3.Icon
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Switch
@@ -23,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
+import com.newoether.agora.assistant.live.VoiceSensitivity
 import com.newoether.agora.viewmodel.ChatViewModel
 
 /**
@@ -40,6 +43,7 @@ fun SettingsLiveVoicePage(
     val reuse by viewModel.settings.liveVoiceReuseConversationEnabled.collectAsState()
     val modelId by viewModel.settings.liveVoiceModelId.collectAsState()
     val voiceName by viewModel.settings.liveVoiceVoiceName.collectAsState()
+    val sensitivity by viewModel.settings.liveVoiceSensitivity.collectAsState()
     val showDocFab by viewModel.settings.showDocumentationFab.collectAsState()
 
     CollapsingSettingsScaffold(
@@ -117,6 +121,40 @@ fun SettingsLiveVoicePage(
                         label = stringResource(R.string.settings_live_voice_voice_name),
                         value = voiceName,
                         onValueChange = { viewModel.settings.setLiveVoiceVoiceName(it) },
+                    )
+                },
+                {
+                    val sensitivityOptions = VoiceSensitivity.entries
+                    val labels = listOf(
+                        stringResource(R.string.settings_live_voice_sensitivity_patient),
+                        stringResource(R.string.settings_live_voice_sensitivity_balanced),
+                        stringResource(R.string.settings_live_voice_sensitivity_responsive),
+                    )
+                    val selectedIndex = sensitivityOptions
+                        .indexOf(VoiceSensitivity.fromStorageValue(sensitivity))
+                        .coerceAtLeast(0)
+                    SettingsItem(
+                        headlineContent = {
+                            Text(stringResource(R.string.settings_live_voice_sensitivity))
+                        },
+                        supportingContent = {
+                            Column {
+                                Text(
+                                    stringResource(R.string.settings_live_voice_sensitivity_desc),
+                                    modifier = Modifier.padding(bottom = 8.dp),
+                                )
+                                PillTabSwitcher(
+                                    tabs = labels,
+                                    selectedIndex = selectedIndex,
+                                    onSelect = { index ->
+                                        viewModel.settings.setLiveVoiceSensitivity(
+                                            sensitivityOptions[index].name,
+                                        )
+                                    },
+                                )
+                            }
+                        },
+                        leadingContent = { Icon(Icons.Default.Speed, contentDescription = null) },
                     )
                 },
             ))

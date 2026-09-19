@@ -67,6 +67,14 @@ class AssistantToolSettings(private val context: Context) {
     val voiceToVoiceVoiceName: Flow<String> =
         context.dataStore.data.map { it[KEY_VOICE_TO_VOICE_VOICE] ?: DEFAULT_LIVE_VOICE }
 
+    /** VAD sensitivity preset name (see `assistant.live.VoiceSensitivity`); stored as a plain
+     *  string here to keep this data-layer class independent of the `assistant.live` feature
+     *  package — the enum interprets/validates the value on read (owner report, 2026-09-17:
+     *  the original fixed HIGH/500ms tuning cut users off mid-sentence, so it must be a user
+     *  preference, not a hardcoded constant). */
+    val voiceToVoiceSensitivity: Flow<String> =
+        context.dataStore.data.map { it[KEY_VOICE_TO_VOICE_SENSITIVITY] ?: DEFAULT_LIVE_SENSITIVITY }
+
     suspend fun saveSetAlarmEnabled(enabled: Boolean) = edit(KEY_SET_ALARM, enabled)
     suspend fun saveOpenFileEnabled(enabled: Boolean) = edit(KEY_OPEN_FILE, enabled)
     suspend fun saveCreateCalendarEventEnabled(enabled: Boolean) =
@@ -95,6 +103,9 @@ class AssistantToolSettings(private val context: Context) {
     suspend fun saveVoiceToVoiceVoiceName(voiceName: String) =
         context.dataStore.edit { it[KEY_VOICE_TO_VOICE_VOICE] = voiceName.trim() }
 
+    suspend fun saveVoiceToVoiceSensitivity(value: String) =
+        context.dataStore.edit { it[KEY_VOICE_TO_VOICE_SENSITIVITY] = value }
+
     private suspend fun edit(key: androidx.datastore.preferences.core.Preferences.Key<Boolean>, enabled: Boolean) {
         context.dataStore.edit { it[key] = enabled }
     }
@@ -119,12 +130,16 @@ class AssistantToolSettings(private val context: Context) {
         prefs.remove(KEY_VOICE_TO_VOICE_REUSE)
         prefs.remove(KEY_VOICE_TO_VOICE_MODEL)
         prefs.remove(KEY_VOICE_TO_VOICE_VOICE)
+        prefs.remove(KEY_VOICE_TO_VOICE_SENSITIVITY)
     }
 
     companion object {
         /** Shared defaults so DataStore, SettingsRepository and the Live client agree. */
         const val DEFAULT_LIVE_MODEL_ID = "gemini-3.1-flash-live-preview"
         const val DEFAULT_LIVE_VOICE_NAME = "Kore"
+        /** Mirrors `assistant.live.VoiceSensitivity.DEFAULT.name` ("BALANCED"); kept as a plain
+         *  string literal to avoid a data→assistant.live dependency for one constant. */
+        const val DEFAULT_LIVE_SENSITIVITY = "BALANCED"
         private const val DEFAULT_LIVE_MODEL = DEFAULT_LIVE_MODEL_ID
         private const val DEFAULT_LIVE_VOICE = DEFAULT_LIVE_VOICE_NAME
         val KEY_SET_ALARM = booleanPreferencesKey("assistant_set_alarm_enabled")
@@ -145,5 +160,6 @@ class AssistantToolSettings(private val context: Context) {
         val KEY_VOICE_TO_VOICE_REUSE = booleanPreferencesKey("live_voice_reuse_conversation")
         val KEY_VOICE_TO_VOICE_MODEL = androidx.datastore.preferences.core.stringPreferencesKey("live_voice_model")
         val KEY_VOICE_TO_VOICE_VOICE = androidx.datastore.preferences.core.stringPreferencesKey("live_voice_voice_name")
+        val KEY_VOICE_TO_VOICE_SENSITIVITY = androidx.datastore.preferences.core.stringPreferencesKey("live_voice_sensitivity")
     }
 }

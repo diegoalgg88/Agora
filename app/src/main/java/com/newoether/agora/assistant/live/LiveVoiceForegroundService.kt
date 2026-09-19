@@ -28,6 +28,15 @@ internal class LiveVoiceForegroundService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // ALWAYS call startForeground() first, unconditionally, before checking the action —
+        // this is what makes stop() safe against the classic start→stop race
+        // (ForegroundServiceDidNotStartInTimeException / SERVICE_FOREGROUND_CRASH_MSG, owner
+        // report 2026-09-18): stop() below no longer calls Context.stopService() directly (which
+        // can reach AMS before this very onStartCommand runs and destroy the ServiceRecord while
+        // `fgRequired` is still pending); it re-enters this same onStartCommand via ACTION_STOP,
+        // and Android serializes all onStartCommand calls for one component on this thread in
+        // the order they were dispatched. So a start followed immediately by a stop always sees
+        // this line run for the start first.
         val notification = buildNotification()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
             ServiceCompat.startForeground(
@@ -38,6 +47,10 @@ internal class LiveVoiceForegroundService : Service() {
             )
         } else {
             startForeground(NOTIFICATION_ID, notification)
+        }
+        if (intent?.action == ACTION_STOP) {
+            ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            stopSelf()
         }
         return START_NOT_STICKY
     }
@@ -62,6 +75,16 @@ internal class LiveVoiceForegroundService : Service() {
     companion object {
         private const val CHANNEL_ID = "live_voice_call"
         private const val NOTIFICATION_ID = 424
+        private const val ACTION_STOP = "com.newoether.agora.assistant.live.action.STOP"
+
+        /** True between start() and the first stop() request. VoiceModeActivity calls stop()
+         *  from up to three paths on teardown (ENDED state change, hangUp, onDestroy), so
+         *  without this guard each redundant stop() would re-create the service (with a
+         *  notification flash) just to immediately stop it — and when start() never ran
+         *  (RECORD_AUDIO denied), onDestroy's stop() would create a foreground service that
+         *  was never wanted at all. */
+        @Volatile
+        private var started = false
 
         fun start(context: Context) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
@@ -78,11 +101,30 @@ internal class LiveVoiceForegroundService : Service() {
                     },
                 )
             }
+            started = true
             context.startForegroundService(Intent(context, LiveVoiceForegroundService::class.java))
         }
 
         fun stop(context: Context) {
-            context.stopService(Intent(context, LiveVoiceForegroundService::class.java))
+            if (!started) return
+            started = false
+            // Routed through onStartCommand (ACTION_STOP), never Context.stopService() directly
+            // — see the comment on onStartCommand for why. Plain startService (not
+            // startForegroundService) so delivering the command never re-arms `fgRequired`.
+            try {
+                context.startService(
+                    Intent(context, LiveVoiceForegroundService::class.java).setAction(ACTION_STOP),
+                )
+            } catch (e: IllegalStateException) {
+                // App left the background-eligible window mid-call (the FGS died on its own
+                // while the activity was already backgrounded). Direct external stop is safe
+                // here: the fgRequired race window only exists immediately after start(), and
+                // reaching this catch means the service is either long-promoted to foreground
+                // or already gone — stopService on a stopped service is a no-op.
+                context.stopService(
+                    Intent(context, LiveVoiceForegroundService::class.java).setAction(ACTION_STOP),
+                )
+            }
         }
     }
 }

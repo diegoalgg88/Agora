@@ -769,6 +769,8 @@ class SettingsRepository(
         hot(settingsManager.assistantTools.voiceToVoiceModelId, AssistantToolSettings.DEFAULT_LIVE_MODEL_ID)
     val liveVoiceVoiceName: StateFlow<String> =
         hot(settingsManager.assistantTools.voiceToVoiceVoiceName, AssistantToolSettings.DEFAULT_LIVE_VOICE_NAME)
+    val liveVoiceSensitivity: StateFlow<String> =
+        hot(settingsManager.assistantTools.voiceToVoiceSensitivity, AssistantToolSettings.DEFAULT_LIVE_SENSITIVITY)
     fun setLiveVoiceEnabled(enabled: Boolean) =
         scope.launch { settingsManager.assistantTools.saveVoiceToVoiceEnabled(enabled) }
     fun setLiveVoiceReuseConversationEnabled(enabled: Boolean) =
@@ -777,6 +779,8 @@ class SettingsRepository(
         scope.launch { settingsManager.assistantTools.saveVoiceToVoiceModelId(modelId) }
     fun setLiveVoiceVoiceName(voiceName: String) =
         scope.launch { settingsManager.assistantTools.saveVoiceToVoiceVoiceName(voiceName) }
+    fun setLiveVoiceSensitivity(value: String) =
+        scope.launch { settingsManager.assistantTools.saveVoiceToVoiceSensitivity(value) }
     fun setExactExecutionEnabled(enabled: Boolean) = scope.launch { settingsManager.saveExactExecutionEnabled(enabled) }
     fun setAutomationWakeLockEnabled(enabled: Boolean) =
         scope.launch { settingsManager.saveAutomationWakeLockEnabled(enabled) }

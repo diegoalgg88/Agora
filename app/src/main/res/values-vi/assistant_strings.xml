@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">Tiếp tục hội thoại cuộc gọi thoại gần nhất thay vì tạo mới mỗi cuộc gọi</string>
     <string name="settings_live_voice_model">Mô hình Live</string>
     <string name="settings_live_voice_voice_name">Tên giọng nói</string>
+    <string name="settings_live_voice_sensitivity">Độ nhạy giọng nói</string>
+    <string name="settings_live_voice_sensitivity_desc">Cuộc gọi kết thúc lượt nói của bạn nhanh thế nào sau khi bạn ngừng nói. Nếu bị cắt ngang giữa câu, hãy chọn Kiên nhẫn.</string>
+    <string name="settings_live_voice_sensitivity_patient">Kiên nhẫn</string>
+    <string name="settings_live_voice_sensitivity_balanced">Cân bằng</string>
+    <string name="settings_live_voice_sensitivity_responsive">Nhanh nhạy</string>
     <string name="live_voice_conversation_title">Cuộc gọi thoại</string>
     <string name="live_voice_connecting">Đang kết nối…</string>
     <string name="live_voice_listening">Đang gọi — lắng nghe</string>

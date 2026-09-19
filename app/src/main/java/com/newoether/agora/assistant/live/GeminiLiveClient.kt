@@ -57,6 +57,7 @@ internal class GeminiLiveClient(
         modelId: String,
         voiceName: String,
         resumptionHandle: String = "",
+        sensitivity: VoiceSensitivity = VoiceSensitivity.DEFAULT,
     ) {
         check(socket == null) { "Live client already connected" }
         check(apiKey.isNotBlank()) { "No Gemini API key configured" }
@@ -78,6 +79,14 @@ internal class GeminiLiveClient(
             outputAudioTranscription = LiveAudioTranscriptionConfig(),
             sessionResumption = LiveSessionResumptionConfig(handle = normalizedHandle),
             contextWindowCompression = LiveContextWindowCompression(),
+            realtimeInputConfig = LiveRealtimeInputConfig(
+                automaticActivityDetection = LiveAutomaticActivityDetection(
+                    startOfSpeechSensitivity = sensitivity.startOfSpeechSensitivity,
+                    endOfSpeechSensitivity = sensitivity.endOfSpeechSensitivity,
+                    prefixPaddingMs = sensitivity.prefixPaddingMs,
+                    silenceDurationMs = sensitivity.silenceDurationMs,
+                ),
+            ),
         )
         val request = Request.Builder()
             .url("$WS_ENDPOINT?key=$apiKey")

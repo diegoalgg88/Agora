@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">Continue the latest voice-call conversation instead of creating a new one per call</string>
     <string name="settings_live_voice_model">Live model</string>
     <string name="settings_live_voice_voice_name">Voice name</string>
+    <string name="settings_live_voice_sensitivity">Voice sensitivity</string>
+    <string name="settings_live_voice_sensitivity_desc">How quickly the call ends your turn after you stop talking. If it cuts you off mid-sentence, pick Patient.</string>
+    <string name="settings_live_voice_sensitivity_patient">Patient</string>
+    <string name="settings_live_voice_sensitivity_balanced">Balanced</string>
+    <string name="settings_live_voice_sensitivity_responsive">Responsive</string>
     <string name="live_voice_conversation_title">Voice call</string>
     <string name="live_voice_connecting">Connecting…</string>
     <string name="live_voice_listening">On call — listening</string>

@@ -483,27 +483,31 @@ private fun AmbientCallBackdrop(content: @Composable () -> Unit) {
 
 @Composable
 private fun TranscriptLine(side: LiveTranscriptLog.Side, text: String) {
-    val isModel = side == LiveTranscriptLog.Side.MODEL
+    // The user's own speech renders like the user's chat messages ("Tú", trailing edge,
+    // primary container); the model's renders like incoming assistant messages ("Asistente",
+    // leading edge, surface variant). Sides come straight from LiveTranscriptLog, where
+    // inputTranscription is USER and outputTranscription is MODEL.
+    val isUser = side == LiveTranscriptLog.Side.USER
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = if (isModel) Arrangement.End else Arrangement.Start,
+        horizontalArrangement = if (isUser) Arrangement.End else Arrangement.Start,
     ) {
-        Column(horizontalAlignment = if (isModel) Alignment.End else Alignment.Start) {
+        Column(horizontalAlignment = if (isUser) Alignment.End else Alignment.Start) {
             Text(
                 text = stringResource(
-                    if (isModel) R.string.live_voice_you else R.string.live_voice_assistant,
+                    if (isUser) R.string.live_voice_you else R.string.live_voice_assistant,
                 ),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
             )
             Surface(
                 shape = MaterialTheme.shapes.medium,
-                color = if (isModel) {
+                color = if (isUser) {
                     MaterialTheme.colorScheme.primaryContainer
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant
                 },
-                contentColor = if (isModel) {
+                contentColor = if (isUser) {
                     MaterialTheme.colorScheme.onPrimaryContainer
                 } else {
                     MaterialTheme.colorScheme.onSurfaceVariant

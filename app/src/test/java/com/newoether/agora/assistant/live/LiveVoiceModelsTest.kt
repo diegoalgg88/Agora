@@ -163,4 +163,51 @@ class LiveVoiceModelsTest {
     fun `blank model id stays blank rather than fabricating a model`() {
         assertEquals("", normalizeLiveModelId("  "))
     }
+
+    // ── VAD sensitivity (realtimeInputConfig) ──────────────────────────────
+
+    @Test
+    fun `setup frame serializes balanced vad tuning by default`() {
+        val frame = LiveClientFrame(
+            setup = LiveSetup(model = "models/gemini-3.1-flash-live-preview"),
+        )
+        val encoded = json.encodeToString(frame)
+        assertTrue(encoded.contains("\"realtimeInputConfig\":{\"automaticActivityDetection\""))
+        assertTrue(encoded.contains("\"startOfSpeechSensitivity\":\"START_SENSITIVITY_HIGH\""))
+        assertTrue(encoded.contains("\"endOfSpeechSensitivity\":\"END_SENSITIVITY_LOW\""))
+        assertTrue(encoded.contains("\"prefixPaddingMs\":50"))
+        assertTrue(encoded.contains("\"silenceDurationMs\":700"))
+    }
+
+    @Test
+    fun `responsive preset reaches the wire as aggressive end-of-turn tuning`() {
+        val preset = VoiceSensitivity.RESPONSIVE
+        val frame = LiveClientFrame(
+            setup = LiveSetup(
+                model = "models/gemini-3.1-flash-live-preview",
+                realtimeInputConfig = LiveRealtimeInputConfig(
+                    automaticActivityDetection = LiveAutomaticActivityDetection(
+                        startOfSpeechSensitivity = preset.startOfSpeechSensitivity,
+                        endOfSpeechSensitivity = preset.endOfSpeechSensitivity,
+                        prefixPaddingMs = preset.prefixPaddingMs,
+                        silenceDurationMs = preset.silenceDurationMs,
+                    ),
+                ),
+            ),
+        )
+        val encoded = json.encodeToString(frame)
+        assertTrue(encoded.contains("\"endOfSpeechSensitivity\":\"END_SENSITIVITY_HIGH\""))
+        assertTrue(encoded.contains("\"silenceDurationMs\":500"))
+        assertFalse(encoded.contains("END_SENSITIVITY_LOW"))
+    }
+
+    @Test
+    fun `stored sensitivity names resolve and unknown values fall back to balanced`() {
+        VoiceSensitivity.entries.forEach { preset ->
+            assertEquals(preset, VoiceSensitivity.fromStorageValue(preset.name))
+        }
+        assertEquals(VoiceSensitivity.DEFAULT, VoiceSensitivity.fromStorageValue("LEGACY_HIGH"))
+        assertEquals(VoiceSensitivity.DEFAULT, VoiceSensitivity.fromStorageValue(""))
+        assertEquals(VoiceSensitivity.DEFAULT, VoiceSensitivity.fromStorageValue(null))
+    }
 }

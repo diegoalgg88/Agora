@@ -36,6 +36,11 @@
     <string name="settings_live_voice_reuse_conversation_desc">通話ごとに新しい会話を作らず、最新の音声通話の会話を続けます</string>
     <string name="settings_live_voice_model">Live モデル</string>
     <string name="settings_live_voice_voice_name">音声名</string>
+    <string name="settings_live_voice_sensitivity">音声の感度</string>
+    <string name="settings_live_voice_sensitivity_desc">話し終えてからどれくらい早くターンを終了するか。文の途中で切られてしまう場合は「パティエント」を選んでください。</string>
+    <string name="settings_live_voice_sensitivity_patient">パティエント</string>
+    <string name="settings_live_voice_sensitivity_balanced">バランス型</string>
+    <string name="settings_live_voice_sensitivity_responsive">レスポンシブ</string>
     <string name="live_voice_conversation_title">音声通話</string>
     <string name="live_voice_connecting">接続中…</string>
     <string name="live_voice_listening">通話中 — 音声を聞き取っています</string>
