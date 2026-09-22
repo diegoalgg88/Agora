@@ -4,9 +4,15 @@
 
 ## 内置提供商
 
-Agora 包含 OpenAI、Anthropic、Google Gemini、DeepSeek、DashScope/通义千问、OpenRouter、Groq、Ollama 和本地模型。提供商的模型目录和端点行为可能独立变化。
+Agora 包含 OpenAI、Anthropic、Google Gemini、DeepSeek、DashScope/通义千问、OpenRouter、Groq、AI Horde、Ollama 和本地模型。提供商的模型目录和端点行为可能独立变化。
 
 对于远程提供商，未保存覆盖值时，Base URL 输入框会显示当前生效的内置默认值。没有内置端点的提供商可能只显示占位提示；留空时会在存在默认值的情况下回到提供商默认地址。Base URL 编辑会在停止输入 500 ms 后自动保存，没有单独的保存操作。
+
+## AI Horde
+
+AI Horde 是由志愿工作者组成的众包网络，通过官方 OpenAI 兼容代理（`oai.aihorde.net`）提供文本和图像模型。聊天使用标准提供商流程：添加 API Key、同步模型并选择其一——但模型、速度和可用性取决于当时在线的工作节点。
+
+匿名 Key `0000000000` 无需注册即可使用，但队列优先级最低。在 `aihorde.net/register` 注册个人 Key 后，优先级会随时间提高。如主要想生成图像，请参见[图像生成](image-generation.md)中的 AI Horde 图像后端。
 
 ## 自定义提供商
 

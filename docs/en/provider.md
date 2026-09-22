@@ -4,9 +4,15 @@ Open **Settings → Providers**, then select a provider to edit its endpoint, pr
 
 ## Built-in Providers
 
-Agora includes configurations for OpenAI, Anthropic, Google Gemini, DeepSeek, DashScope/Qwen, OpenRouter, Groq, Ollama, and Local models. Provider catalogs and endpoint behavior can change independently of the app.
+Agora includes configurations for OpenAI, Anthropic, Google Gemini, DeepSeek, DashScope/Qwen, OpenRouter, Groq, AI Horde, Ollama, and Local models. Provider catalogs and endpoint behavior can change independently of the app.
 
 For a remote provider, the Base URL field shows its effective built-in default when no override is stored. Providers without a built-in endpoint may show a placeholder instead. A blank override resolves back to the provider default where one exists. Base URL edits save automatically after a 500 ms pause; there is no separate Save action.
+
+## AI Horde
+
+AI Horde is a crowdsourced network of volunteer workers that serves text and image models through the official OpenAI-compatible proxy (`oai.aihorde.net`). Chat uses the standard provider flow: add an API key, sync models, and pick one — but models, speed, and availability depend on workers online at that moment.
+
+The anonymous key `0000000000` works at the lowest queue priority with no registration. A personal key, registered at `aihorde.net/register`, earns higher queue priority over time. If you mainly want images, see the AI Horde image backend under [Image Generation](image-generation.md).
 
 ## Custom Providers
 

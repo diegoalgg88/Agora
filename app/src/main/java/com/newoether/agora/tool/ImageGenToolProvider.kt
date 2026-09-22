@@ -7,6 +7,7 @@ import com.newoether.agora.api.ToolDefinition
 import com.newoether.agora.api.ToolFunction
 import com.newoether.agora.api.ToolParameters
 import com.newoether.agora.api.ToolProperty
+import com.newoether.agora.api.aihorde.AiHordeImageClient
 import com.newoether.agora.util.Constants
 import com.newoether.agora.util.DebugLog
 import com.newoether.agora.viewmodel.GenerationContext
@@ -93,6 +94,11 @@ class ImageGenToolProvider(private val app: Application) : ToolProvider {
             ?: ctx.imageGenSize.ifBlank { "1024x1024" }
 
         val apiKey = ctx.imageGenApiKey
+        // AI Horde branch: native async v2 API (submit → poll → download). Same tool name and
+        // owner, so the 600s timeout override keyed on "generate_image" keeps applying.
+        if (ctx.imageGenBackend == "ai_horde") {
+            return executeAiHorde(prompt, size, ctx)
+        }
         if (apiKey.isBlank()) return err("no_api_key", null) to null
         val baseUrl = ctx.imageGenBaseUrl.ifBlank { ProviderDefaults.OPENAI_BASE_URL }.trimEnd('/')
         val model = ctx.imageGenModel.ifBlank { "gpt-image-1" }
@@ -150,6 +156,48 @@ class ImageGenToolProvider(private val app: Application) : ToolProvider {
                 DebugLog.e("ImageGenTool", "generate_image failed", e)
                 err("generation_error", e.message) to null
             }
+        }
+    }
+
+    /**
+     * AI Horde branch of [executeOffMain]. Runs the native async v2 flow inside the tool's
+     * IO dispatcher — never on the Provider stream (invariant #6). A censored image is
+     * reported as such instead of being retried as a technical failure.
+     */
+    private suspend fun executeAiHorde(
+        prompt: String,
+        size: String,
+        ctx: GenerationContext,
+    ): Pair<String, com.newoether.agora.model.ToolImageAttachment?> {
+        val dims = size.split("x").mapNotNull { it.trim().toIntOrNull() }
+        val width = dims.getOrNull(0)?.coerceIn(64, 3072) ?: 1024
+        val height = dims.getOrNull(1)?.coerceIn(64, 3072) ?: 1024
+
+        return when (val outcome = AiHordeImageClient.generate(
+            prompt = prompt,
+            apiKey = ctx.aiHordeApiKey,
+            model = ctx.aiHordeImageModel,
+            width = width,
+            height = height,
+            timeoutMs = Constants.IMAGE_GENERATION_TIMEOUT_MS,
+        )) {
+            is AiHordeImageClient.GenerationOutcome.Success -> {
+                val attachment = imageStore.persistGeneratedBytes(
+                    bytes = outcome.bytes,
+                    filePrefix = "generated_image",
+                )
+                buildJsonObject {
+                    put("type", "image_generation")
+                    put("status", "ok")
+                    put("backend", "ai_horde")
+                    put("size", "${width}x${height}")
+                    if (outcome.model.isNotBlank()) put("model", outcome.model)
+                }.toString() to attachment
+            }
+            is AiHordeImageClient.GenerationOutcome.Censored ->
+                err("censored", outcome.reason) to null
+            is AiHordeImageClient.GenerationOutcome.Failure ->
+                err(outcome.code, outcome.message) to null
         }
     }
 

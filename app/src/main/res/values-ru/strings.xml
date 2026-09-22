@@ -202,6 +202,11 @@
     <string name="provider_api_keys">API-ключи</string>
     <string name="provider_api_keys_optional">API-ключи (необязательно)</string>
     <string name="provider_no_keys">Нет ключей, настроенных для %1$s</string>
+    <string name="provider_aihorde_about">AI Horde</string>
+    <string name="provider_aihorde_anon_key_hint">Анонимный ключ: 0000000000</string>
+    <string name="provider_aihorde_anon_key_desc">AI Horde — это краудсорсинговая сеть добровольных воркеров. Анонимный ключ 0000000000 работает с самым низким приоритетом в очереди; модели, скорость и доступность зависят от воркеров в сети. Личный ключ со временем получает более высокий приоритет.</string>
+    <string name="provider_aihorde_register">Зарегистрировать персональный API-ключ</string>
+    <string name="provider_aihorde_register_url">aihorde.net/register</string>
     <string name="provider_keys_count">Настроено ключей: %1$d</string>
     <string name="provider_add_key">Добавить новый ключ</string>
     <string name="provider_select_provider">Выбрать провайдера ИИ</string>
@@ -231,6 +236,17 @@
     <string name="image_gen_size">Размер по умолчанию</string>
     <string name="image_gen_size_hint">1024x1024</string>
     <string name="image_gen_show_all">Показать все модели</string>
+    <string name="aihorde_image_about">AI Horde</string>
+    <string name="image_gen_backend">Бэкенд изображений</string>
+    <string name="image_gen_backend_standard">Стандартный (совместимый с OpenAI)</string>
+    <string name="image_gen_backend_standard_desc">Использует учётные данные провайдера выбранной модели и его конечную точку /images/generations.</string>
+    <string name="image_gen_backend_aihorde">AI Horde</string>
+    <string name="image_gen_backend_desc">Выберите, какая служба генерирует изображения, когда модель вызывает инструмент изображений.</string>
+    <string name="aihorde_image_model_desc">Модель изображений (чекпоинт), обслуживаемая добровольными воркерами. Пусто = любая доступная модель.</string>
+    <string name="aihorde_image_latency_warning">Изображения создаются краудсорсинговой сетью добровольных воркеров — генерация ставится в очередь и может занять минуты, особенно с анонимным ключом.</string>
+    <string name="aihorde_image_sync">Обновить доступные модели</string>
+    <string name="aihorde_image_syncing">Обновление…</string>
+    <string name="aihorde_image_sync_hint">Нажмите «Обновить доступные модели», чтобы загрузить модели, которые сейчас в сети.</string>
     <string name="tool_generate_image">Создать изображение</string>
     <string name="tool_generating_image">Создание изображения…</string>
     <string name="tool_generated_image">Изображение создано</string>

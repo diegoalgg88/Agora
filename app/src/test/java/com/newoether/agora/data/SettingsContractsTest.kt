@@ -201,4 +201,15 @@ class SettingsContractsTest {
         assertEquals("duckduckgo", normalizeWebSearchProvider(" unknown "))
         assertEquals("kagi", normalizeWebSearchProvider(" KAGI "))
     }
+
+    @Test
+    fun imageGenBackendNormalizationKeepsKnownValuesAndFailsSafeToStandard() {
+        assertEquals("standard", normalizeImageGenBackend(null))
+        assertEquals("standard", normalizeImageGenBackend(""))
+        assertEquals("standard", normalizeImageGenBackend(" corrupted "))
+        // Case and whitespace are tolerated; only unknown values fail safe.
+        assertEquals("ai_horde", normalizeImageGenBackend("AI_HORDE"))
+        assertEquals("standard", normalizeImageGenBackend("ai-horde"))
+        assertEquals("standard", normalizeImageGenBackend("ai_horde_v2"))
+    }
 }

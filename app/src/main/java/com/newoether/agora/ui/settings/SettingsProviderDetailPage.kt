@@ -1,5 +1,7 @@
 package com.newoether.agora.ui.settings
 
+import android.content.Intent
+import android.net.Uri
 import com.newoether.agora.util.DebugLog
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -478,6 +480,44 @@ fun SettingsProviderDetailPage(
 
             // API Keys (non-Local)
             if (!isLocal) {
+                if (currentName == Constants.PROVIDER_AI_HORDE) {
+                    SettingsGroup(
+                        title = stringResource(R.string.provider_aihorde_about),
+                        items = listOf(
+                            {
+                                SettingsItem(
+                                    headlineContent = { Text(stringResource(R.string.provider_aihorde_anon_key_hint)) },
+                                    supportingContent = { Text(stringResource(R.string.provider_aihorde_anon_key_desc)) },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Default.Key,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                )
+                            },
+                            {
+                                SettingsItem(
+                                    headlineContent = { Text(stringResource(R.string.provider_aihorde_register), color = MaterialTheme.colorScheme.primary) },
+                                    supportingContent = { Text(stringResource(R.string.provider_aihorde_register_url)) },
+                                    leadingContent = {
+                                        Icon(
+                                            Icons.Default.Add,
+                                            contentDescription = null,
+                                            tint = MaterialTheme.colorScheme.primary,
+                                        )
+                                    },
+                                    modifier = Modifier.clickable {
+                                        context.startActivity(
+                                            Intent(Intent.ACTION_VIEW, Uri.parse("https://aihorde.net/register"))
+                                        )
+                                    },
+                                )
+                            },
+                        ),
+                    )
+                }
                 val providerKeys = apiKeys.filter { it.provider == currentName }
                 if (providerKeys.isEmpty()) {
                     SettingsGroup(

@@ -69,6 +69,12 @@ internal val IMAGE_GEN_ENABLED = booleanPreferencesKey("image_gen_enabled")
 // Selected image model as "Provider:modelId"; provider creds are reused (no separate key/url).
 internal val IMAGE_GEN_MODEL = stringPreferencesKey("image_gen_model")
 internal val IMAGE_GEN_SIZE = stringPreferencesKey("image_gen_size")
+// Image backend selector ("standard" | "ai_horde"); fail-safe normalize keeps unknown values on "standard".
+internal val IMAGE_GEN_BACKEND = stringPreferencesKey("image_gen_backend")
+// AI Horde image model (checkpoint name) — dedicated namespace, never written to availableModels.
+internal val AI_HORDE_IMAGE_MODEL = stringPreferencesKey("ai_horde_image_model")
+// Dedicated AI Horde image API key; falls back to the chat provider key when blank.
+internal val AI_HORDE_IMAGE_API_KEY = stringPreferencesKey("ai_horde_image_api_key")
 internal val SEARCH_CONTEXT_WINDOW = intPreferencesKey("search_context_window")
 internal val SEARCH_MATCH_LIMIT = intPreferencesKey("search_match_limit")
 internal val RAG_THRESHOLD = stringPreferencesKey("rag_threshold")

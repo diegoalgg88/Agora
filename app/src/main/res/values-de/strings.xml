@@ -202,6 +202,11 @@
     <string name="provider_api_keys">API-Schlüssel</string>
     <string name="provider_api_keys_optional">API-Schlüssel (optional)</string>
     <string name="provider_no_keys">Keine Schlüssel für %1$s konfiguriert</string>
+    <string name="provider_aihorde_about">AI Horde</string>
+    <string name="provider_aihorde_anon_key_hint">Anonymer Schlüssel: 0000000000</string>
+    <string name="provider_aihorde_anon_key_desc">AI Horde ist ein Crowdsourcing-Netzwerk freiwilliger Worker. Der anonyme Schlüssel 0000000000 funktioniert mit der niedrigsten Warteschlangen-Priorität; Modelle, Geschwindigkeit und Verfügbarkeit hängen von den Online-Workern ab. Ein persönlicher Schlüssel erhält mit der Zeit höhere Priorität.</string>
+    <string name="provider_aihorde_register">Persönlichen API-Schlüssel registrieren</string>
+    <string name="provider_aihorde_register_url">aihorde.net/register</string>
     <string name="provider_keys_count">%1$d Schlüssel konfiguriert</string>
     <string name="provider_add_key">Neuen Schlüssel hinzufügen</string>
     <string name="provider_select_provider">KI-Anbieter auswählen</string>
@@ -231,6 +236,17 @@
     <string name="image_gen_size">Standardgröße</string>
     <string name="image_gen_size_hint">1024x1024</string>
     <string name="image_gen_show_all">Alle Modelle anzeigen</string>
+    <string name="aihorde_image_about">AI Horde</string>
+    <string name="image_gen_backend">Bild-Backend</string>
+    <string name="image_gen_backend_standard">Standard (OpenAI-kompatibel)</string>
+    <string name="image_gen_backend_standard_desc">Verwendet die Anmeldedaten des Anbieters des ausgewählten Modells und dessen /images/generations-Endpunkt.</string>
+    <string name="image_gen_backend_aihorde">AI Horde</string>
+    <string name="image_gen_backend_desc">Wähle, welcher Dienst Bilder erzeugt, wenn das Modell das Bild-Tool aufruft.</string>
+    <string name="aihorde_image_model_desc">Bildmodell (Checkpoint), das von freiwilligen Workern bereitgestellt wird. Leer = jedes verfügbare Modell.</string>
+    <string name="aihorde_image_latency_warning">Bilder stammen aus einem Crowdsourcing-Netzwerk freiwilliger Worker — die Generierung wird in eine Warteschlange gestellt und kann Minuten dauern, besonders mit dem anonymen Schlüssel.</string>
+    <string name="aihorde_image_sync">Verfügbare Modelle aktualisieren</string>
+    <string name="aihorde_image_syncing">Aktualisieren…</string>
+    <string name="aihorde_image_sync_hint">Tippe auf "Verfügbare Modelle aktualisieren", um die aktuell online verfügbaren Modelle zu laden.</string>
     <string name="tool_generate_image">Bild erzeugen</string>
     <string name="tool_generating_image">Bild wird erzeugt…</string>
     <string name="tool_generated_image">Bild erzeugt</string>

@@ -57,6 +57,7 @@ internal val Context.dataStore by preferencesDataStore(
 class SettingsManager(val context: Context) {
     private val json = Json { ignoreUnknownKeys = true }
     private val modelPreferenceStore = SettingsModelPreferenceStore(context.dataStore, json)
+    private val mediaSettingsStore = MediaSettingsStore(context, context.dataStore)
 
     /** Public access to the underlying DataStore for components that need direct access. */
     val dataStore = context.dataStore
@@ -139,15 +140,11 @@ class SettingsManager(val context: Context) {
     val titleGenerationNotificationsEnabled: Flow<Boolean> = context.dataStore.data.map {
         it[TITLE_GENERATION_NOTIFICATIONS_ENABLED] ?: true
     }
-    val imageTranscriptionEnabled: Flow<Boolean> = context.dataStore.data.map {
-        it[IMAGE_TRANSCRIPTION_ENABLED] ?: true
-    }
-    val imageTranscriptionEnabledModels: Flow<Set<String>> = context.dataStore.data.map { it[IMAGE_TRANSCRIPTION_ENABLED_MODELS] ?: emptySet() }
-    val imageTranscriptionModel: Flow<String?> = context.dataStore.data.map { it[IMAGE_TRANSCRIPTION_MODEL] }
-    val imageTranscriptionBatchSize: Flow<Int> = context.dataStore.data.map { it[IMAGE_TRANSCRIPTION_BATCH_SIZE] ?: 3 }
-    val imageTranscriptionPrompt: Flow<String> = context.dataStore.data.map { pref ->
-        pref[IMAGE_TRANSCRIPTION_PROMPT]?.takeIf { it.isNotBlank() } ?: BuiltInPrompts.IMAGE_TRANSCRIPTION_USER
-    }
+    val imageTranscriptionEnabled: Flow<Boolean> = mediaSettingsStore.imageTranscriptionEnabled
+    val imageTranscriptionEnabledModels: Flow<Set<String>> = mediaSettingsStore.imageTranscriptionEnabledModels
+    val imageTranscriptionModel: Flow<String?> = mediaSettingsStore.imageTranscriptionModel
+    val imageTranscriptionBatchSize: Flow<Int> = mediaSettingsStore.imageTranscriptionBatchSize
+    val imageTranscriptionPrompt: Flow<String> = mediaSettingsStore.imageTranscriptionPrompt
 
     val accessPastConversations: Flow<Boolean> = context.dataStore.data.map { it[ACCESS_PAST_CONVERSATIONS] ?: true }
     val accessSavedMemories: Flow<Boolean> = context.dataStore.data.map { it[ACCESS_SAVED_MEMORIES] ?: true }
@@ -178,10 +175,13 @@ class SettingsManager(val context: Context) {
     val webSearchBaseUrl: Flow<String> = context.dataStore.data.map { it[WEB_SEARCH_BASE_URL] ?: "" }
 
     // ── Image generation ──────────────────────────────────────
-    val imageGenEnabled: Flow<Boolean> = context.dataStore.data.map { it[IMAGE_GEN_ENABLED] ?: false }
+    val imageGenEnabled: Flow<Boolean> = mediaSettingsStore.imageGenEnabled
     // Selected image model "Provider:modelId" (null = none chosen). Creds reused from that provider.
-    val imageGenModel: Flow<String?> = context.dataStore.data.map { it[IMAGE_GEN_MODEL] }
-    val imageGenSize: Flow<String> = context.dataStore.data.map { it[IMAGE_GEN_SIZE] ?: "1024x1024" }
+    val imageGenModel: Flow<String?> = mediaSettingsStore.imageGenModel
+    val imageGenSize: Flow<String> = mediaSettingsStore.imageGenSize
+    val imageGenBackend: Flow<String> = mediaSettingsStore.imageGenBackend
+    val aiHordeImageModel: Flow<String> = mediaSettingsStore.aiHordeImageModel
+    val aiHordeImageApiKey: Flow<String> = mediaSettingsStore.aiHordeImageApiKey
     val searchContextWindow: Flow<Int> = context.dataStore.data.map { it[SEARCH_CONTEXT_WINDOW] ?: 8 }
     val searchMatchLimit: Flow<Int> = context.dataStore.data.map { it[SEARCH_MATCH_LIMIT] ?: 10 }
     val ragThreshold: Flow<Float> = context.dataStore.data.map { it[RAG_THRESHOLD]?.toFloatOrNull() ?: 0.5f }
@@ -534,17 +534,12 @@ class SettingsManager(val context: Context) {
     suspend fun saveWebSearchBaseUrl(url: String) {
         context.dataStore.edit { it[WEB_SEARCH_BASE_URL] = url }
     }
-    suspend fun saveImageGenEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[IMAGE_GEN_ENABLED] = enabled }
-    }
-    suspend fun saveImageGenModel(model: String?) {
-        context.dataStore.edit {
-            if (model == null) it.remove(IMAGE_GEN_MODEL) else it[IMAGE_GEN_MODEL] = model
-        }
-    }
-    suspend fun saveImageGenSize(size: String) {
-        context.dataStore.edit { it[IMAGE_GEN_SIZE] = size }
-    }
+    suspend fun saveImageGenEnabled(enabled: Boolean) = mediaSettingsStore.saveImageGenEnabled(enabled)
+    suspend fun saveImageGenModel(model: String?) = mediaSettingsStore.saveImageGenModel(model)
+    suspend fun saveImageGenSize(size: String) = mediaSettingsStore.saveImageGenSize(size)
+    suspend fun saveImageGenBackend(backend: String) = mediaSettingsStore.saveImageGenBackend(backend)
+    suspend fun saveAiHordeImageModel(model: String) = mediaSettingsStore.saveAiHordeImageModel(model)
+    suspend fun saveAiHordeImageApiKey(key: String) = mediaSettingsStore.saveAiHordeImageApiKey(key)
     suspend fun saveSearchMatchLimit(n: Int) {
         context.dataStore.edit { it[SEARCH_MATCH_LIMIT] = n }
     }
@@ -663,27 +658,16 @@ class SettingsManager(val context: Context) {
             else it[TITLE_GENERATION_PROMPT] = prompt
         }
     }
-    suspend fun saveImageTranscriptionEnabledModels(models: Set<String>) {
-        context.dataStore.edit { it[IMAGE_TRANSCRIPTION_ENABLED_MODELS] = models }
-    }
-    suspend fun saveImageTranscriptionEnabled(enabled: Boolean) {
-        context.dataStore.edit { it[IMAGE_TRANSCRIPTION_ENABLED] = enabled }
-    }
-    suspend fun saveImageTranscriptionModel(model: String?) {
-        context.dataStore.edit {
-            if (model == null) it.remove(IMAGE_TRANSCRIPTION_MODEL)
-            else it[IMAGE_TRANSCRIPTION_MODEL] = model
-        }
-    }
-    suspend fun saveImageTranscriptionBatchSize(size: Int) {
-        context.dataStore.edit { it[IMAGE_TRANSCRIPTION_BATCH_SIZE] = size.coerceIn(1, 10) }
-    }
-    suspend fun saveImageTranscriptionPrompt(prompt: String) {
-        context.dataStore.edit {
-            if (prompt.isBlank()) it.remove(IMAGE_TRANSCRIPTION_PROMPT)
-            else it[IMAGE_TRANSCRIPTION_PROMPT] = prompt
-        }
-    }
+    suspend fun saveImageTranscriptionEnabledModels(models: Set<String>) =
+        mediaSettingsStore.saveImageTranscriptionEnabledModels(models)
+    suspend fun saveImageTranscriptionEnabled(enabled: Boolean) =
+        mediaSettingsStore.saveImageTranscriptionEnabled(enabled)
+    suspend fun saveImageTranscriptionModel(model: String?) =
+        mediaSettingsStore.saveImageTranscriptionModel(model)
+    suspend fun saveImageTranscriptionBatchSize(size: Int) =
+        mediaSettingsStore.saveImageTranscriptionBatchSize(size)
+    suspend fun saveImageTranscriptionPrompt(prompt: String) =
+        mediaSettingsStore.saveImageTranscriptionPrompt(prompt)
     suspend fun saveShowDocumentationFab(enabled: Boolean) {
         context.dataStore.edit { it[SHOW_DOCUMENTATION_FAB] = enabled }
     }
@@ -933,6 +917,9 @@ class SettingsManager(val context: Context) {
             prefs.remove(IMAGE_GEN_ENABLED)
             prefs.remove(IMAGE_GEN_MODEL)
             prefs.remove(IMAGE_GEN_SIZE)
+            prefs.remove(IMAGE_GEN_BACKEND)
+            prefs.remove(AI_HORDE_IMAGE_MODEL)
+            prefs.remove(AI_HORDE_IMAGE_API_KEY)
             prefs.remove(SEARCH_CONTEXT_WINDOW)
             prefs.remove(SEARCH_MATCH_LIMIT)
             prefs.remove(RAG_THRESHOLD)

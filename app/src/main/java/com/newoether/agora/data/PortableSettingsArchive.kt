@@ -95,6 +95,8 @@ internal object PortableSettingsArchive {
         put("imageGenEnabled", JsonPrimitive(sm.imageGenEnabled.first()))
         putNullableString("imageGenModel", sm.imageGenModel.first())
         put("imageGenSize", JsonPrimitive(sm.imageGenSize.first()))
+        put("imageGenBackend", JsonPrimitive(sm.imageGenBackend.first()))
+        put("aiHordeImageModel", JsonPrimitive(sm.aiHordeImageModel.first()))
         put("searchContextWindow", JsonPrimitive(sm.searchContextWindow.first()))
         put("searchMatchLimit", JsonPrimitive(sm.searchMatchLimit.first()))
         put("ragThreshold", JsonPrimitive(sm.ragThreshold.first()))
@@ -422,6 +424,8 @@ internal object PortableSettingsArchive {
             sm.saveImageGenModel(obj.nullableString("imageGenModel")?.let(::remapModel))
         }
         obj.string("imageGenSize")?.let { sm.saveImageGenSize(it) }
+        obj.string("imageGenBackend")?.let { sm.saveImageGenBackend(it) }
+        obj.string("aiHordeImageModel")?.let { sm.saveAiHordeImageModel(it) }
         obj.int("searchContextWindow")?.let { sm.saveSearchContextWindow(it) }
         obj.int("searchMatchLimit")?.let { sm.saveSearchMatchLimit(it) }
         obj.float("ragThreshold")?.let { sm.saveRagThreshold(it) }
@@ -562,6 +566,15 @@ internal object PortableSettingsArchive {
                 val existing = previousById[raw.id]
                 raw.copy(
                     headers = if (allowLegacySecrets) raw.headers else existing?.headers.orEmpty(),
+                    url = if (allowLegacySecrets) {
+                        raw.url
+                    } else if (hasMcpUrlCredentialParameters(raw.url)) {
+                        // Credential query parameters are secrets: never trust an imported one
+                        // without the legacy-secrets opt-in; the local URL wins on merge.
+                        existing?.url ?: sanitizeMcpUrlCredentials(raw.url)
+                    } else {
+                        raw.url
+                    },
                 )
             }
             sm.saveMcpServers(

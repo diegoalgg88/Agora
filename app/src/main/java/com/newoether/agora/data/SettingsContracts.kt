@@ -95,6 +95,15 @@ internal val WEB_SEARCH_PROVIDERS = setOf(
 internal fun normalizeWebSearchProvider(provider: String?): String =
     provider?.trim()?.lowercase()?.takeIf(WEB_SEARCH_PROVIDERS::contains) ?: "duckduckgo"
 
+internal val IMAGE_GEN_BACKENDS = setOf("standard", "ai_horde")
+
+/**
+ * Fail-safe backend selector: an unknown or corrupted persisted value must never
+ * silently route generation to an external anonymous network the user did not choose.
+ */
+internal fun normalizeImageGenBackend(backend: String?): String =
+    backend?.trim()?.lowercase()?.takeIf(IMAGE_GEN_BACKENDS::contains) ?: "standard"
+
 internal fun decodeWebSearchApiKeys(preferences: Preferences, json: Json): Map<String, String> {
     val raw = SecretCrypto.decrypt(preferences[WEB_SEARCH_API_KEYS_JSON] ?: "{}")
     return try {

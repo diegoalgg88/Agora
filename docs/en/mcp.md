@@ -14,6 +14,8 @@ Streamable HTTP is the current transport. SSE is available for legacy MCP server
 
 Custom header values use the same secret-setting storage as API keys: normally an Android Keystore AES-GCM envelope, with legacy/encryption-failure plaintext fallback. They can contain authorization tokens, so protect the device and exports and do not add headers the server does not require.
 
+Credential query parameters embedded in a server URL (for example `?tavilyApiKey=…`) are treated like secrets during export: they are stripped from the settings payload and travel only in the explicit include-secrets category.
+
 ## Popular Servers
 
 The **Popular Servers** section lists a curated catalog of well-known public MCP servers — documentation lookups (Context7, MDN, DeepWiki), web search (Parallel Search, Jina AI, Tavily), market and weather data (Yahoo Finance, CoinGecko, Open-Meteo, OpenWeather), flights (Kiwi.com), scam checks (Malwarebytes), diagrams (tldraw), domains (Find-A-Domain), and transit info (SubwayInfo NYC). Tap a server to add it with one action; the URL and any recommended default headers are filled in automatically.
@@ -25,6 +27,8 @@ Some entries require an API key (for example Jina AI, Tavily, SERPAPI, Composio,
 An enabled server connects in the background. Its status is shown as **Idle**, **Connecting**, **Connected**, or **Connection error**. Use **Reconnect** from the server menu or editor to retry discovery.
 
 After a successful connection, Agora lists the server's tools. Each discovered tool is enabled by default; open the server editor to disable individual tools. Disabling the server removes all of its tools from new model requests without deleting the configuration.
+
+When a server announces that its tool catalog changed, Agora re-reads the tool list automatically; no manual reconnect is needed.
 
 Enabled MCP tools join Agora's normal tool-calling pipeline. The model sees each tool's name, description, and input schema, and a tool result is stored with the conversation like other tool calls.
 

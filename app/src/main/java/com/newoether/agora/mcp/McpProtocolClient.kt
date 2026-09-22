@@ -14,15 +14,6 @@ import kotlinx.serialization.json.put
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicLong
 
-internal fun isUnsupportedMcpProtocolVersion(error: Throwable): Boolean {
-    val text = generateSequence(error) { it.cause }
-        .joinToString(" ") { it.message.orEmpty() }
-        .lowercase()
-    return "unsupported protocol version" in text ||
-        "unsupported mcp protocol version" in text ||
-        "protocol version is not supported" in text
-}
-
 /**
  * Shared MCP JSON-RPC lifecycle.
  *
@@ -60,6 +51,13 @@ internal class McpProtocolClient(
     )
     private val ids = AtomicLong(0)
     private val mutex = Mutex()
+
+    /** Server signalled `notifications/tools/list_changed`; see [McpClientTransport]. */
+    var onToolsListChanged: (() -> Unit)? = null
+        set(value) {
+            field = value
+            transport.onToolsListChanged = value
+        }
 
     private var initialized = false
     private var initializedGeneration: Long? = null
@@ -135,7 +133,7 @@ internal class McpProtocolClient(
         } else {
             listOf(LEGACY_SSE_PROTOCOL_VERSION)
         }
-        var unsupported: IOException? = null
+        var lastFailure: IOException? = null
         candidates.forEachIndexed { index, candidate ->
             if (candidate != protocolVersion) {
                 protocolVersion = candidate
@@ -146,16 +144,16 @@ internal class McpProtocolClient(
                 initializeLocked(transport.ensureReady())
                 return
             } catch (error: IOException) {
-                if (!isUnsupportedMcpProtocolVersion(error) || index == candidates.lastIndex) {
-                    throw error
-                }
-                unsupported = error
+                if (index == candidates.lastIndex) throw error
+                // Any negotiation failure on an intermediate candidate advances the descent;
+                // only the last candidate's failure is terminal for the connection attempt.
+                lastFailure = error
                 initialized = false
                 initializedGeneration = null
                 transport.resetSession()
             }
         }
-        throw unsupported ?: IOException("MCP protocol negotiation failed")
+        throw lastFailure ?: IOException("MCP protocol negotiation failed")
     }
 
     private suspend fun initializeLocked(generation: Long) {

@@ -194,6 +194,9 @@ class SettingsRepository(
     val imageGenEnabled: StateFlow<Boolean> = hot(settingsManager.imageGenEnabled, false)
     val imageGenModel: StateFlow<String?> = hot(settingsManager.imageGenModel, null)
     val imageGenSize: StateFlow<String> = hot(settingsManager.imageGenSize, "1024x1024")
+    val imageGenBackend: StateFlow<String> = hot(settingsManager.imageGenBackend, "standard")
+    val aiHordeImageModel: StateFlow<String> = hot(settingsManager.aiHordeImageModel, "")
+    val aiHordeImageApiKey: StateFlow<String> = hot(settingsManager.aiHordeImageApiKey, "")
     val showDocumentationFab: StateFlow<Boolean> = hot(settingsManager.showDocumentationFab, true)
     val developerOptionsEnabled: StateFlow<Boolean> =
         hot(settingsManager.developerOptionsEnabled, false)
@@ -726,6 +729,9 @@ class SettingsRepository(
     fun setImageGenEnabled(enabled: Boolean) = scope.launch { settingsManager.saveImageGenEnabled(enabled) }
     fun setImageGenModel(model: String?) = scope.launch { settingsManager.saveImageGenModel(model) }
     fun setImageGenSize(size: String) = scope.launch { settingsManager.saveImageGenSize(size) }
+    fun setImageGenBackend(backend: String) = scope.launch { settingsManager.saveImageGenBackend(backend) }
+    fun setAiHordeImageModel(model: String) = scope.launch { settingsManager.saveAiHordeImageModel(model) }
+    fun setAiHordeImageApiKey(key: String) = scope.launch { settingsManager.saveAiHordeImageApiKey(key) }
     fun setShowDocumentationFab(enabled: Boolean) = scope.launch { settingsManager.saveShowDocumentationFab(enabled) }
     fun setDeveloperOptionsEnabled(enabled: Boolean) =
         scope.launch { settingsManager.saveDeveloperOptionsEnabled(enabled) }

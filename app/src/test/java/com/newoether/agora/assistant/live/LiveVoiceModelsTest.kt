@@ -173,7 +173,7 @@ class LiveVoiceModelsTest {
         )
         val encoded = json.encodeToString(frame)
         assertTrue(encoded.contains("\"realtimeInputConfig\":{\"automaticActivityDetection\""))
-        assertTrue(encoded.contains("\"startOfSpeechSensitivity\":\"START_SENSITIVITY_HIGH\""))
+        assertTrue(encoded.contains("\"startOfSpeechSensitivity\":\"START_SENSITIVITY_LOW\""))
         assertTrue(encoded.contains("\"endOfSpeechSensitivity\":\"END_SENSITIVITY_LOW\""))
         assertTrue(encoded.contains("\"prefixPaddingMs\":50"))
         assertTrue(encoded.contains("\"silenceDurationMs\":700"))

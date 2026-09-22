@@ -239,6 +239,11 @@
     <string name="provider_api_keys">API Keys</string>
     <string name="provider_api_keys_optional">API Keys (Optional)</string>
     <string name="provider_no_keys">No keys configured for %1$s</string>
+    <string name="provider_aihorde_about">AI Horde</string>
+    <string name="provider_aihorde_anon_key_hint">Anonymous key: 0000000000</string>
+    <string name="provider_aihorde_anon_key_desc">AI Horde is a crowdsourced network of volunteer workers. The anonymous key 0000000000 works at the lowest queue priority — models, speed and availability depend on workers online. A personal key earns higher priority over time.</string>
+    <string name="provider_aihorde_register">Register for a personal API key</string>
+    <string name="provider_aihorde_register_url">aihorde.net/register</string>
     <string name="provider_keys_count">%1$d key(s) configured</string>
     <string name="provider_add_key">Add New Key</string>
     <string name="provider_select_provider">Select AI Provider</string>
@@ -269,6 +274,17 @@
     <string name="image_gen_size">Default Size</string>
     <string name="image_gen_size_hint">1024x1024</string>
     <string name="image_gen_show_all">Show All Models</string>
+    <string name="image_gen_backend">Image Backend</string>
+    <string name="image_gen_backend_standard">Standard (OpenAI-compatible)</string>
+    <string name="image_gen_backend_standard_desc">Uses the selected model\'s provider credentials and its /images/generations endpoint.</string>
+    <string name="image_gen_backend_aihorde">AI Horde</string>
+    <string name="image_gen_backend_desc">Choose which service generates images when the model calls the image tool.</string>
+    <string name="aihorde_image_about">AI Horde</string>
+    <string name="aihorde_image_model_desc">Image model (checkpoint) served by volunteer workers. Empty = any available model.</string>
+    <string name="aihorde_image_latency_warning">Images come from a crowdsourced network of volunteer workers — generation is queued and can take minutes, especially with the anonymous key.</string>
+    <string name="aihorde_image_sync">Refresh available models</string>
+    <string name="aihorde_image_syncing">Refreshing…</string>
+    <string name="aihorde_image_sync_hint">Tap "Refresh available models" to load the models currently online.</string>
     <string name="tool_generate_image">Generate Image</string>
     <string name="tool_generating_image">Generating image…</string>
     <string name="tool_generated_image">Generated image</string>

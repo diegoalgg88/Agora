@@ -394,6 +394,7 @@ class GenerationRequestBuilder(
                 providerName == Constants.PROVIDER_LOCAL &&
                 effectiveSettings.lowContextModeEnabled == true
         val imageGenModel = settings.imageGenModel.value
+        val imageGenBackend = settings.imageGenBackend.value
         val transcriptionModel = settings.imageTranscriptionModel.value
         val configuredSkillReadAccess = settings.accessSkills.value
         val skillReadAccess = configuredSkillReadAccess && includeSkillCatalog
@@ -458,11 +459,19 @@ class GenerationRequestBuilder(
             webSearchProvider = settings.webSearchProvider.value,
             webSearchNumResults = settings.webSearchNumResults.value,
             webSearchBaseUrl = settings.webSearchBaseUrl.value,
-            imageGenEnabled = settings.imageGenEnabled.value && imageGenModel?.contains(":") == true,
+            imageGenEnabled = settings.imageGenEnabled.value &&
+                (imageGenBackend == "ai_horde" || imageGenModel?.contains(":") == true),
             imageGenApiKey = resolveImageGenApiKey(imageGenModel),
             imageGenBaseUrl = resolveImageGenBaseUrl(imageGenModel),
             imageGenModel = resolveImageGenModelId(imageGenModel),
             imageGenSize = settings.imageGenSize.value,
+            imageGenBackend = imageGenBackend,
+            aiHordeImageModel = settings.aiHordeImageModel.value,
+            // Same Horde account for chat and images: prefer the dedicated image key,
+            // fall back to the chat provider's active key (anonymous "0000000000" otherwise).
+            aiHordeApiKey = settings.aiHordeImageApiKey.value.ifBlank {
+                settings.resolveActiveKey(Constants.PROVIDER_AI_HORDE) ?: ""
+            },
             automationToolsEnabled = settings.automationToolsEnabled.value,
             shellEnabled = effectiveSettings.shellEnabled ?: settings.shellEnabled.value,
             shellDevices = settings.shellDevices.value,

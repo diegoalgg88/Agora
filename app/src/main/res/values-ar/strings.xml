@@ -202,6 +202,11 @@
     <string name="provider_api_keys">مفاتيح API</string>
     <string name="provider_api_keys_optional">مفاتيح API (اختياري)</string>
     <string name="provider_no_keys">لا توجد مفاتيح مهيأة لـ %1$s</string>
+    <string name="provider_aihorde_about">AI Horde</string>
+    <string name="provider_aihorde_anon_key_hint">مفتاح مجهول: 0000000000</string>
+    <string name="provider_aihorde_anon_key_desc">AI Horde شبكة تعاونية من العاملين المتطوعين. المفتاح المجهول 0000000000 يعمل بأدنى أولوية في قائمة الانتظار؛ النماذج والسرعة والتوافر تعتمد على العاملين المتصلين. المفتاح الشخصي يكتسب أولوية أعلى مع مرور الوقت.</string>
+    <string name="provider_aihorde_register">سجّل للحصول على مفتاح API شخصي</string>
+    <string name="provider_aihorde_register_url">aihorde.net/register</string>
     <string name="provider_keys_count">تمت تهيئة %1$d مفتاح</string>
     <string name="provider_add_key">إضافة مفتاح جديد</string>
     <string name="provider_select_provider">اختيار مزوّد الذكاء الاصطناعي</string>
@@ -231,6 +236,17 @@
     <string name="image_gen_size">الحجم الافتراضي</string>
     <string name="image_gen_size_hint">1024x1024</string>
     <string name="image_gen_show_all">عرض كل النماذج</string>
+    <string name="aihorde_image_about">AI Horde</string>
+    <string name="image_gen_backend">خدمة توليد الصور</string>
+    <string name="image_gen_backend_standard">قياسي (متوافق مع OpenAI)</string>
+    <string name="image_gen_backend_standard_desc">يستخدم بيانات اعتماد مزود النموذج المحدد ونقطة النهاية /images/generations الخاصة به.</string>
+    <string name="image_gen_backend_aihorde">AI Horde</string>
+    <string name="image_gen_backend_desc">اختر الخدمة التي تنشئ الصور عندما يستدعي النموذج أداة الصور.</string>
+    <string name="aihorde_image_model_desc">نموذج صور (checkpoint) يقدمه عاملون متطوعون. فارغ = أي نموذج متاح.</string>
+    <string name="aihorde_image_latency_warning">تأتي الصور من شبكة تعاونية من العاملين المتطوعين — يتم وضع التوليد في قائمة انتظار وقد يستغرق دقائق، خاصة مع المفتاح المجهول.</string>
+    <string name="aihorde_image_sync">تحديث النماذج المتاحة</string>
+    <string name="aihorde_image_syncing">جارٍ التحديث…</string>
+    <string name="aihorde_image_sync_hint">اضغط على "تحديث النماذج المتاحة" لتحميل النماذج المتصلة حاليًا.</string>
     <string name="tool_generate_image">توليد صورة</string>
     <string name="tool_generating_image">جارٍ توليد الصورة…</string>
     <string name="tool_generated_image">تم توليد الصورة</string>

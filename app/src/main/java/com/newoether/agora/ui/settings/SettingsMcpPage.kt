@@ -23,11 +23,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudOff
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Error
-import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Refresh
@@ -364,12 +365,27 @@ fun SettingsMcpPage(
                     .verticalScroll(rememberScrollState())
                     .padding(bottom = 24.dp),
             ) {
-                Text(
-                    text = stringResource(R.string.mcp_add_server),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-                )
+                // The long popular-server list expands this sheet to full height, hiding the
+                // page app bar — keep an explicit close affordance visible at the top.
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 24.dp, top = 8.dp, end = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = stringResource(R.string.mcp_add_server),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    IconButton(onClick = { showAddServerSheet = false }) {
+                        Icon(
+                            Icons.Default.Close,
+                            contentDescription = stringResource(R.string.provider_close),
+                        )
+                    }
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.mcp_custom_server), fontWeight = FontWeight.Medium) },
@@ -543,7 +559,7 @@ private fun McpServerEditor(
                         }
                     }
                     add {
-                        SettingsIconContent(icon = Icons.Default.Label) {
+                        SettingsIconContent(icon = Icons.AutoMirrored.Filled.Label) {
                             McpLabeledField(
                                 label = stringResource(R.string.mcp_name),
                                 value = draft.name,

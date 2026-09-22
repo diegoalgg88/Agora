@@ -19,6 +19,9 @@ internal object NativeBackupSecretsPolicy {
         val mcpSecrets = sm.mcpServers.first()
             .filter { it.headers.isNotEmpty() }
             .associate { it.id to it.headers }
+        val mcpUrlSecrets = sm.mcpServers.first()
+            .filter { hasMcpUrlCredentialParameters(it.url) }
+            .associate { it.id to it.url }
         return NativeBackupSecrets(
             apiKeys = sm.apiKeys.first(),
             activeApiKeyIds = sm.activeApiKeyIds.first(),
@@ -27,6 +30,7 @@ internal object NativeBackupSecretsPolicy {
             shellDevices = shellSecrets,
             embeddingApiKeys = embeddingSecrets,
             mcpHeaders = mcpSecrets,
+            mcpUrls = mcpUrlSecrets,
         )
     }
 
@@ -140,18 +144,21 @@ internal object NativeBackupSecretsPolicy {
 
         val mcpServers = sm.mcpServers.first()
         val mcpIds = mcpServers.mapTo(mutableSetOf()) { it.id }
-        val orphanMcpSecrets = data.mcpHeaders.keys.count { it !in mcpIds }
+        val orphanMcpSecrets = data.mcpHeaders.keys.count { it !in mcpIds } +
+            data.mcpUrls.keys.count { it !in mcpIds }
         if (orphanMcpSecrets > 0) {
-            warnings += "ignored $orphanMcpSecrets MCP header record(s) without a matching server"
+            warnings += "ignored $orphanMcpSecrets MCP credential record(s) without a matching server"
         }
         sm.saveMcpServers(
             mcpServers.map { server ->
-                val imported = data.mcpHeaders[server.id]
-                when {
-                    imported != null -> server.copy(headers = imported)
+                val importedHeaders = data.mcpHeaders[server.id]
+                val withHeaders = when {
+                    importedHeaders != null -> server.copy(headers = importedHeaders)
                     replace -> server.copy(headers = emptyMap())
                     else -> server
                 }
+                val importedUrl = data.mcpUrls[server.id]
+                if (importedUrl != null) withHeaders.copy(url = importedUrl) else withHeaders
             },
         )
 

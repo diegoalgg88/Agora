@@ -26,7 +26,16 @@ internal class LiveAudioPlayback {
             track = AudioTrack.Builder()
                 .setAudioAttributes(
                     AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_MEDIA)
+                        // USAGE_VOICE_COMMUNICATION (not USAGE_MEDIA) is required for the
+                        // AcousticEchoCanceler attached to LiveAudioCapture's AudioRecord to
+                        // actually receive this playback as its echo reference — the audio HAL
+                        // only exposes voice-communication-tagged streams to AEC. Without this,
+                        // capture-side AEC config (source=VOICE_COMMUNICATION, mode=
+                        // MODE_IN_COMMUNICATION, canceler on the right session) has nothing to
+                        // cancel, and the model's own speaker output bleeds back into the mic as
+                        // if the user were talking — more visible on shorter silenceDurationMs
+                        // presets (owner report, 2026-09-19: seen specifically on "Rápido").
+                        .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
                         .setContentType(AudioAttributes.CONTENT_TYPE_SPEECH)
                         .build(),
                 )

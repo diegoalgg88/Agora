@@ -54,6 +54,12 @@ internal interface McpClientTransport : AutoCloseable {
 
     fun resetSession()
     fun updateProtocolVersion(protocolVersion: String)
+
+    /**
+     * Server signalled `notifications/tools/list_changed`. Fired while parsing a response body or
+     * stream event, so listeners must not call back into this transport synchronously.
+     */
+    var onToolsListChanged: (() -> Unit)?
 }
 
 internal fun createMcpClientTransport(
@@ -202,6 +208,8 @@ private class StreamableHttpMcpTransport(
     @Volatile
     private var closed = false
 
+    override var onToolsListChanged: (() -> Unit)? = null
+
     override suspend fun ensureReady(): Long {
         check(!closed) { "MCP transport is closed" }
         return sessionGeneration.get()
@@ -240,12 +248,16 @@ private class StreamableHttpMcpTransport(
                 if (!expectResponse || response.code == 202) return@use null
                 val body = response.body ?: throw IOException("MCP response body is empty")
                 if (response.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
-                    parseFiniteSseResponse(body.source(), json)
+                    parseFiniteSseResponse(body.source(), json, ::notifyToolsListChanged)
                 } else {
                     parseJsonRpcEnvelope(body.string(), json)
                 }
             }
         }
+    }
+
+    private fun notifyToolsListChanged(envelope: JsonObject) {
+        if (isToolsListChangedNotification(envelope)) onToolsListChanged?.invoke()
     }
 
     override fun resetSession() {
@@ -302,6 +314,9 @@ private class LegacySseMcpTransport(
     private val headers = normalizedMcpHeaders(customHeaders)
     private val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
     private val stateLock = Any()
+
+    override var onToolsListChanged: (() -> Unit)? = null
+
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val streamClient = HttpClient.client.newBuilder()
         .callTimeout(0, TimeUnit.MILLISECONDS)
@@ -505,6 +520,10 @@ private class LegacySseMcpTransport(
                 }.getOrElse { error ->
                     throw IOException("Invalid JSON-RPC message from MCP SSE stream", error)
                 }
+                if (isToolsListChangedNotification(envelope)) {
+                    onToolsListChanged?.invoke()
+                    return
+                }
                 if (envelope["result"] == null && envelope["error"] == null) return
                 val id = (envelope["id"] as? JsonPrimitive)?.contentOrNull ?: return
                 val target = synchronized(stateLock) {
@@ -545,7 +564,7 @@ private class LegacySseMcpTransport(
                 val contentType = response.header("Content-Type").orEmpty()
                 when {
                     contentType.contains("text/event-stream", true) ->
-                        parseFiniteSseResponse(body.source(), json)
+                        parseFiniteSseResponse(body.source(), json, ::notifyToolsListChanged)
                     contentType.contains("application/json", true) -> {
                         val payload = body.string()
                         if (payload.isBlank()) null else parseJsonRpcEnvelope(payload, json)
@@ -554,6 +573,10 @@ private class LegacySseMcpTransport(
                 }
             }
         }
+    }
+
+    private fun notifyToolsListChanged(envelope: JsonObject) {
+        if (isToolsListChangedNotification(envelope)) onToolsListChanged?.invoke()
     }
 
     private fun invalidateConnection(
@@ -672,19 +695,29 @@ internal fun resolveLegacySseMessageEndpoint(
 private fun parseJsonRpcEnvelope(payload: String, json: Json): JsonObject =
     json.parseToJsonElement(payload).jsonObject
 
-private fun parseFiniteSseResponse(source: BufferedSource, json: Json): JsonObject {
+private fun parseFiniteSseResponse(
+    source: BufferedSource,
+    json: Json,
+    onEnvelope: (JsonObject) -> Unit = {},
+): JsonObject {
     val parser = McpSseEventParser()
     while (!source.exhausted()) {
         val event = parser.accept(source.readUtf8Line() ?: break) ?: continue
         val parsed = runCatching { parseJsonRpcEnvelope(event.data, json) }.getOrNull()
-        if (parsed != null && (parsed["result"] != null || parsed["error"] != null)) {
-            return parsed
+        if (parsed != null) {
+            onEnvelope(parsed)
+            if (parsed["result"] != null || parsed["error"] != null) {
+                return parsed
+            }
         }
     }
     parser.finish()?.let { event ->
         val parsed = runCatching { parseJsonRpcEnvelope(event.data, json) }.getOrNull()
-        if (parsed != null && (parsed["result"] != null || parsed["error"] != null)) {
-            return parsed
+        if (parsed != null) {
+            onEnvelope(parsed)
+            if (parsed["result"] != null || parsed["error"] != null) {
+                return parsed
+            }
         }
     }
     throw IOException("MCP SSE stream ended before a JSON-RPC response")

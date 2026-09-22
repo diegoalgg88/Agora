@@ -130,7 +130,8 @@ Settings `REPLACE` import unless a separate selected category owns it:
 - Automatic-backup enabled state, schedule, destination, retention, last-run timestamp, and derived
   model-fetch/cache fingerprints.
 - API keys, active API-key IDs, Web Search keys, proxy password, Shell credentials, remote Embedding
-  keys, and MCP headers; these belong only to the explicit secret category.
+  keys, MCP headers, and MCP URL credential query parameters; these belong only to the explicit
+  secret category.
 - Conversation-scoped settings; these travel only with an exported conversation.
 - Custom-font filesystem paths. The font bytes use the dedicated Settings-category entry.
 
@@ -141,8 +142,10 @@ derived portable model caches so stale discovery results cannot masquerade as im
 
 The secret payload contains Provider API-key records and active IDs, Web Search API keys, proxy
 password, Shell API keys and SSH passwords keyed by stable device ID, remote Embedding API keys keyed
-by model ID, and MCP headers keyed by server ID. Version 1-3 name-keyed Shell API keys are accepted
-only for legacy compatibility.
+by model ID, and MCP headers plus credential-bearing MCP URLs keyed by server ID. Credential query
+parameters on an MCP URL (for example `tavilyApiKey`) are stripped from structural Settings by the
+same rule as headers; the full original URL travels only in the secret category. Version 1-3
+name-keyed Shell API keys are accepted only for legacy compatibility.
 
 `api_keys.json` is plain JSON inside the ZIP; Android Keystore envelopes are not portable. It is
 therefore emitted only after explicit include-secrets selection. Structural Settings payloads always

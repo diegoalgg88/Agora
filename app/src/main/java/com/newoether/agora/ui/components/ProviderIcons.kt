@@ -15,5 +15,6 @@ fun providerIcon(name: String): Int = when (name.lowercase()) {
     "groq" -> R.drawable.provider_groq
     "ollama" -> R.drawable.provider_ollama
     "open router" -> R.drawable.provider_openrouter
+    "ai horde" -> R.drawable.provider_aihorde
     else -> 0
 }

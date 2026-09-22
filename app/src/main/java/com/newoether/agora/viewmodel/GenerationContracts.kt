@@ -75,6 +75,12 @@ data class GenerationContext(
     val imageGenBaseUrl: String = "",
     val imageGenModel: String = "gpt-image-1",
     val imageGenSize: String = "1024x1024",
+    /** Image backend selector: "standard" (OpenAI-compatible /images/generations) or "ai_horde". */
+    val imageGenBackend: String = "standard",
+    /** AI Horde image model (checkpoint name). Dedicated namespace — never sourced from availableModels. */
+    val aiHordeImageModel: String = "",
+    /** API key for AI Horde; falls back to the chat provider's key when blank (same account pool). */
+    val aiHordeApiKey: String = "",
     val automationToolsEnabled: Boolean = false,
     /** Workers use WorkManager's foreground execution instead of starting our service. */
     val foregroundServiceManagedExternally: Boolean = false,

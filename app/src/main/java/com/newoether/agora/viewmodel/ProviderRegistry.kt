@@ -8,6 +8,7 @@ import com.newoether.agora.api.anthropic.AnthropicProvider
 import com.newoether.agora.api.gemini.GeminiProvider
 import com.newoether.agora.api.local.LocalProvider
 import com.newoether.agora.api.ollama.OllamaProvider
+import com.newoether.agora.api.openai.AiHordeProvider
 import com.newoether.agora.api.openai.CustomOpenAiProvider
 import com.newoether.agora.api.openai.DeepSeekProvider
 import com.newoether.agora.api.openai.GroqProvider
@@ -139,6 +140,7 @@ class ProviderRegistry(
         Constants.PROVIDER_GROQ to GroqProvider(),
         Constants.PROVIDER_OLLAMA to OllamaProvider(),
         Constants.PROVIDER_OPEN_ROUTER to OpenRouterProvider(),
+        Constants.PROVIDER_AI_HORDE to AiHordeProvider(),
         Constants.PROVIDER_LOCAL to localProvider
     )
 

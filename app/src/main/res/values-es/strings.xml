@@ -202,6 +202,11 @@
     <string name="provider_api_keys">Claves de API</string>
     <string name="provider_api_keys_optional">Claves de API (opcional)</string>
     <string name="provider_no_keys">No hay claves configuradas para %1$s</string>
+    <string name="provider_aihorde_about">AI Horde</string>
+    <string name="provider_aihorde_anon_key_hint">Clave anónima: 0000000000</string>
+    <string name="provider_aihorde_anon_key_desc">AI Horde es una red colaborativa de trabajadores voluntarios. La clave anónima 0000000000 funciona con la prioridad de cola más baja; los modelos, la velocidad y la disponibilidad dependen de los trabajadores en línea. Una clave personal gana mayor prioridad con el tiempo.</string>
+    <string name="provider_aihorde_register">Registrarse para obtener una clave API personal</string>
+    <string name="provider_aihorde_register_url">aihorde.net/register</string>
     <string name="provider_keys_count">%1$d clave(s) configurada(s)</string>
     <string name="provider_add_key">Añadir nueva clave</string>
     <string name="provider_select_provider">Seleccionar proveedor de IA</string>
@@ -231,6 +236,17 @@
     <string name="image_gen_size">Tamaño predeterminado</string>
     <string name="image_gen_size_hint">1024x1024</string>
     <string name="image_gen_show_all">Mostrar todos los modelos</string>
+    <string name="aihorde_image_about">AI Horde</string>
+    <string name="image_gen_backend">Backend de imágenes</string>
+    <string name="image_gen_backend_standard">Estándar (compatible con OpenAI)</string>
+    <string name="image_gen_backend_standard_desc">Usa las credenciales del proveedor del modelo seleccionado y su endpoint /images/generations.</string>
+    <string name="image_gen_backend_aihorde">AI Horde</string>
+    <string name="image_gen_backend_desc">Elige qué servicio genera imágenes cuando el modelo llama a la herramienta de imágenes.</string>
+    <string name="aihorde_image_model_desc">Modelo de imagen (checkpoint) servido por trabajadores voluntarios. Vacío = cualquier modelo disponible.</string>
+    <string name="aihorde_image_latency_warning">Las imágenes provienen de una red colaborativa de trabajadores voluntarios: la generación se pone en cola y puede tardar minutos, especialmente con la clave anónima.</string>
+    <string name="aihorde_image_sync">Actualizar modelos disponibles</string>
+    <string name="aihorde_image_syncing">Actualizando…</string>
+    <string name="aihorde_image_sync_hint">Toca "Actualizar modelos disponibles" para cargar los modelos que están en línea ahora.</string>
     <string name="tool_generate_image">Generar imagen</string>
     <string name="tool_generating_image">Generando imagen…</string>
     <string name="tool_generated_image">Imagen generada</string>

@@ -21,9 +21,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Chat
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Cloud
 import androidx.compose.material.icons.filled.Edit
@@ -77,6 +77,7 @@ private val RemoteModelProviders = listOf(
     Constants.PROVIDER_GROQ,
     Constants.PROVIDER_OLLAMA,
     Constants.PROVIDER_OPEN_ROUTER,
+    Constants.PROVIDER_AI_HORDE,
 )
 
 internal data class ModelProviderGroup(
@@ -292,10 +293,10 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         leadingContent = {
                             val tint = if (hasEnabledModels) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                             when {
-                                !hasEnabledModels -> Icon(Icons.Default.Chat, null, tint = tint, modifier = Modifier.size(24.dp))
+                                !hasEnabledModels -> Icon(Icons.AutoMirrored.Filled.Chat, null, tint = tint, modifier = Modifier.size(24.dp))
                                 isActiveLocal -> Icon(Icons.Default.AutoAwesome, null, tint = tint, modifier = Modifier.size(24.dp))
                                 activeIconRes != 0 -> Icon(painterResource(activeIconRes), null, tint = tint, modifier = Modifier.size(24.dp))
-                                else -> Icon(Icons.Default.Chat, null, tint = tint, modifier = Modifier.size(24.dp))
+                                else -> Icon(Icons.AutoMirrored.Filled.Chat, null, tint = tint, modifier = Modifier.size(24.dp))
                             }
                         },
                         modifier = Modifier.heightIn(min = 66.dp).clickable(enabled = hasEnabledModels) { showActiveModelDialog = true }
@@ -323,7 +324,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             },
                             leadingContent = {
                                 Icon(
-                                    Icons.Default.Chat,
+                                    Icons.AutoMirrored.Filled.Chat,
                                     contentDescription = null,
                                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
                                 )

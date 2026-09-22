@@ -26,6 +26,7 @@ internal class LiveAudioCapture(
     private val running = AtomicBoolean(false)
     private var audioManager: AudioManager? = null
     private var previousMode: Int = -1
+    private var previousSpeakerphoneOn: Boolean = false
 
     val echoCancellationAvailable: Boolean
         get() = android.media.audiofx.AcousticEchoCanceler.isAvailable()
@@ -48,7 +49,13 @@ internal class LiveAudioCapture(
         }
         audioManager = context.getSystemService(AudioManager::class.java)
         previousMode = audioManager?.mode ?: -1
+        previousSpeakerphoneOn = audioManager?.isSpeakerphoneOn ?: false
         audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
+        // USAGE_VOICE_COMMUNICATION playback (LiveAudioPlayback) + MODE_IN_COMMUNICATION follow
+        // normal telephony routing, which defaults to the earpiece — force the loudspeaker so a
+        // hands-free assistant call doesn't regress into a barely-audible in-ear call. Restored
+        // in stop().
+        audioManager?.isSpeakerphoneOn = true
         if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) {
             echoCanceler = android.media.audiofx.AcousticEchoCanceler.create(recorder.audioSessionId)
         }
@@ -82,7 +89,10 @@ internal class LiveAudioCapture(
         noiseSuppressor?.release()
         noiseSuppressor = null
         record = null
-        audioManager?.takeIf { previousMode >= 0 }?.mode = previousMode
+        audioManager?.let {
+            if (previousMode >= 0) it.mode = previousMode
+            it.isSpeakerphoneOn = previousSpeakerphoneOn
+        }
         audioManager = null
     }
 

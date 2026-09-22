@@ -86,8 +86,9 @@ val popularMcpServers = listOf(
     PopularMcpServer(
         name = "Tavily",
         url = "https://mcp.tavily.com/mcp/",
-        description = "AI-powered web search, extraction, and research (requires Tavily API key as query param ?tavilyApiKey=...)",
-        headers = emptyMap(),
+        description = "Web search, extract, crawl, and research. Works keyless for search/extract; " +
+            "add your tvly- API key as Authorization: Bearer for higher limits and all tools",
+        headers = mapOf("Authorization" to "Bearer "),
         requiresAuth = true,
     ),
     PopularMcpServer(
@@ -107,7 +108,8 @@ val popularMcpServers = listOf(
     PopularMcpServer(
         name = "OpenWeather",
         url = "https://mcp.openweathermap.org/mcp",
-        description = "Current weather, forecasts, and historical data worldwide",
+        description = "Weather data for agents: sign up at agents.openweathermap.org to get your " +
+            "data key (also via the sign_up tool); browse feeds keyless, fetch data with your key",
         headers = mapOf("Authorization" to "Bearer "),
         requiresAuth = true,
     ),

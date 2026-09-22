@@ -69,7 +69,7 @@ internal data class LiveRealtimeInputConfig(
  */
 @Serializable
 internal data class LiveAutomaticActivityDetection(
-    @SerialName("startOfSpeechSensitivity") val startOfSpeechSensitivity: String = "START_SENSITIVITY_HIGH",
+    @SerialName("startOfSpeechSensitivity") val startOfSpeechSensitivity: String = "START_SENSITIVITY_LOW",
     @SerialName("endOfSpeechSensitivity") val endOfSpeechSensitivity: String = "END_SENSITIVITY_LOW",
     @SerialName("prefixPaddingMs") val prefixPaddingMs: Int = 50,
     @SerialName("silenceDurationMs") val silenceDurationMs: Int = 700,
@@ -217,6 +217,17 @@ internal fun normalizeLiveModelId(modelId: String): String =
  * default (RESPONSIVE-equivalent: HIGH end sensitivity, 500 ms silence) cut users off mid-
  * sentence for normal speaking pace/pauses (owner report, 2026-09-17) — no single fixed value
  * suits every speaker, room, or language.
+ *
+ * `startOfSpeechSensitivity` is pinned to `START_SENSITIVITY_LOW` in **every** preset: on-device
+ * testing (owner report, 2026-09-19, `gemini-2.5-flash-native-audio-preview-09-2025`) showed
+ * `START_SENSITIVITY_HIGH` reproducibly makes the server’s VAD never fire at all — not “cuts in
+ * eagerly” as the name and Google's own docs suggest, but a complete failure to detect any
+ * speech for the whole call (four separate attempts, zero `serverContent` ever received). `LOW`
+ * worked immediately and consistently. This looks like a real platform/preview-model quirk
+ * rather than something fixable by interpreting the field differently on our end — revisit if a
+ * future model revision documents different behavior. Only `endOfSpeechSensitivity` /
+ * `silenceDurationMs` / `prefixPaddingMs` differ across presets now, which also matches the
+ * original complaint (mid-sentence cutoff is an end-of-turn concern, not a start-of-turn one).
  */
 internal enum class VoiceSensitivity(
     val startOfSpeechSensitivity: String,
@@ -233,10 +244,10 @@ internal enum class VoiceSensitivity(
         silenceDurationMs = 900,
     ),
 
-    /** Default: starts capturing quickly, but does not end the turn on an ordinary
-     *  mid-sentence pause. */
+    /** Default: end-of-turn latency tuned down from Google's unconfigured baseline without
+     *  cutting off an ordinary mid-sentence pause. */
     BALANCED(
-        startOfSpeechSensitivity = "START_SENSITIVITY_HIGH",
+        startOfSpeechSensitivity = "START_SENSITIVITY_LOW",
         endOfSpeechSensitivity = "END_SENSITIVITY_LOW",
         prefixPaddingMs = 50,
         silenceDurationMs = 700,
@@ -245,7 +256,7 @@ internal enum class VoiceSensitivity(
     /** Fastest turn-taking — the original Fase 4 v1 default (2026-09-17). Can cut off slower
      *  speech or brief thinking pauses; opt-in for people who want the snappiest back-and-forth. */
     RESPONSIVE(
-        startOfSpeechSensitivity = "START_SENSITIVITY_HIGH",
+        startOfSpeechSensitivity = "START_SENSITIVITY_LOW",
         endOfSpeechSensitivity = "END_SENSITIVITY_HIGH",
         prefixPaddingMs = 20,
         silenceDurationMs = 500,

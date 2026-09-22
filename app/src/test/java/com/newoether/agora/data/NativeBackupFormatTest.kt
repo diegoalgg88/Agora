@@ -33,12 +33,13 @@ class NativeBackupFormatTest {
 
         val mcp = McpServerConfig(
             name = "mcp",
-            url = "https://example.test/mcp",
+            url = "https://mcp.tavily.com/mcp/?tavilyApiKey=tvly-secret&humanId=h1",
             headers = mapOf("Authorization" to "Bearer mcp-secret"),
             disabledTools = setOf("dangerous"),
         ).withoutSecrets()
         assertTrue(mcp.headers.isEmpty())
         assertEquals(setOf("dangerous"), mcp.disabledTools)
+        assertEquals("https://mcp.tavily.com/mcp/?humanId=h1", mcp.url)
 
         val remote = EmbeddingModelConfig(
             name = "remote",
@@ -65,8 +66,42 @@ class NativeBackupFormatTest {
         assertFalse(portableJson.contains("conch-secret"))
         assertFalse(portableJson.contains("ssh-secret"))
         assertFalse(portableJson.contains("mcp-secret"))
+        assertFalse(portableJson.contains("tvly-secret"))
         assertFalse(portableJson.contains("embedding-secret"))
         assertFalse(portableJson.contains("/data/user/0"))
+    }
+
+    @Test
+    fun mcpUrlCredentialParameters_areDetectedAndSanitized() {
+        assertTrue(isMcpUrlCredentialParameter("tavilyApiKey"))
+        assertTrue(isMcpUrlCredentialParameter("api_key"))
+        assertTrue(isMcpUrlCredentialParameter("access-token"))
+        assertTrue(isMcpUrlCredentialParameter("clientSecret"))
+        assertTrue(isMcpUrlCredentialParameter("key"))
+        assertTrue(isMcpUrlCredentialParameter("token"))
+        assertFalse(isMcpUrlCredentialParameter("keyword"))
+        assertFalse(isMcpUrlCredentialParameter("humanId"))
+        assertFalse(isMcpUrlCredentialParameter("session"))
+        assertFalse(isMcpUrlCredentialParameter("routing"))
+
+        assertTrue(
+            hasMcpUrlCredentialParameters("https://mcp.tavily.com/mcp/?tavilyApiKey=tvly-x"),
+        )
+        assertFalse(hasMcpUrlCredentialParameters("https://mcp.tavily.com/mcp/?humanId=h1"))
+        assertFalse(hasMcpUrlCredentialParameters("not a url"))
+
+        assertEquals(
+            "https://mcp.tavily.com/mcp/?humanId=h1",
+            sanitizeMcpUrlCredentials("https://mcp.tavily.com/mcp/?tavilyApiKey=tvly-x&humanId=h1"),
+        )
+        assertEquals(
+            "https://api.example.test/v1?client_id=abc",
+            sanitizeMcpUrlCredentials("https://api.example.test/v1?client_id=abc&client_secret=cs-x"),
+        )
+        val clean = "https://mcp.example.test/mcp"
+        assertEquals(clean, sanitizeMcpUrlCredentials(clean))
+        val malformed = "::::not-parseable::::"
+        assertEquals(malformed, sanitizeMcpUrlCredentials(malformed))
     }
 
     @Test
@@ -83,6 +118,9 @@ class NativeBackupFormatTest {
             mcpHeaders = mapOf(
                 "mcp-id" to mapOf("Authorization" to "Bearer mcp-key"),
             ),
+            mcpUrls = mapOf(
+                "mcp-id" to "https://mcp.tavily.com/mcp/?tavilyApiKey=tvly-url-key",
+            ),
         )
         val encoded = Json.encodeToString(data)
         assertTrue(encoded.contains("\"device-id\""))
@@ -90,6 +128,7 @@ class NativeBackupFormatTest {
         assertTrue(encoded.contains("shell-password"))
         assertTrue(encoded.contains("embedding-key"))
         assertTrue(encoded.contains("mcp-key"))
+        assertTrue(encoded.contains("tvly-url-key"))
     }
 
     @Test

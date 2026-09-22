@@ -144,6 +144,7 @@ Never:
 | Provider structured citations, citation persistence, marker cleanup, answer/source projection, citation copy/search/import/export, or citation accessibility | [citations.md](citations.md) |
 | Embedding-cache reads, semantic conversation search, RAG ranking, or search eligibility | [semantic-search.md](semantic-search.md) |
 | Generic Web Search providers/settings/tool execution or native provider-hosted web search | [web-search.md](web-search.md) |
+| MCP server configuration/transports/protocol negotiation, registry supervision, tool discovery and execution, or popular-server catalog | [mcp.md](mcp.md) |
 | Persistent Skill files, Skill catalog prompt projection, Skill tools/settings, or Skill archive transport | [skills.md](skills.md) |
 | Application-level onboarding motion, settings category copy, or other non-message global UI behavior | [application-ui.md](application-ui.md) |
 | Native `.agora` archive categories, settings portability, import strategies, secrets, or backup compatibility | [import-export.md](import-export.md) |

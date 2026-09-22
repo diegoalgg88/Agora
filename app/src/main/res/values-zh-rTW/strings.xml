@@ -119,6 +119,11 @@
     <string name="provider_api_keys">API 金鑰</string>
     <string name="provider_api_keys_optional">API 金鑰（選用）</string>
     <string name="provider_no_keys">尚未為 %1$s 設定金鑰</string>
+    <string name="provider_aihorde_about">AI Horde</string>
+    <string name="provider_aihorde_anon_key_hint">匿名金鑰：0000000000</string>
+    <string name="provider_aihorde_anon_key_desc">AI Horde 是一個由志願工作者組成的群眾外包網路。匿名金鑰 0000000000 以最低佇列優先權運作；模型、速度和可用性取決於線上的工作節點。個人金鑰會隨時間獲得更高優先權。</string>
+    <string name="provider_aihorde_register">註冊取得個人 API 金鑰</string>
+    <string name="provider_aihorde_register_url">aihorde.net/register</string>
     <string name="provider_keys_count">已設定 %1$d 個金鑰</string>
     <string name="provider_add_key">新增金鑰</string>
     <string name="provider_select_provider">選擇 AI 服務商</string>
@@ -149,6 +154,17 @@
     <string name="image_gen_size">預設尺寸</string>
     <string name="image_gen_size_hint">1024x1024</string>
     <string name="image_gen_show_all">顯示全部模型</string>
+    <string name="aihorde_image_about">AI Horde</string>
+    <string name="image_gen_backend">影像後端</string>
+    <string name="image_gen_backend_standard">標準（相容 OpenAI）</string>
+    <string name="image_gen_backend_standard_desc">使用所選模型提供者的憑證及其 /images/generations 端點。</string>
+    <string name="image_gen_backend_aihorde">AI Horde</string>
+    <string name="image_gen_backend_desc">選擇模型呼叫影像工具時由哪個服務產生影像。</string>
+    <string name="aihorde_image_model_desc">由志願工作者提供的影像模型（檢查點）。留空 = 任意可用模型。</string>
+    <string name="aihorde_image_latency_warning">影像由志願工作者的群眾外包網路產生——產生會排隊，可能需要幾分鐘，使用匿名金鑰時尤甚。</string>
+    <string name="aihorde_image_sync">重新整理可用模型</string>
+    <string name="aihorde_image_syncing">正在重新整理…</string>
+    <string name="aihorde_image_sync_hint">點擊「重新整理可用模型」以載入目前線上的模型。</string>
     <string name="tool_generate_image">生成圖片</string>
     <string name="tool_generating_image">正在生成圖片…</string>
     <string name="tool_generated_image">已生成圖片</string>

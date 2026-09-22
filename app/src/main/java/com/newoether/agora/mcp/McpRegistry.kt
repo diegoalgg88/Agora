@@ -101,10 +101,14 @@ class McpRegistry(
         val config: McpServerConfig,
         val client: McpProtocolClient,
         var connectionJob: Job? = null,
+        var toolsRefreshJob: Job? = null,
     ) {
         fun close() {
             connectionJob?.cancel()
+            toolsRefreshJob?.cancel()
             connectionJob = null
+            toolsRefreshJob = null
+            client.onToolsListChanged = null
             client.close()
         }
     }
@@ -348,6 +352,7 @@ class McpRegistry(
             }
         }
         if (installed) {
+            runtime.client.onToolsListChanged = { onToolsListChanged(runtime) }
             connectionJob.start()
         } else {
             runtime.close()
@@ -373,33 +378,7 @@ class McpRegistry(
                 return@launch
             }
             try {
-                val remoteTools = connectionPermits.withPermit {
-                    runtime.client.listTools()
-                }
-                    .distinctBy(McpRemoteTool::name)
-                    .sortedBy(McpRemoteTool::name)
-                val descriptors = remoteTools.map { remote ->
-                    McpToolDescriptor(
-                        publicName = publicMcpToolName(runtime.config.id, remote.name),
-                        serverId = runtime.config.id,
-                        serverName = runtime.config.name.ifBlank { runtime.config.url },
-                        remote = remote,
-                        enabled = remote.name !in runtime.config.disabledTools,
-                    )
-                }
-                if (
-                    !putRuntimeSnapshotIfCurrent(
-                        runtime = runtime,
-                        snapshot = McpServerSnapshot(
-                            serverId = runtime.config.id,
-                            status = McpConnectionStatus.CONNECTED,
-                            tools = descriptors,
-                            lastSyncedAt = System.currentTimeMillis(),
-                        ),
-                    )
-                ) {
-                    return@launch
-                }
+                refreshToolsSnapshot(runtime)
                 return@launch
             } catch (e: CancellationException) {
                 throw e
@@ -409,6 +388,68 @@ class McpRegistry(
                 retryMs = min(MAX_RETRY_MS, retryMs * 2)
             }
         }
+    }
+
+    /**
+     * Re-reads the remote tool list and publishes a CONNECTED snapshot. Returns false when the
+     * runtime lost ownership before publication, so both the connection loop and the
+     * tools/list_changed refresh stop instead of publishing into a replaced runtime.
+     */
+    private suspend fun refreshToolsSnapshot(runtime: Runtime): Boolean {
+        val remoteTools = connectionPermits.withPermit {
+            runtime.client.listTools()
+        }
+            .distinctBy(McpRemoteTool::name)
+            .sortedBy(McpRemoteTool::name)
+        val descriptors = remoteTools.map { remote ->
+            McpToolDescriptor(
+                publicName = publicMcpToolName(runtime.config.id, remote.name),
+                serverId = runtime.config.id,
+                serverName = runtime.config.name.ifBlank { runtime.config.url },
+                remote = remote,
+                enabled = remote.name !in runtime.config.disabledTools,
+            )
+        }
+        return putRuntimeSnapshotIfCurrent(
+            runtime = runtime,
+            snapshot = McpServerSnapshot(
+                serverId = runtime.config.id,
+                status = McpConnectionStatus.CONNECTED,
+                tools = descriptors,
+                lastSyncedAt = System.currentTimeMillis(),
+            ),
+        )
+    }
+
+    /**
+     * `notifications/tools/list_changed` arrived from a connected server. Coalesced per runtime:
+     * an in-flight refresh absorbs later notifications; ownership is re-checked before the
+     * network call and before snapshot publication, so a replaced/closed runtime never publishes.
+     * Transient failures stay silent — the connection loop's retry backoff remains the recovery
+     * path, and the notification carries no retry contract from the server.
+     */
+    private fun onToolsListChanged(runtime: Runtime) {
+        val existing = synchronized(lock) {
+            if (runtimes[runtime.config.id] !== runtime) return
+            runtime.toolsRefreshJob?.takeIf(Job::isActive)?.let { return }
+            val job = scope.launch(workDispatcher, start = CoroutineStart.LAZY) {
+                if (!isCurrent(runtime)) return@launch
+                try {
+                    refreshToolsSnapshot(runtime)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    DebugLog.d(
+                        "McpRegistry",
+                        "MCP server ${runtime.config.id} tools/list_changed refresh failed",
+                        e,
+                    )
+                }
+            }
+            runtime.toolsRefreshJob = job
+            job
+        }
+        existing.start()
     }
 
     private fun scheduleRetry(runtime: Runtime) {

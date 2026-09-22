@@ -24,6 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
+import com.newoether.agora.api.aihorde.AiHordeImageClient
 import com.newoether.agora.data.modelAliasDisplayName
 import com.newoether.agora.data.providerDisplayName
 import com.newoether.agora.model.ModelId
@@ -32,6 +33,7 @@ import com.newoether.agora.util.Constants
 import com.newoether.agora.util.noOpBringIntoView
 import com.newoether.agora.viewmodel.ChatViewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 /**
  * Substrings that identify text-to-image models across the major families/vendors. Aims for ~90%
@@ -85,12 +87,30 @@ fun SettingsImageGenPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val enabled by viewModel.settings.imageGenEnabled.collectAsState()
     val selectedModel by viewModel.settings.imageGenModel.collectAsState()
     val size by viewModel.settings.imageGenSize.collectAsState()
+    val backend by viewModel.settings.imageGenBackend.collectAsState()
+    val aiHordeImageModel by viewModel.settings.aiHordeImageModel.collectAsState()
     val availableModels by viewModel.settings.availableModels.collectAsState()
     val modelAliases by viewModel.settings.modelAliases.collectAsState()
     val customProviders by viewModel.settings.customProviders.collectAsState()
     var showModelDialog by remember { mutableStateOf(false) }
     var showAllModels by remember { mutableStateOf(false) }
+    var showBackendDialog by remember { mutableStateOf(false) }
+    var showHordeModelDialog by remember { mutableStateOf(false) }
+    var hordeModels by remember { mutableStateOf<List<String>?>(null) }
+    var hordeSyncing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
     val showDocFab by viewModel.settings.showDocumentationFab.collectAsState()
+
+    fun syncHordeModels() {
+        if (hordeSyncing) return
+        hordeSyncing = true
+        scope.launch {
+            hordeModels = AiHordeImageClient.fetchImageModelNames(
+                viewModel.settings.aiHordeImageApiKey.value.ifBlank { AiHordeImageClient.ANONYMOUS_API_KEY }
+            )
+            hordeSyncing = false
+        }
+    }
 
     // Source from ALL synced models (image models needn't be enabled for chat). Default to the
     // image-likely subset so the list stays short; "show all" is the escape hatch for odd names.
@@ -117,6 +137,50 @@ fun SettingsImageGenPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 }))
 
                 if (enabled) {
+                    // Backend selector: Standard (OpenAI-compatible) vs AI Horde.
+                    SettingsGroup(title = stringResource(R.string.image_gen_backend), items = listOf({
+                        SettingsItem(
+                            headlineContent = {
+                                Text(
+                                    stringResource(
+                                        if (backend == "ai_horde") R.string.image_gen_backend_aihorde
+                                        else R.string.image_gen_backend_standard
+                                    )
+                                )
+                            },
+                            supportingContent = { Text(stringResource(R.string.image_gen_backend_desc)) },
+                            leadingContent = { Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.primary) },
+                            modifier = Modifier.heightIn(min = 64.dp).clickable { showBackendDialog = true }
+                        )
+                    }))
+
+                    if (backend == "ai_horde") {
+                        // AI Horde model picker — dedicated catalog, never from availableModels.
+                        SettingsGroup(title = stringResource(R.string.image_gen_model), items = listOf({
+                            SettingsItem(
+                                headlineContent = {
+                                    Text(
+                                        aiHordeImageModel.ifBlank { stringResource(R.string.image_gen_no_model) },
+                                        color = if (aiHordeImageModel.isBlank()) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
+                                    )
+                                },
+                                supportingContent = { Text(stringResource(R.string.aihorde_image_model_desc)) },
+                                leadingContent = { Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(24.dp)) },
+                                modifier = Modifier.heightIn(min = 64.dp).clickable {
+                                    if (hordeModels == null) syncHordeModels()
+                                    showHordeModelDialog = true
+                                }
+                            )
+                        }))
+                        SettingsGroup(title = stringResource(R.string.aihorde_image_about), items = listOf({
+                            SettingsItem(
+                                headlineContent = { Text(stringResource(R.string.provider_aihorde_anon_key_hint)) },
+                                supportingContent = { Text(stringResource(R.string.aihorde_image_latency_warning)) },
+                                leadingContent = { Icon(Icons.Default.Cloud, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)) },
+                                modifier = Modifier.heightIn(min = 64.dp)
+                            )
+                        }))
+                    } else {
                     SettingsGroup(title = stringResource(R.string.image_gen_model), items = listOf({
                         // Only a properly prefixed "Provider:modelId" counts as a real selection;
                         // legacy/bare ids (e.g. an old "gpt-image-1") render as "no model selected".
@@ -147,8 +211,9 @@ fun SettingsImageGenPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             modifier = Modifier.heightIn(min = 64.dp).clickable { showModelDialog = true }
                         )
                     }))
+                    }
 
-                    // Default size — width × height
+                    // Default size — width × height (applies to both backends)
                     SettingsGroup(title = stringResource(R.string.image_gen_size), items = listOf({
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 16.dp)) {
                             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
@@ -242,6 +307,93 @@ fun SettingsImageGenPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                 }
             },
             confirmButton = { TextButton(onClick = { showModelDialog = false }) { Text(stringResource(R.string.provider_cancel)) } }
+        )
+    }
+
+    if (showBackendDialog) {
+        AlertDialog(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            onDismissRequest = { showBackendDialog = false },
+            title = { Text(stringResource(R.string.image_gen_backend), fontWeight = FontWeight.Bold) },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    listOf(
+                        "standard" to R.string.image_gen_backend_standard,
+                        "ai_horde" to R.string.image_gen_backend_aihorde,
+                    ).forEach { (key, labelRes) ->
+                        SettingsItem(
+                            headlineContent = { Text(stringResource(labelRes), fontWeight = if (backend == key) FontWeight.Bold else FontWeight.Normal) },
+                            supportingContent = {
+                                Text(
+                                    stringResource(
+                                        if (key == "ai_horde") R.string.aihorde_image_latency_warning
+                                        else R.string.image_gen_backend_standard_desc
+                                    )
+                                )
+                            },
+                            leadingContent = {
+                                RadioButton(
+                                    selected = backend == key,
+                                    onClick = {
+                                        viewModel.settings.setImageGenBackend(key)
+                                        showBackendDialog = false
+                                    }
+                                )
+                            },
+                            modifier = Modifier.clickable {
+                                viewModel.settings.setImageGenBackend(key)
+                                showBackendDialog = false
+                            }
+                        )
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showBackendDialog = false }) { Text(stringResource(R.string.provider_cancel)) } }
+        )
+    }
+
+    if (showHordeModelDialog) {
+        AlertDialog(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            onDismissRequest = { showHordeModelDialog = false },
+            title = { Text(stringResource(R.string.image_gen_select_model), fontWeight = FontWeight.Bold) },
+            text = {
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth().clickable(enabled = !hordeSyncing) { syncHordeModels() }
+                    ) {
+                        Checkbox(checked = false, onCheckedChange = null, enabled = false)
+                        Text(
+                            if (hordeSyncing) stringResource(R.string.aihorde_image_syncing)
+                            else stringResource(R.string.aihorde_image_sync),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                    when {
+                        hordeSyncing -> Text(stringResource(R.string.aihorde_image_syncing), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        hordeModels == null -> Text(stringResource(R.string.aihorde_image_sync_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        hordeModels!!.isEmpty() -> Text(stringResource(R.string.transcription_no_models_hint), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        else -> LazyColumn(modifier = Modifier.fillMaxWidth()) {
+                            items(hordeModels!!, key = { it }) { model ->
+                                SettingsItem(
+                                    headlineContent = { Text(model, fontWeight = if (aiHordeImageModel == model) FontWeight.Bold else FontWeight.Normal) },
+                                    leadingContent = {
+                                        RadioButton(selected = aiHordeImageModel == model, onClick = {
+                                            viewModel.settings.setAiHordeImageModel(model); showHordeModelDialog = false
+                                        })
+                                    },
+                                    modifier = Modifier.clickable {
+                                        viewModel.settings.setAiHordeImageModel(model); showHordeModelDialog = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { showHordeModelDialog = false }) { Text(stringResource(R.string.provider_cancel)) } }
         )
     }
 }

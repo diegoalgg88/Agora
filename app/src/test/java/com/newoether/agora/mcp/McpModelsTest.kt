@@ -158,6 +158,36 @@ class McpModelsTest {
     }
 
     @Test
+    fun toolsListChangedNotificationIsDetectedByMethodOnly() {
+        assertTrue(
+            isToolsListChangedNotification(
+                buildJsonObject {
+                    put("jsonrpc", "2.0")
+                    put("method", "notifications/tools/list_changed")
+                },
+            ),
+        )
+        assertFalse(
+            isToolsListChangedNotification(
+                buildJsonObject {
+                    put("jsonrpc", "2.0")
+                    put("id", 1)
+                    put("method", "tools/list")
+                },
+            ),
+        )
+        assertFalse(
+            isToolsListChangedNotification(
+                buildJsonObject {
+                    put("jsonrpc", "2.0")
+                    put("id", 1)
+                    put("result", buildJsonObject {})
+                },
+            ),
+        )
+    }
+
+    @Test
     fun mcpConnectionsAreCappedToTwoConcurrentAttempts() {
         assertEquals(2, McpRegistry.MAX_CONCURRENT_CONNECTIONS)
     }

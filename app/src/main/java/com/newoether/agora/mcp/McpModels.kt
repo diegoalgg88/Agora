@@ -121,5 +121,8 @@ private fun inferSchemaType(schema: JsonObject): String = when {
     else -> "string"
 }
 
+internal fun isToolsListChangedNotification(envelope: JsonObject): Boolean =
+    (envelope["method"] as? JsonPrimitive)?.contentOrNull == "notifications/tools/list_changed"
+
 internal fun JsonElement.asObjectOrNull(): JsonObject? =
     runCatching { jsonObject }.getOrNull()

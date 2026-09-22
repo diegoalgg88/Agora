@@ -202,6 +202,11 @@
     <string name="provider_api_keys">API キー</string>
     <string name="provider_api_keys_optional">API キー（任意）</string>
     <string name="provider_no_keys">%1$s 用のキーが設定されていません</string>
+    <string name="provider_aihorde_about">AI Horde</string>
+    <string name="provider_aihorde_anon_key_hint">匿名キー: 0000000000</string>
+    <string name="provider_aihorde_anon_key_desc">AI Hordeはボランティアワーカーのクラウドソーシングネットワークです。匿名キー0000000000は最も低いキュー優先度で動作します。モデル、速度、可用性はオンラインのワーカーによって変わります。個人キーは時間とともに優先度が上がります。</string>
+    <string name="provider_aihorde_register">個人APIキーの登録</string>
+    <string name="provider_aihorde_register_url">aihorde.net/register</string>
     <string name="provider_keys_count">%1$d 個のキーを設定済み</string>
     <string name="provider_add_key">新しいキーを追加</string>
     <string name="provider_select_provider">AI プロバイダーを選択</string>
@@ -231,6 +236,17 @@
     <string name="image_gen_size">デフォルトサイズ</string>
     <string name="image_gen_size_hint">1024x1024</string>
     <string name="image_gen_show_all">すべてのモデルを表示</string>
+    <string name="aihorde_image_about">AI Horde</string>
+    <string name="image_gen_backend">画像バックエンド</string>
+    <string name="image_gen_backend_standard">標準（OpenAI互換）</string>
+    <string name="image_gen_backend_standard_desc">選択したモデルのプロバイダーの認証情報とその /images/generations エンドポイントを使用します。</string>
+    <string name="image_gen_backend_aihorde">AI Horde</string>
+    <string name="image_gen_backend_desc">モデルが画像ツールを呼び出したときに画像を生成するサービスを選択します。</string>
+    <string name="aihorde_image_model_desc">ボランティアワーカーが提供する画像モデル（チェックポイント）。空欄 = 利用可能な任意のモデル。</string>
+    <string name="aihorde_image_latency_warning">画像はボランティアワーカーのクラウドソーシングネットワークから提供されます。生成はキューに入り、特に匿名キーでは数分かかる場合があります。</string>
+    <string name="aihorde_image_sync">利用可能なモデルを更新</string>
+    <string name="aihorde_image_syncing">更新中…</string>
+    <string name="aihorde_image_sync_hint">「利用可能なモデルを更新」をタップして、現在オンラインのモデルを読み込みます。</string>
     <string name="tool_generate_image">画像を生成</string>
     <string name="tool_generating_image">画像を生成中…</string>
     <string name="tool_generated_image">画像を生成しました</string>

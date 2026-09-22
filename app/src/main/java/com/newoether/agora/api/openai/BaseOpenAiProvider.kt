@@ -48,6 +48,18 @@ abstract class BaseOpenAiProvider : LlmProvider {
     protected open fun getExtraHeaders(config: ProviderConfig): Map<String, String> = emptyMap()
 
     /**
+     * Final chance to reshape the fully-serialized request body, after encoding but before the
+     * serialized-body gate and transmission. Default: identity.
+     *
+     * Some OpenAI-compatible relays need a wire shape that differs from what the shared
+     * OpenAiChatRequest/OpenAiMessage model produces for every other provider (e.g. AI Horde's
+     * proxy renders messages through a Jinja chat template that requires `content` to be a plain
+     * string, not the array-of-parts form used everywhere else). Overriding this lets one
+     * provider adapt its wire shape without touching the shared model or every other provider.
+     */
+    protected open fun postProcessRequestJson(requestJson: String): String = requestJson
+
+    /**
      * Transform the system prompt before it is sent. Default: pass-through.
      */
     protected open fun transformSystemPrompt(prompt: String?): String? = prompt
@@ -150,15 +162,16 @@ abstract class BaseOpenAiProvider : LlmProvider {
                     request.requireValidWireFormat(name)
                     json.encodeToString(OpenAiChatRequest.serializer(), request)
                 }
+                val finalRequestBodyJson = postProcessRequestJson(requestBodyJson)
                 requireValidSerializedRequest(
                     provider = name,
-                    body = requestBodyJson,
+                    body = finalRequestBodyJson,
                     requiredStringFields = setOf("model"),
                     requiredArrayFields = setOf(
                         if (config.responsesApiEnabled) "input" else "messages",
                     ),
                 )
-                return requestBodyJson
+                return finalRequestBodyJson
             }
 
             val headers = mutableMapOf("Content-Type" to "application/json")
