@@ -9,6 +9,7 @@ import com.newoether.agora.data.SmsPoller
 import com.newoether.agora.data.SmsStore
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.getOrCreateHeartbeatConversationId
+import com.newoether.agora.data.repository.getRecentFinalModelResponses
 import com.newoether.agora.data.repository.migrateHeartbeatConversationSetting
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.service.AppForegroundTracker
@@ -47,9 +48,12 @@ class HeartbeatScheduler(
     private val scope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
 
-    /** Prevents a manual run from overlapping the scheduled loop's run. */
-    @Volatile
-    private var heartbeatInFlight = false
+    /**
+     * Prevents a manual run from overlapping the scheduled loop's run. Compare-and-set
+     * (not a volatile check-then-act) so a manual "Run now" racing the 60s tick cannot
+     * both pass the guard.
+     */
+    private val heartbeatInFlight = java.util.concurrent.atomic.AtomicBoolean(false)
 
     @Volatile
     private var migrated = false
@@ -157,12 +161,11 @@ class HeartbeatScheduler(
 
     // Runs exactly one heartbeat, guarded against overlap (loop vs manual trigger).
     private suspend fun executeHeartbeat() {
-        if (heartbeatInFlight) return
-        heartbeatInFlight = true
+        if (!heartbeatInFlight.compareAndSet(false, true)) return
         try {
             runHeartbeat()
         } finally {
-            heartbeatInFlight = false
+            heartbeatInFlight.set(false)
         }
     }
 
@@ -191,6 +194,11 @@ class HeartbeatScheduler(
             requestKind = "heartbeat",
         )
 
+        // Busy = the conversation lease was taken (e.g. user actively chatting in the heartbeat
+        // conversation). Touch nothing — no watermark advance, no log row, no notification —
+        // so the 60s loop retries naturally and "Recent runs" never fills with busy noise.
+        if (result is TaskExecutionEngine.Result.Busy) return
+
         val success = result is TaskExecutionEngine.Result.Success
 
         // Consume exactly the snapshot the AI just saw — and only on success, so a failed
@@ -218,7 +226,8 @@ class HeartbeatScheduler(
         }
         notificationStore.performRetentionSweep()
 
-        // Log the result
+        // Log the result. Failure advances the watermark too: without it, a persistently
+        // failing provider would be retried every 60s tick instead of waiting out the interval.
         val resultText = when (result) {
             is TaskExecutionEngine.Result.Success -> result.text
             is TaskExecutionEngine.Result.Failure -> result.reason
@@ -240,19 +249,17 @@ class HeartbeatScheduler(
         val pendingSms = smsStore.getPendingSnapshot()
         val pendingNotifications = notificationStore.getPendingSnapshot()
         val pendingEmails = emailStore.getPendingSnapshot()
-        
-        val conversationRepository = getConversationRepository()
-        val runs = conversationRepository.getRunsForConversationSnapshot(heartbeatConversationId)
-        val recentMessages = conversationRepository.getMessagesForRuns(runs.map { it.id })
-        val recentResponses = recentMessages
-            .filter { it.participant == com.newoether.agora.model.Participant.MODEL }
-            .takeLast(3)
+
+        // Bounded tail query: only final model responses, newest first. Never load the full
+        // message graph for this — the heartbeat conversation grows without bound.
+        val recentResponses = getConversationRepository()
+            .getRecentFinalModelResponses(heartbeatConversationId, limit = 3)
             .map { it.text }
 
         val builder = com.newoether.agora.data.HeartbeatPromptBuilder(
             taskManager = getTaskManager(),
             loopManager = getLoopManager(),
-            conversationRepository = conversationRepository,
+            conversationRepository = getConversationRepository(),
             memoryManager = getMemoryManager(),
             taskRepository = getTaskRepository(),
         )

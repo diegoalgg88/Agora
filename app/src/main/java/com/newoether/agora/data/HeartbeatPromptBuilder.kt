@@ -51,11 +51,7 @@ class HeartbeatPromptBuilder(
         val tasksSection = buildTasksSection()
         if (tasksSection.isNotBlank()) sections.add(tasksSection)
 
-        // Section 2: Pending automations
-        val pendingSection = buildPendingAutomationsSection()
-        if (pendingSection.isNotBlank()) sections.add(pendingSection)
-
-        // Section 3: Promotion candidates
+        // Section 2: Promotion candidates
         val promotionSection = buildPromotionCandidatesSection()
         if (promotionSection.isNotBlank()) sections.add(promotionSection)
 
@@ -106,12 +102,6 @@ class HeartbeatPromptBuilder(
 
     private suspend fun getActiveLoops(): List<com.newoether.agora.data.local.LoopEntity> {
         return taskRepository.getActiveLoops()
-    }
-
-    private suspend fun buildPendingAutomationsSection(): String {
-        // In a full implementation, this would check for pending automation work
-        // For now, return empty string as placeholder
-        return ""
     }
 
     private suspend fun buildPromotionCandidatesSection(): String {
@@ -169,6 +159,11 @@ class HeartbeatPromptBuilder(
         return lines.joinToString("\n")
     }
 
+    /**
+     * Renders the previous-results continuity section. [recentResponses] must be newest-first
+     * (index 0 = most recent) — the scheduler feeds it from the bounded final-response tail
+     * query, which never includes blank tool-assembly rows or provider error text.
+     */
     private fun buildPreviousHeartbeatSection(recentResponses: List<String>): String {
         if (recentResponses.isEmpty()) return ""
         val lines = mutableListOf("## Previous Heartbeat Results", "For context, here are your most recent heartbeat summaries:")

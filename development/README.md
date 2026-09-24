@@ -152,6 +152,7 @@ Never:
 | System-assistant entry paths, overlay send pipeline, Assist screen context, voice dictation, live voice-call transport, or assistant surface state | [system-assistant.md](system-assistant.md) |
 | Assistant device-action tools (alarm, calendar, open file/URL, IP location, local time, notification), their Settings toggles, permissions, or portability | [assistant-device-tools.md](assistant-device-tools.md) |
 | Email accounts (IMAP/SMTP), background polling and watermark delivery, email reading tools, staged drafts and user-gated sending, portability of accounts and passwords | [email.md](email.md) |
+| Heartbeat due-gating, prompt assembly, snapshot consume-on-success, Busy semantics, manual "Run now", or heartbeat logging | [automation.md](automation.md) |
 
 Add a module document when a user defines durable behavior for another subsystem. Each module
 document must describe current code ownership, allowed and forbidden responsibilities, concrete

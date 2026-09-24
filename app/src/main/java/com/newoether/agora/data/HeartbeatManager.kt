@@ -47,25 +47,18 @@ class HeartbeatManager(
 
     /**
      * Checks if a heartbeat is due based on the enabled flag, interval, and active hours.
+     * [nowMs] is injectable for deterministic boundary tests; production callers use wall clock.
      */
-    fun isHeartbeatDue(): Boolean {
+    fun isHeartbeatDue(nowMs: Long = System.currentTimeMillis()): Boolean {
         if (!enabled.value) return false
 
-        val now = System.currentTimeMillis()
         val last = lastHeartbeatEpochMs.value
         val intervalMs = intervalMinutes.value.toLong() * 60_000L
-        if (now - last < intervalMs) return false
+        if (nowMs - last < intervalMs) return false
 
         // Check active hours
-        val currentHour = Instant.ofEpochMilli(now).atZone(java.time.ZoneId.systemDefault()).hour
-        val start = activeHoursStart.value
-        val end = activeHoursEnd.value
-        if (start <= end) {
-            return currentHour >= start && currentHour < end
-        } else {
-            // Wraps midnight (e.g., 22 to 8)
-            return currentHour >= start || currentHour < end
-        }
+        val currentHour = Instant.ofEpochMilli(nowMs).atZone(java.time.ZoneId.systemDefault()).hour
+        return isHourInActiveWindow(currentHour, activeHoursStart.value, activeHoursEnd.value)
     }
 
     /** The 5 most recent heartbeat runs, newest first. */
@@ -90,6 +83,14 @@ class HeartbeatManager(
     }
 
     companion object {
+        /**
+         * Pure active-hours window check. `start <= end` is a same-day window (end exclusive);
+         * `start > end` wraps midnight (e.g., 22 to 8). `start == end` is an empty window —
+         * never due.
+         */
+        fun isHourInActiveWindow(hour: Int, start: Int, end: Int): Boolean =
+            if (start <= end) hour >= start && hour < end else hour >= start || hour < end
+
         /** Max length of the error text persisted to heartbeat_logs. */
         const val MAX_LOGGED_ERROR_CHARS = 300
 

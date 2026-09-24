@@ -48,6 +48,30 @@ interface ChatContextCompactDao {
     @Query("SELECT * FROM messages WHERE runId IN (:runIds) ORDER BY runSequence, timestamp, id")
     suspend fun getMessagesForRuns(runIds: List<String>): List<MessageEntity>
 
+    /**
+     * Bounded tail of FINAL model responses for one conversation: MODEL-participant rows with
+     * non-blank text, no tool-call payload, and non-ERROR status (a provider failure text from
+     * a headless run is not a heartbeat "result"). Excludes tool-assembly rows, which persist as
+     * blank MODEL rows carrying toolCallJson. Newest first; intended for the heartbeat prompt's
+     * previous-results section — never load the whole message graph for it.
+     */
+    @Query(
+        """
+        SELECT * FROM messages
+        WHERE conversationId = :conversationId
+          AND participant = 'MODEL'
+          AND text != ''
+          AND toolCallJson IS NULL
+          AND status != 'ERROR'
+        ORDER BY timestamp DESC, id DESC
+        LIMIT :limit
+        """
+    )
+    suspend fun getRecentFinalModelResponses(
+        conversationId: String,
+        limit: Int,
+    ): List<MessageEntity>
+
     @Query("DELETE FROM runs WHERE id = :runId")
     suspend fun deleteRun(runId: String): Int
 

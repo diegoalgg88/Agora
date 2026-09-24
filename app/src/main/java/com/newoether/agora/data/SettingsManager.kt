@@ -294,7 +294,8 @@ class SettingsManager(val context: Context) {
     val lastModelsFetchFingerprint: Flow<String> = modelPreferenceStore.lastModelsFetchFingerprint
 
     // ── Heartbeat ──────────────────────────────────────────────
-    val heartbeatEnabled: Flow<Boolean> = context.dataStore.data.map { it[HEARTBEAT_ENABLED] ?: true }
+    // Opt-in: fresh installs must not silently consume tokens when the daemon is enabled.
+    val heartbeatEnabled: Flow<Boolean> = context.dataStore.data.map { it[HEARTBEAT_ENABLED] ?: false }
     val heartbeatIntervalMinutes: Flow<Int> = context.dataStore.data.map { it[HEARTBEAT_INTERVAL_MINUTES] ?: 30 }
     val heartbeatActiveHoursStart: Flow<Int> = context.dataStore.data.map { it[HEARTBEAT_ACTIVE_HOURS_START] ?: 8 }
     val heartbeatActiveHoursEnd: Flow<Int> = context.dataStore.data.map { it[HEARTBEAT_ACTIVE_HOURS_END] ?: 22 }

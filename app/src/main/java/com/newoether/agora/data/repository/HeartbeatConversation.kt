@@ -1,6 +1,7 @@
 package com.newoether.agora.data.repository
 
 import com.newoether.agora.data.local.ChatEntity
+import com.newoether.agora.data.local.MessageEntity
 
 private const val HEARTBEAT_ORIGIN = "heartbeat"
 private const val HEARTBEAT_CONVERSATION_TITLE = "Heartbeat"
@@ -44,3 +45,14 @@ suspend fun ConversationRepository.migrateHeartbeatConversationSetting(
         settingsRepository.saveHeartbeatConversationId(existing.id)
     }
 }
+
+/**
+ * Bounded newest-first tail of final model responses for the heartbeat prompt's
+ * previous-results section; see ChatContextCompactDao.getRecentFinalModelResponses for the
+ * row filters. Never load the whole message graph for this — the heartbeat conversation
+ * grows without bound.
+ */
+suspend fun ConversationRepository.getRecentFinalModelResponses(
+    conversationId: String,
+    limit: Int,
+): List<MessageEntity> = chatDao.getRecentFinalModelResponses(conversationId, limit)

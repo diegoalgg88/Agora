@@ -91,7 +91,7 @@ internal suspend fun boundedCitationTitleMatches(
     return newestMatches
 }
 class ConversationRepository(
-    private val chatDao: ChatDao,
+    internal val chatDao: ChatDao,
     /** Non-null in production; null is an explicit DAO-isolated unit-test seam. */
     private val database: ChatDatabase?,
     private val scheduleMaintenance: () -> Unit = { MaintenanceDebtWorker.schedule() },
