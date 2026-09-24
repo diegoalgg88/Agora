@@ -1290,4 +1290,31 @@
     <string name="mcp_tavily_auth">Tavily Authentication</string>
     <string name="mcp_tavily_api_key">Tavily API Key</string>
     <string name="mcp_tavily_api_key_desc">Get your API key from https://tavily.com/api-keys. It will be appended as ?tavilyApiKey=... to the server URL.</string>
+
+    <!-- Email draft review banner -->
+    <string name="email_draft_banner_title">Pending email to %1$s</string>
+    <string name="email_draft_send">Send</string>
+    <string name="email_draft_discard">Discard</string>
+    <string name="email_draft_sending">Sending…</string>
+    <string name="email_draft_retry">Retry</string>
+    <string name="email_draft_failed">Failed to send</string>
+    <string name="email_draft_failed_reason">Failed: %1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">Email</string>
+    <string name="email_accounts">Connected accounts</string>
+    <string name="email_accounts_empty">No email account connected. Ask in chat: \"connect my email\" and provide an App Password.</string>
+    <string name="email_accounts_count">%1$d account(s) connected</string>
+    <string name="email_status_queued">%1$d email(s) waiting for the next heartbeat</string>
+    <string name="email_poll_interval">Poll interval</string>
+    <string name="email_poll_interval_desc">Check for new email every %1$d minutes. 0 disables background polling.</string>
+    <string name="email_interval_never">Never</string>
+    <string name="email_status">Email status</string>
+    <string name="email_status_desc">Poll now regardless of the interval (first poll after connecting seeds from the newest message).</string>
+    <string name="email_refresh_now">Refresh now</string>
+    <string name="email_manage_accounts">Manage accounts</string>
+    <string name="email_account_imap">IMAP: %1$s:%2$d</string>
+    <string name="email_account_remove">Remove</string>
+    <string name="email_account_remove_confirm_title">Remove email account?</string>
+    <string name="email_account_remove_confirm_body">%1$s will be disconnected. Stored messages, pending items, and the saved password are deleted from this device.</string>
 </resources>

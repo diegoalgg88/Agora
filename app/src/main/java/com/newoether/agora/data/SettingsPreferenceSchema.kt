@@ -105,6 +105,10 @@ internal val MCP_SERVERS_JSON = stringPreferencesKey("mcp_servers_json")
 internal val SANDBOX_ENABLED = booleanPreferencesKey("sandbox_enabled")
 internal val SANDBOX_SHARED_STORAGE_ENABLED =
     booleanPreferencesKey("sandbox_shared_storage_enabled")
+internal val EMAIL_ACCOUNTS_JSON = stringPreferencesKey("email_accounts_json")
+internal val EMAIL_PASSWORDS_JSON = stringPreferencesKey("email_passwords_json")
+internal val EMAIL_POLL_INTERVAL_MINUTES = intPreferencesKey("email_poll_interval_minutes")
+internal const val DEFAULT_EMAIL_POLL_INTERVAL_MINUTES = 15
 internal const val DEFAULT_COLOR_SCHEME = "FOREST"
 internal const val DEFAULT_SCHEME_STYLE = "TONAL_SPOT"
 internal const val DEFAULT_DYNAMIC_COLOR = false

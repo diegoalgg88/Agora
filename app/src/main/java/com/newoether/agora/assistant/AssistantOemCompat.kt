@@ -14,8 +14,7 @@ import com.newoether.agora.util.DebugLog
  * and [AssistantActivity] at the same time broke the side-button "Digital assistant" picker's
  * ability to resolve a friendly label AND to actually launch the app at all. Disabling the
  * VoiceInteractionService pair (keeping [AssistantActivity]'s plain `ACTION_ASSIST` path as the
- * sole mechanism) resolved both symptoms in the same test session. This matches Kai \u2014 a
- * separate, ACTION_ASSIST-only app \u2014 which has never exhibited this problem on the same device.
+ * sole mechanism) resolved both symptoms in the same test session.
  *
  * `RoleManager.ROLE_ASSISTANT` only ever requires "at least one of" a VoiceInteractionService or
  * an ACTION_ASSIST activity (see the role's own documentation); running both simultaneously is

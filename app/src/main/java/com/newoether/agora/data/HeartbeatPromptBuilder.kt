@@ -14,9 +14,10 @@ import com.newoether.agora.data.HeartbeatManager.Companion.DEFAULT_HEARTBEAT_PRO
  * 3. Memory promotion candidates
  * 4. New SMS (snapshot passed in — the caller removes it from the queue only after success)
  * 5. New notifications (snapshot passed in — same after-success consumption)
- * 6. Custom prompt (user-defined)
+ * 6. New emails (snapshot passed in — same after-success consumption)
+ * 7. Custom prompt (user-defined)
  *
- * Pending SMS/notification lists are parameters, not store lookups, so this builder
+ * Pending SMS/notification/email lists are parameters, not store lookups, so this builder
  * stays pure and unit-testable; the scheduler owns the snapshot/remove lifecycle.
  */
 class HeartbeatPromptBuilder(
@@ -34,6 +35,7 @@ class HeartbeatPromptBuilder(
         customPrompt: String,
         pendingSms: List<SmsMessageData> = emptyList(),
         pendingNotifications: List<NotificationRecord> = emptyList(),
+        pendingEmails: List<EmailPendingData> = emptyList(),
         recentResponses: List<String> = emptyList(),
     ): String {
         val sections = mutableListOf<String>()
@@ -65,7 +67,11 @@ class HeartbeatPromptBuilder(
         val notificationsSection = buildNotificationsSection(pendingNotifications)
         if (notificationsSection.isNotBlank()) sections.add(notificationsSection)
 
-        // Section 6: Previous Heartbeat Results (for continuity)
+        // Section 6: New Emails
+        val emailSection = buildEmailSection(pendingEmails)
+        if (emailSection.isNotBlank()) sections.add(emailSection)
+
+        // Section 7: Previous Heartbeat Results (for continuity)
         val previousSection = buildPreviousHeartbeatSection(recentResponses)
         if (previousSection.isNotBlank()) sections.add(previousSection)
 
@@ -138,11 +144,27 @@ class HeartbeatPromptBuilder(
 
         val lines = mutableListOf("## New Notifications")
         lines.add("These notifications arrived since the last heartbeat. Summarise briefly; only flag items that genuinely need attention.")
-        
+
         val sortedNotifications = pendingNotifications.sortedByDescending { it.postedAt }.take(20)
         for (record in sortedNotifications) {
             val titleText = if (record.title.isNotBlank()) ": ${record.title}" else ""
             lines.add("- **${record.appLabel}**$titleText (id: ${record.id}): ${record.preview}")
+        }
+        return lines.joinToString("\n")
+    }
+
+    private fun buildEmailSection(pendingEmails: List<EmailPendingData>): String {
+        if (pendingEmails.isEmpty()) return ""
+
+        val lines = mutableListOf("## New Emails")
+        lines.add("These emails arrived since the last heartbeat. Summarise briefly; only flag items that genuinely need attention.")
+
+        val sortedEmails = pendingEmails.sortedByDescending { it.dateEpochMs }.take(20)
+        for (email in sortedEmails) {
+            val sender = email.fromAddress.ifBlank { "(unknown sender)" }
+            val subject = email.subject.ifBlank { "(no subject)" }
+            val preview = email.preview.ifBlank { "" }
+            lines.add("- **$sender** — $subject (uid: ${email.uid}, account: ${email.accountId})${if (preview.isNotBlank()) ": $preview" else ""}")
         }
         return lines.joinToString("\n")
     }

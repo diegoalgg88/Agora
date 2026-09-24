@@ -21,6 +21,7 @@ import com.newoether.agora.data.CustomProviderConfig
 import com.newoether.agora.data.CustomProviderIdentityMigration
 import com.newoether.agora.data.CustomProviderNamePolicy
 import com.newoether.agora.data.EmbeddingModelConfig
+import com.newoether.agora.data.EmailAccount
 import com.newoether.agora.data.LocalChatModelConfig
 import com.newoether.agora.data.NotificationListenerStatus
 import com.newoether.agora.data.PredefinedVariables
@@ -314,6 +315,10 @@ class SettingsRepository(
     val smsReadEnabled: StateFlow<Boolean> = hot(settingsManager.smsReadEnabled, false)
     val smsSendEnabled: StateFlow<Boolean> = hot(settingsManager.smsSendEnabled, false)
     val smsPollIntervalMinutes: StateFlow<Int> = hot(settingsManager.smsPollIntervalMinutes, 15)
+
+    // ── Email ──────────────────────────────────────────────────
+    val emailAccounts: StateFlow<List<EmailAccount>> = hot(settingsManager.emailAccounts, emptyList())
+    val emailPollIntervalMinutes: StateFlow<Int> = hot(settingsManager.emailPollIntervalMinutes, 15)
 
     // ── Daemon ─────────────────────────────────────────────────
     val daemonEnabled: StateFlow<Boolean> = hot(settingsManager.daemonEnabled, false)
@@ -943,6 +948,11 @@ class SettingsRepository(
     fun saveSmsReadEnabled(enabled: Boolean) = scope.launch { settingsManager.saveSmsReadEnabled(enabled) }
     fun saveSmsSendEnabled(enabled: Boolean) = scope.launch { settingsManager.saveSmsSendEnabled(enabled) }
     fun saveSmsPollIntervalMinutes(minutes: Int) = scope.launch { settingsManager.saveSmsPollIntervalMinutes(minutes) }
+
+    // ── Email ──────────────────────────────────────────────────
+    fun saveEmailPollIntervalMinutes(minutes: Int) = scope.launch { settingsManager.emailAccountSettings.savePollIntervalMinutes(minutes) }
+    fun addEmailAccount(account: EmailAccount, password: String) = scope.launch { settingsManager.emailAccountSettings.addAccount(account, password) }
+    fun removeEmailAccount(accountId: String) = scope.launch { settingsManager.emailAccountSettings.removeAccount(accountId) }
 
     // ── Daemon ─────────────────────────────────────────────────
     fun setDaemonEnabled(enabled: Boolean) = scope.launch { settingsManager.saveDaemonEnabled(enabled) }

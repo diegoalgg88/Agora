@@ -6,7 +6,6 @@ import kotlinx.serialization.Serializable
 
 /**
  * Data class for notification record.
- * Mirrors Kai's NotificationRecord.
  */
 @Serializable
 data class NotificationRecord(
@@ -28,7 +27,6 @@ data class NotificationRecord(
 
 /**
  * Sync state for notifications.
- * Mirrors Kai's NotificationSyncState.
  */
 @Serializable
 data class NotificationSyncState(

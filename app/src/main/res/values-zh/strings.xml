@@ -1444,4 +1444,30 @@
     <string name="heartbeat_no_runs">尚无心跳运行记录。</string>
     <string name="heartbeat_log_ok">成功</string>
     <string name="heartbeat_log_failed">失败</string>
+<!-- Email draft review banner -->
+    <string name="email_draft_banner_title">待发送至 %1$s 的邮件</string>
+    <string name="email_draft_send">发送</string>
+    <string name="email_draft_discard">丢弃</string>
+    <string name="email_draft_sending">发送中…</string>
+    <string name="email_draft_retry">重试</string>
+    <string name="email_draft_failed">发送失败</string>
+    <string name="email_draft_failed_reason">失败：%1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">邮件</string>
+    <string name="email_accounts">已连接的账户</string>
+    <string name="email_accounts_empty">尚未连接邮件账户。在聊天中请求：“帮我连接邮箱”并提供应用专用密码。</string>
+    <string name="email_accounts_count">已连接 %1$d 个账户</string>
+    <string name="email_status_queued">%1$d 封邮件等待下一次心跳</string>
+    <string name="email_poll_interval">轮询间隔</string>
+    <string name="email_poll_interval_desc">每 %1$d 分钟检查新邮件。0 表示禁用后台轮询。</string>
+    <string name="email_interval_never">从不</string>
+    <string name="email_status">邮件状态</string>
+    <string name="email_status_desc">无视间隔立即轮询（连接后的首次轮询从最新邮件开始）。</string>
+    <string name="email_refresh_now">立即刷新</string>
+    <string name="email_manage_accounts">管理账户</string>
+    <string name="email_account_imap">IMAP：%1$s:%2$d</string>
+    <string name="email_account_remove">移除</string>
+    <string name="email_account_remove_confirm_title">移除邮件账户？</string>
+    <string name="email_account_remove_confirm_body">%1$s 将被断开连接。已存储的邮件、待处理项目和密码将从本设备删除。</string>
 </resources>

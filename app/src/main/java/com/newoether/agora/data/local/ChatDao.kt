@@ -46,7 +46,8 @@ interface ChatDao :
     ChatContextCompactDao,
     ChatProviderContextDao,
     NewChatPersistDao,
-    ChatHeartbeatSmsDao {
+    ChatHeartbeatSmsDao,
+    ChatEmailDao {
     // ── Transactional methods with business logic (kept in ChatDao) ──────────
 
     /**

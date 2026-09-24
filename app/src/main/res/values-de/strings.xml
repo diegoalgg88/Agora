@@ -1288,4 +1288,30 @@
     <string name="mcp_tavily_auth">Tavily-Authentifizierung</string>
     <string name="mcp_tavily_api_key">Tavily API-Schlüssel</string>
     <string name="mcp_tavily_api_key_desc">API-Schlüssel von https://tavily.com/api-keys holen. Er wird als ?tavilyApiKey=... an die Server-URL angehängt.</string>
+<!-- Email draft review banner -->
+    <string name="email_draft_banner_title">Ausstehende E-Mail an %1$s</string>
+    <string name="email_draft_send">Senden</string>
+    <string name="email_draft_discard">Verwerfen</string>
+    <string name="email_draft_sending">Wird gesendet…</string>
+    <string name="email_draft_retry">Erneut senden</string>
+    <string name="email_draft_failed">Senden fehlgeschlagen</string>
+    <string name="email_draft_failed_reason">Fehlgeschlagen: %1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">E-Mail</string>
+    <string name="email_accounts">Verbundene Konten</string>
+    <string name="email_accounts_empty">Kein E-Mail-Konto verbunden. Im Chat fragen: „E-Mail verbinden“ und ein App-Passwort angeben.</string>
+    <string name="email_accounts_count">%1$d Konto/Konten verbunden</string>
+    <string name="email_status_queued">%1$d E-Mail(s) warten auf den nächsten Heartbeat</string>
+    <string name="email_poll_interval">Abfrageintervall</string>
+    <string name="email_poll_interval_desc">Alle %1$d Minuten nach neuen E-Mails suchen. 0 deaktiviert die Hintergrundabfrage.</string>
+    <string name="email_interval_never">Nie</string>
+    <string name="email_status">E-Mail-Status</string>
+    <string name="email_status_desc">Unabhängig vom Intervall jetzt abfragen (die erste Abfrage nach dem Verbinden beginnt bei der neuesten Nachricht).</string>
+    <string name="email_refresh_now">Jetzt aktualisieren</string>
+    <string name="email_manage_accounts">Konten verwalten</string>
+    <string name="email_account_imap">IMAP: %1$s:%2$d</string>
+    <string name="email_account_remove">Entfernen</string>
+    <string name="email_account_remove_confirm_title">E-Mail-Konto entfernen?</string>
+    <string name="email_account_remove_confirm_body">%1$s wird getrennt. Gespeicherte Nachrichten, ausstehende Elemente und das Passwort werden von diesem Gerät gelöscht.</string>
 </resources>

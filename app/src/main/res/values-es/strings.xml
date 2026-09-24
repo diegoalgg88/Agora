@@ -1288,4 +1288,30 @@
     <string name="mcp_tavily_auth">Autenticación Tavily</string>
     <string name="mcp_tavily_api_key">Clave API de Tavily</string>
     <string name="mcp_tavily_api_key_desc">Obtén tu clave API en https://tavily.com/api-keys. Se añadirá como ?tavilyApiKey=... a la URL del servidor.</string>
+<!-- Email draft review banner -->
+    <string name="email_draft_banner_title">Correo pendiente a %1$s</string>
+    <string name="email_draft_send">Enviar</string>
+    <string name="email_draft_discard">Descartar</string>
+    <string name="email_draft_sending">Enviando…</string>
+    <string name="email_draft_retry">Reintentar</string>
+    <string name="email_draft_failed">Error al enviar</string>
+    <string name="email_draft_failed_reason">Error: %1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">Correo</string>
+    <string name="email_accounts">Cuentas conectadas</string>
+    <string name="email_accounts_empty">No hay ninguna cuenta de correo conectada. Pide en el chat: \"conecta mi correo\" y proporciona una contraseña de aplicación.</string>
+    <string name="email_accounts_count">%1$d cuenta(s) conectada(s)</string>
+    <string name="email_status_queued">%1$d correo(s) esperando el siguiente heartbeat</string>
+    <string name="email_poll_interval">Intervalo de sondeo</string>
+    <string name="email_poll_interval_desc">Buscar correo nuevo cada %1$d minutos. 0 desactiva el sondeo en segundo plano.</string>
+    <string name="email_interval_never">Nunca</string>
+    <string name="email_status">Estado del correo</string>
+    <string name="email_status_desc">Sondear ahora sin importar el intervalo (el primer sondeo tras conectar parte del mensaje más reciente).</string>
+    <string name="email_refresh_now">Actualizar ahora</string>
+    <string name="email_manage_accounts">Gestionar cuentas</string>
+    <string name="email_account_imap">IMAP: %1$s:%2$d</string>
+    <string name="email_account_remove">Eliminar</string>
+    <string name="email_account_remove_confirm_title">¿Eliminar cuenta de correo?</string>
+    <string name="email_account_remove_confirm_body">%1$s se desconectará. Los mensajes guardados, los pendientes y la contraseña se eliminan de este dispositivo.</string>
 </resources>

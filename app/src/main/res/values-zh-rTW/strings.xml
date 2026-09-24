@@ -1296,4 +1296,30 @@
     <string name="mcp_tavily_auth">Tavily 驗證</string>
     <string name="mcp_tavily_api_key">Tavily API 金鑰</string>
     <string name="mcp_tavily_api_key_desc">從 https://tavily.com/api-keys 取得 API 金鑰。它會作為 ?tavilyApiKey=... 附加到伺服器 URL。</string>
+<!-- Email draft review banner -->
+    <string name="email_draft_banner_title">待傳送至 %1$s 的郵件</string>
+    <string name="email_draft_send">傳送</string>
+    <string name="email_draft_discard">捨棄</string>
+    <string name="email_draft_sending">傳送中…</string>
+    <string name="email_draft_retry">重試</string>
+    <string name="email_draft_failed">傳送失敗</string>
+    <string name="email_draft_failed_reason">失敗：%1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">郵件</string>
+    <string name="email_accounts">已連結的帳戶</string>
+    <string name="email_accounts_empty">尚未連結郵件帳戶。在聊天中請求：「幫我連結信箱」並提供應用程式密碼。</string>
+    <string name="email_accounts_count">已連結 %1$d 個帳戶</string>
+    <string name="email_status_queued">%1$d 封郵件等待下一次心跳</string>
+    <string name="email_poll_interval">輪詢間隔</string>
+    <string name="email_poll_interval_desc">每 %1$d 分鐘檢查新郵件。0 表示停用背景輪詢。</string>
+    <string name="email_interval_never">從不</string>
+    <string name="email_status">郵件狀態</string>
+    <string name="email_status_desc">無視間隔立即輪詢（連結後的首次輪詢從最新郵件開始）。</string>
+    <string name="email_refresh_now">立即重新整理</string>
+    <string name="email_manage_accounts">管理帳戶</string>
+    <string name="email_account_imap">IMAP：%1$s:%2$d</string>
+    <string name="email_account_remove">移除</string>
+    <string name="email_account_remove_confirm_title">移除郵件帳戶？</string>
+    <string name="email_account_remove_confirm_body">%1$s 將被中斷連結。已儲存的郵件、待處理項目和密碼將從本裝置刪除。</string>
 </resources>

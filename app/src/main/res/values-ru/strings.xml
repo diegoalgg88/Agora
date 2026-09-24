@@ -1288,4 +1288,30 @@
     <string name="mcp_tavily_auth">Аутентификация Tavily</string>
     <string name="mcp_tavily_api_key">API-ключ Tavily</string>
     <string name="mcp_tavily_api_key_desc">Получите API-ключ на https://tavily.com/api-keys. Он будет добавлен как ?tavilyApiKey=... к URL сервера.</string>
+<!-- Email draft review banner -->
+    <string name="email_draft_banner_title">Ожидает отправки на %1$s</string>
+    <string name="email_draft_send">Отправить</string>
+    <string name="email_draft_discard">Отменить</string>
+    <string name="email_draft_sending">Отправка…</string>
+    <string name="email_draft_retry">Повторить</string>
+    <string name="email_draft_failed">Не удалось отправить</string>
+    <string name="email_draft_failed_reason">Ошибка: %1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">Электронная почта</string>
+    <string name="email_accounts">Подключённые аккаунты</string>
+    <string name="email_accounts_empty">Ни один почтовый аккаунт не подключён. Попросите в чате: «подключи мою почту» и предоставьте пароль приложения.</string>
+    <string name="email_accounts_count">Подключено аккаунтов: %1$d</string>
+    <string name="email_status_queued">Писем в ожидании следующего heartbeat: %1$d</string>
+    <string name="email_poll_interval">Интервал опроса</string>
+    <string name="email_poll_interval_desc">Проверять новую почту каждые %1$d минут. 0 отключает опрос в фоне.</string>
+    <string name="email_interval_never">Никогда</string>
+    <string name="email_status">Статус почты</string>
+    <string name="email_status_desc">Опросить сейчас независимо от интервала (первый опрос после подключения начинается с самого нового письма).</string>
+    <string name="email_refresh_now">Обновить сейчас</string>
+    <string name="email_manage_accounts">Управление аккаунтами</string>
+    <string name="email_account_imap">IMAP: %1$s:%2$d</string>
+    <string name="email_account_remove">Удалить</string>
+    <string name="email_account_remove_confirm_title">Удалить почтовый аккаунт?</string>
+    <string name="email_account_remove_confirm_body">%1$s будет отключён. Сохранённые письма, ожидающие элементы и пароль будут удалены с этого устройства.</string>
 </resources>

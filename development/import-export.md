@@ -152,6 +152,13 @@ therefore emitted only after explicit include-secrets selection. Structural Sett
 strip those values. Secret restore ignores orphan records that have no matching structural owner and
 reports warnings rather than inventing devices, models, or servers.
 
+Email account passwords follow the same secrets rule: structural Settings export the account list
+(without passwords) and the poll interval, while the password map travels only in the secret
+category as `emailPasswords`. Restore drops records without a matching account, and Settings
+`REPLACE` clears accounts absent from the archive, cascading their passwords. Structural account
+upserts read the locally stored password first, so an archive (which never carries passwords)
+cannot wipe a working credential. See [email.md](email.md) for the full feature contract.
+
 ## 6. Import strategies
 
 Every archive category has an independent decision:

@@ -17,10 +17,10 @@ import kotlinx.coroutines.withContext
  * Store for SMS drafts (outgoing messages awaiting user confirmation).
  *
  * Room is the single durable truth. The draft list is a Room flow; the cap (20) is
- * enforced by evicting the oldest rows atomically on insert, mirroring Kai's
- * `takeLast(MAX_DRAFTS)`. Sending is orchestrated here: PENDING → SENDING →
- * SENT/FAILED, where the actual dispatch goes through [SmsSender] — never directly
- * from the AI, always from the user's tap in the review banner.
+ * enforced by evicting the oldest rows atomically on insert. Sending is
+ * orchestrated here: PENDING → SENDING → SENT/FAILED, where the actual dispatch
+ * goes through [SmsSender] — never directly from the AI, always from the user's
+ * tap in the review banner.
  */
 class SmsDraftStore(
     private val chatDao: ChatDao,

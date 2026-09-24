@@ -59,6 +59,9 @@ class SettingsManager(val context: Context) {
     private val modelPreferenceStore = SettingsModelPreferenceStore(context.dataStore, json)
     private val mediaSettingsStore = MediaSettingsStore(context, context.dataStore)
 
+    /** Email account settings (accounts, encrypted passwords, poll interval). */
+    val emailAccountSettings = EmailAccountSettings(context.dataStore, json)
+
     /** Public access to the underlying DataStore for components that need direct access. */
     val dataStore = context.dataStore
 
@@ -305,6 +308,10 @@ class SettingsManager(val context: Context) {
     val smsReadEnabled: Flow<Boolean> = context.dataStore.data.map { it[SMS_READ_ENABLED] ?: false }
     val smsSendEnabled: Flow<Boolean> = context.dataStore.data.map { it[SMS_SEND_ENABLED] ?: false }
     val smsPollIntervalMinutes: Flow<Int> = context.dataStore.data.map { it[SMS_POLL_INTERVAL_MINUTES] ?: 15 }
+
+    // ── Email ──────────────────────────────────────────────────
+    val emailAccounts: Flow<List<EmailAccount>> = emailAccountSettings.accounts
+    val emailPollIntervalMinutes: Flow<Int> = emailAccountSettings.pollIntervalMinutes
 
     // fdroid support gates
     val smsReaderSupported: Flow<Boolean> = settingsNotifications.smsReaderSupported

@@ -1294,4 +1294,30 @@
     <string name="mcp_tavily_auth">Xác thực Tavily</string>
     <string name="mcp_tavily_api_key">Khóa API Tavily</string>
     <string name="mcp_tavily_api_key_desc">Lấy khóa API tại https://tavily.com/api-keys. Khóa sẽ được thêm như ?tavilyApiKey=... vào URL máy chủ.</string>
+<!-- Email draft review banner -->
+    <string name="email_draft_banner_title">Email đang chờ gửi tới %1$s</string>
+    <string name="email_draft_send">Gửi</string>
+    <string name="email_draft_discard">Bỏ</string>
+    <string name="email_draft_sending">Đang gửi…</string>
+    <string name="email_draft_retry">Thử lại</string>
+    <string name="email_draft_failed">Gửi thất bại</string>
+    <string name="email_draft_failed_reason">Thất bại: %1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">Email</string>
+    <string name="email_accounts">Tài khoản đã kết nối</string>
+    <string name="email_accounts_empty">Chưa có tài khoản email nào được kết nối. Hãy yêu cầu trong trò chuyện: \"kết nối email của tôi\" và cung cấp mật khẩu ứng dụng.</string>
+    <string name="email_accounts_count">Đã kết nối %1$d tài khoản</string>
+    <string name="email_status_queued">%1$d email đang chờ heartbeat tiếp theo</string>
+    <string name="email_poll_interval">Chu kỳ kiểm tra</string>
+    <string name="email_poll_interval_desc">Kiểm tra email mới mỗi %1$d phút. 0 tắt kiểm tra nền.</string>
+    <string name="email_interval_never">Không bao giờ</string>
+    <string name="email_status">Trạng thái email</string>
+    <string name="email_status_desc">Kiểm tra ngay bất kể chu kỳ (lần kiểm tra đầu tiên sau khi kết nối bắt đầu từ thư mới nhất).</string>
+    <string name="email_refresh_now">Làm mới ngay</string>
+    <string name="email_manage_accounts">Quản lý tài khoản</string>
+    <string name="email_account_imap">IMAP: %1$s:%2$d</string>
+    <string name="email_account_remove">Xóa</string>
+    <string name="email_account_remove_confirm_title">Xóa tài khoản email?</string>
+    <string name="email_account_remove_confirm_body">%1$s sẽ bị ngắt kết nối. Thư đã lưu, các mục đang chờ và mật khẩu sẽ bị xóa khỏi thiết bị này.</string>
 </resources>

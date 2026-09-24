@@ -187,7 +187,13 @@ internal object PortableSettingsArchive {
         put("smsReadEnabled", JsonPrimitive(sm.smsReadEnabled.first()))
         put("smsSendEnabled", JsonPrimitive(sm.smsSendEnabled.first()))
         put("smsPollIntervalMinutes", JsonPrimitive(sm.smsPollIntervalMinutes.first()))
-        
+
+        // Email — accounts export without passwords (portable archives never carry
+        // secrets); the password map imports from the archive's legacy-secrets
+        // section only, mirroring provider API keys.
+        put("emailPollIntervalMinutes", JsonPrimitive(sm.emailPollIntervalMinutes.first()))
+        putEncoded("emailAccounts", sm.emailAccounts.first())
+
         // Notifications
         put("notificationsEnabled", JsonPrimitive(sm.settingsNotifications.notificationsEnabled.first()))
         putEncoded("notificationsAllowedApps", sm.settingsNotifications.notificationsAllowedApps.first())
@@ -535,6 +541,12 @@ internal object PortableSettingsArchive {
         obj.boolean("smsSendEnabled")?.let { sm.saveSmsSendEnabled(it) }
         obj.int("smsPollIntervalMinutes")?.let { sm.saveSmsPollIntervalMinutes(it) }
 
+        // Email
+        obj.int("emailPollIntervalMinutes")?.let { sm.emailAccountSettings.savePollIntervalMinutes(it) }
+        if (obj.containsKey("emailAccounts")) {
+            restoreEmailAccounts(obj, sm, replace)
+        }
+
         // Notifications
         obj.boolean("notificationsEnabled")?.let { sm.settingsNotifications.saveNotificationsEnabled(it) }
         obj.decode<Set<String>>("notificationsAllowedApps")?.let { imported ->
@@ -710,6 +722,35 @@ internal object PortableSettingsArchive {
         existing.forEach { merged[key(it)] = it }
         imported.forEach { merged[key(it)] = it }
         return merged.values.toList()
+    }
+
+    /**
+     * Account merge by id: REPLACE clears accounts absent from the archive
+     * (cascading their passwords); MERGE keeps existing accounts. The archive
+     * never carries passwords, so the locally stored one is read before each
+     * upsert — a blank addAccount password would otherwise remove it.
+     */
+    private suspend fun restoreEmailAccounts(
+        obj: JsonObject,
+        sm: SettingsManager,
+        replace: Boolean,
+    ) {
+        val importedAccounts = obj.decode<List<EmailAccount>>("emailAccounts").orEmpty()
+        val existingAccounts = sm.emailAccountSettings.accountsOnce()
+        val merged: List<EmailAccount> = if (replace) {
+            importedAccounts
+        } else {
+            val importedIds = importedAccounts.mapTo(mutableSetOf()) { it.id }
+            existingAccounts.filter { it.id !in importedIds } + importedAccounts
+        }
+        val removedIds = existingAccounts.map { it.id }.filter { id -> merged.none { it.id == id } }
+        for (id in removedIds) {
+            sm.emailAccountSettings.removeAccount(id)
+        }
+        for (account in merged) {
+            val existingPassword = sm.emailAccountSettings.passwordFor(account.id) ?: ""
+            sm.emailAccountSettings.addAccount(account, existingPassword)
+        }
     }
 
     internal data class ImportedCustomProviderIdentities(

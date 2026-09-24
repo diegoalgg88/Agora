@@ -1,6 +1,8 @@
 package com.newoether.agora.automation
 
 import android.content.Context
+import com.newoether.agora.data.EmailPoller
+import com.newoether.agora.data.EmailStore
 import com.newoether.agora.data.HeartbeatManager
 import com.newoether.agora.data.NotificationStore
 import com.newoether.agora.data.SmsPoller
@@ -39,6 +41,8 @@ class HeartbeatScheduler(
     private val taskExecutionEngine: TaskExecutionEngine,
     private val appForegroundTracker: AppForegroundTracker,
     private val loopManager: LoopManager,
+    private val emailStore: EmailStore,
+    private val emailPoller: EmailPoller,
 ) {
     private val scope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
@@ -97,6 +101,12 @@ class HeartbeatScheduler(
             pollSmsIfDue()
         }
 
+        // Poll email if any account is connected, rate-limited per account
+        if (settingsRepository.emailAccounts.value.isNotEmpty()) {
+            awaitInitialLoad()
+            pollEmailsIfDue()
+        }
+
         // Notifications are push-driven - no polling needed
         // The pending queue is consumed during heartbeat
     }
@@ -108,7 +118,7 @@ class HeartbeatScheduler(
     private suspend fun pollSmsIfDue() {
         val intervalMinutes = settingsRepository.smsPollIntervalMinutes.value
         if (intervalMinutes <= 0) return // 0 = Never
-        // Persisted backoff mirrors Kai: compare against max(lastSync, lastAttempt) so a
+        // Persisted backoff: compare against max(lastSync, lastAttempt) so a
         // failing poll (or one skipped for permission) waits out the interval instead of
         // retrying every 60s tick.
         val now = System.currentTimeMillis()
@@ -118,10 +128,31 @@ class HeartbeatScheduler(
         smsPoller.poll()
     }
 
+    /**
+     * Email poll gate: one interval setting for all accounts, but backoff is evaluated
+     * per account (each account's sync state carries its own lastSync/lastAttempt), so a
+     * failing or recently-synced account never forces an IMAP connection for the others.
+     */
+    private suspend fun pollEmailsIfDue() {
+        val intervalMinutes = settingsRepository.emailPollIntervalMinutes.value
+        if (intervalMinutes <= 0) return // 0 = Never
+        val now = System.currentTimeMillis()
+        val intervalMs = intervalMinutes * 60_000L
+        val dueAccounts = settingsRepository.emailAccounts.value.filter { account ->
+            // A brand-new account (never polled) has lastActivityMs = 0 and is always due.
+            val state = emailStore.getSyncStateOnce(account.id)
+            val lastActivityMs = maxOf(state.lastSyncEpochMs, state.lastAttemptEpochMs)
+            now - lastActivityMs >= intervalMs
+        }
+        if (dueAccounts.isNotEmpty()) emailPoller.poll(dueAccounts) // per-account gate, not all-or-nothing
+    }
+
     private class HeartbeatSnapshot(
         val prompt: String,
         val smsIds: List<Long>,
         val notificationKeys: List<String>,
+        /** Composite (accountId, uid) keys — a bare uid is never unique across accounts. */
+        val emailKeys: List<Pair<String, Long>>,
     )
 
     // Runs exactly one heartbeat, guarded against overlap (loop vs manual trigger).
@@ -171,6 +202,19 @@ class HeartbeatScheduler(
             if (snapshot.notificationKeys.isNotEmpty()) {
                 notificationStore.removePending(snapshot.notificationKeys)
             }
+            if (snapshot.emailKeys.isNotEmpty()) {
+                emailStore.removePending(snapshot.emailKeys)
+                // Advance each account's watermark past the delivered batch so the user's
+                // own check_email never repeats what the heartbeat already showed.
+                val uidsByAccount = snapshot.emailKeys.groupBy({ it.first }, { it.second })
+                for ((accountId, uids) in uidsByAccount) {
+                    val state = emailStore.getSyncStateOnce(accountId)
+                    emailStore.updateSyncState(
+                        accountId,
+                        state.copy(lastSeenUid = maxOf(state.lastSeenUid, uids.max())),
+                    )
+                }
+            }
         }
         notificationStore.performRetentionSweep()
 
@@ -195,6 +239,7 @@ class HeartbeatScheduler(
         val customPrompt = settingsRepository.heartbeatPrompt.value
         val pendingSms = smsStore.getPendingSnapshot()
         val pendingNotifications = notificationStore.getPendingSnapshot()
+        val pendingEmails = emailStore.getPendingSnapshot()
         
         val conversationRepository = getConversationRepository()
         val runs = conversationRepository.getRunsForConversationSnapshot(heartbeatConversationId)
@@ -216,10 +261,12 @@ class HeartbeatScheduler(
                 customPrompt = customPrompt,
                 pendingSms = pendingSms,
                 pendingNotifications = pendingNotifications,
+                pendingEmails = pendingEmails,
                 recentResponses = recentResponses,
             ),
             smsIds = pendingSms.map { it.id },
             notificationKeys = pendingNotifications.map { it.id },
+            emailKeys = pendingEmails.map { it.accountId to it.uid },
         )
     }
 

@@ -85,7 +85,7 @@ class AgoraNotificationListenerService : NotificationListenerService() {
             return
         }
 
-        // Hard-block Kai itself and system UI
+        // Hard-block Agora itself and system UI
         val packageName = sbn.packageName
         if (packageName == "com.newoether.agora" || packageName.startsWith("com.android.systemui")) {
             DebugLog.d(TAG, "Skipping hard-blocked package: $packageName")

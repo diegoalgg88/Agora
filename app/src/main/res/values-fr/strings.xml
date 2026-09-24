@@ -1288,4 +1288,30 @@
     <string name="mcp_tavily_auth">Authentification Tavily</string>
     <string name="mcp_tavily_api_key">Clé API Tavily</string>
     <string name="mcp_tavily_api_key_desc">Obtenez votre clé API sur https://tavily.com/api-keys. Elle sera ajoutée comme ?tavilyApiKey=... à l\'URL du serveur.</string>
+<!-- Email draft review banner -->
+    <string name="email_draft_banner_title">E-mail en attente pour %1$s</string>
+    <string name="email_draft_send">Envoyer</string>
+    <string name="email_draft_discard">Abandonner</string>
+    <string name="email_draft_sending">Envoi…</string>
+    <string name="email_draft_retry">Réessayer</string>
+    <string name="email_draft_failed">Échec de l’envoi</string>
+    <string name="email_draft_failed_reason">Échec : %1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">E-mail</string>
+    <string name="email_accounts">Comptes connectés</string>
+    <string name="email_accounts_empty">Aucun compte e-mail connecté. Demandez dans le chat : « connecte mon e-mail » et fournissez un mot de passe d’application.</string>
+    <string name="email_accounts_count">%1$d compte(s) connecté(s)</string>
+    <string name="email_status_queued">%1$d e-mail(s) en attente du prochain battement de cœur</string>
+    <string name="email_poll_interval">Intervalle d’interrogation</string>
+    <string name="email_poll_interval_desc">Rechercher de nouveaux e-mails toutes les %1$d minutes. 0 désactive l’interrogation en arrière-plan.</string>
+    <string name="email_interval_never">Jamais</string>
+    <string name="email_status">État de l’e-mail</string>
+    <string name="email_status_desc">Interroger maintenant, quel que soit l’intervalle (la première interrogation après connexion part du message le plus récent).</string>
+    <string name="email_refresh_now">Actualiser maintenant</string>
+    <string name="email_manage_accounts">Gérer les comptes</string>
+    <string name="email_account_imap">IMAP : %1$s:%2$d</string>
+    <string name="email_account_remove">Supprimer</string>
+    <string name="email_account_remove_confirm_title">Supprimer le compte e-mail ?</string>
+    <string name="email_account_remove_confirm_body">%1$s sera déconnecté. Les messages stockés, les éléments en attente et le mot de passe seront supprimés de cet appareil.</string>
 </resources>

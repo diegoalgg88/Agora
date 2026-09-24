@@ -22,9 +22,10 @@ import com.newoether.agora.viewmodel.ChatViewModel
 import kotlinx.coroutines.launch
 
 /**
- * Combines the pending-action banners shown above the composer: the SMS draft review
- * (user-gated send) and the assistant device-action approval (user-gated alarms and
- * calendar writes). Wraps both so the ChatApp call site stays a single composable.
+ * Combines the pending-action banners shown above the composer: the SMS draft review,
+ * the email draft review (both user-gated sends), and the assistant device-action
+ * approval (user-gated alarms and calendar writes). Wraps all so the ChatApp call
+ * site stays a single composable.
  */
 @Composable
 fun PendingDeviceActionBanners(
@@ -33,6 +34,7 @@ fun PendingDeviceActionBanners(
 ) {
     Column(modifier = modifier) {
         PendingSmsBanner(viewModel = viewModel)
+        PendingEmailDraftBanner(viewModel = viewModel)
         PendingAssistantActionsBanner()
     }
 }

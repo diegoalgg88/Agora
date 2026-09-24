@@ -441,6 +441,84 @@ data class SmsPendingEntity(
     val read: Boolean = false,
 )
 
+/**
+ * Email draft status, mirroring [SmsDraftStatus] for the approval banner.
+ * Own enum instead of reusing SMS's, following the [AssistantActionStatus] precedent:
+ * each staging domain keeps its own status vocabulary.
+ */
+enum class EmailDraftStatus {
+    PENDING,
+    SENDING,
+    SENT,
+    FAILED,
+}
+
+/**
+ * Email message fetched via IMAP, keyed by (accountId, uid) — unlike SMS, email is
+ * multi-account from the design, so a plain provider id is never a unique key.
+ */
+@Entity(tableName = "email_messages", primaryKeys = ["accountId", "uid"])
+data class EmailMessageEntity(
+    val accountId: String,
+    val uid: Long,
+    val fromAddress: String,
+    val toAddress: String,
+    val subject: String,
+    val dateEpochMs: Long,
+    val preview: String,
+    val body: String = "",
+    val messageId: String? = null,
+    val isRead: Boolean = false,
+    val listUnsubscribe: String? = null,
+    val listUnsubscribePost: String? = null,
+)
+
+/** Per-account email sync state: delivery watermark and poll bookkeeping. */
+@Entity(tableName = "email_sync_state")
+data class EmailSyncStateEntity(
+    @PrimaryKey val accountId: String,
+    val lastSeenUid: Long = 0L,
+    val lastSyncEpochMs: Long = 0L,
+    val lastAttemptEpochMs: Long = 0L,
+    val unreadCount: Int = 0,
+    val lastError: String? = null,
+)
+
+/**
+ * Email awaiting the next heartbeat, keyed by (accountId, uid) so the same uid
+ * across different accounts never collides. Preview only — the full body is
+ * fetched on demand by `read_email` from `email_messages`. The snapshot shown
+ * to the AI is removed only after a successful heartbeat run, mirroring `sms_pending`.
+ */
+@Entity(tableName = "email_pending", primaryKeys = ["accountId", "uid"])
+data class EmailPendingEntity(
+    val accountId: String,
+    val uid: Long,
+    val fromAddress: String,
+    val subject: String,
+    val dateEpochMs: Long,
+    val preview: String,
+    val isRead: Boolean = false,
+)
+
+/**
+ * Email draft staged by the AI and awaiting the user's approval.
+ * Nothing leaves the device until the user taps Approve in the chat banner —
+ * mirroring `sms_drafts` and `assistant_actions`.
+ */
+@Entity(tableName = "email_drafts")
+data class EmailDraftEntity(
+    @PrimaryKey val id: String,
+    val accountId: String,
+    val toAddress: String,
+    val subject: String,
+    val body: String,
+    val createdAtEpochMs: Long,
+    val inReplyToMessageId: String? = null,
+    val status: EmailDraftStatus = EmailDraftStatus.PENDING,
+    val lastError: String? = null,
+)
+
 /** Notification record stored in Room. */
 @Entity(
     tableName = "notifications",

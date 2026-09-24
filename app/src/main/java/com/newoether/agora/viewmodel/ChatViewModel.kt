@@ -86,13 +86,13 @@ class ChatViewModel(
     private val shellConfirmation: ShellConfirmationController,
     private val mcpRegistry: com.newoether.agora.mcp.McpRegistry,
     private val mcpToolProvider: com.newoether.agora.tool.McpToolProvider,
-    private val taskExecutionEngine: com.newoether.agora.automation.TaskExecutionEngine,
-    private val heartbeatToolProvider: HeartbeatToolProvider, private val smsToolProvider: SmsToolProvider,
-    private val smsDraftStore: com.newoether.agora.data.SmsDraftStore, private val smsStore: com.newoether.agora.data.SmsStore, private val smsPoller: com.newoether.agora.data.SmsPoller, private val smsSender: com.newoether.agora.sms.SmsSender,
+    private val taskExecutionEngine: com.newoether.agora.automation.TaskExecutionEngine, private val heartbeatToolProvider: HeartbeatToolProvider, private val smsToolProvider: SmsToolProvider,
+    private val smsDraftStore: com.newoether.agora.data.SmsDraftStore, private val smsStore: com.newoether.agora.data.SmsStore, private val smsPoller: com.newoether.agora.data.SmsPoller, private val smsSender: com.newoether.agora.sms.SmsSender, private val emailDraftStore: com.newoether.agora.data.EmailDraftStore, private val emailStore: com.newoether.agora.data.EmailStore, private val emailPoller: com.newoether.agora.data.EmailPoller,
     private val notificationToolProvider: com.newoether.agora.tool.NotificationToolProvider,
-    private val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider,) : AndroidViewModel(application) {
+    private val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider, private val emailToolProvider: com.newoether.agora.tool.EmailToolProvider,) : AndroidViewModel(application) {
     val settings: SettingsRepository = settingsRepository
     val smsUi: SmsUiBridge = SmsUiBridge(smsDraftStore, smsStore, smsPoller, smsSender, viewModelScope)
+    val emailUi: EmailUiBridge = EmailUiBridge(emailDraftStore, emailStore, emailPoller, viewModelScope)
 
     /**
      * Conversation/message persistence behind the repository layer. CRUD, cascade-delete,
@@ -274,7 +274,7 @@ class ChatViewModel(
             skillManager = skillManager,
             context = appContext,
             sandboxFactory = sandboxFactory,
-            additionalToolProviders = listOf(automationToolProvider, mcpToolProvider, heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider),
+            additionalToolProviders = listOf(automationToolProvider, mcpToolProvider, heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider, emailToolProvider),
             customProviders = { settings.customProviders.value },
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).

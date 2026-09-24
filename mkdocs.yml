@@ -69,6 +69,7 @@ plugins:
             Context: 上下文
             MCP: MCP
             Automation: 自动化
+            Email: 邮件
             Parameters: 生成设置
             Title Generation: 标题生成
             Image Transcription: 图像转录
@@ -110,6 +111,7 @@ plugins:
             Context: 上下文
             MCP: MCP
             Automation: 自動化
+            Email: 郵件
             Parameters: 生成設定
             Title Generation: 標題生成
             Image Transcription: 圖像轉錄
@@ -151,6 +153,7 @@ plugins:
             Context: Contexto
             MCP: MCP
             Automation: Automatización
+            Email: Correo
             Parameters: Parámetros
             Title Generation: Generación de Títulos
             Image Transcription: Transcripción de Imágenes
@@ -191,6 +194,7 @@ plugins:
             Context: Contexte
             MCP: MCP
             Automation: Automatisation
+            Email: E-mail
             Parameters: Paramètres
             Title Generation: Génération de Titres
             Image Transcription: Transcription d'Images
@@ -231,6 +235,7 @@ plugins:
             Context: Kontext
             MCP: MCP
             Automation: Automatisierung
+            Email: E-Mail
             Parameters: Parameter
             Title Generation: Titelgenerierung
             Image Transcription: Bildtranskription
@@ -271,6 +276,7 @@ plugins:
             Context: Контекст
             MCP: MCP
             Automation: Автоматизация
+            Email: Электронная почта
             Parameters: Параметры
             Title Generation: Генерация Заголовков
             Image Transcription: Транскрипция Изображений
@@ -311,6 +317,7 @@ plugins:
             Context: Contexto
             MCP: MCP
             Automation: Automação
+            Email: E-mail
             Parameters: Parâmetros
             Title Generation: Geração de Títulos
             Image Transcription: Transcrição de Imagens
@@ -351,6 +358,7 @@ plugins:
             Context: コンテキスト
             MCP: MCP
             Automation: オートメーション
+            Email: メール
             Parameters: パラメータ
             Title Generation: タイトル生成
             Image Transcription: 画像文字起こし
@@ -391,6 +399,7 @@ plugins:
             Context: 컨텍스트
             MCP: MCP
             Automation: 자동화
+            Email: 이메일
             Parameters: 매개변수
             Title Generation: 제목 생성
             Image Transcription: 이미지 트랜스크립션
@@ -434,6 +443,7 @@ plugins:
             Context: السياق
             MCP: MCP
             Automation: الأتمتة
+            Email: البريد الإلكتروني
             Parameters: المعاملات
             Title Generation: توليد العناوين
             Image Transcription: نسخ الصور
@@ -475,6 +485,7 @@ nav:
       - Overview: tools.md
       - MCP: mcp.md
       - Automation: automation.md
+      - Email: email.md
       - Web Search: web-search.md
       - Remote Shell (Conch):
           - Shell Setup: shell.md

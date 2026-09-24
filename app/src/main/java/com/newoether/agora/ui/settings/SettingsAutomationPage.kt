@@ -340,6 +340,9 @@ fun SettingsAutomationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
             // SMS section (fdroid only)
             SmsSection(viewModel)
 
+            // Email section (accounts connected via chat's setup_email tool)
+            EmailSection(viewModel)
+
             // Notifications section (fdroid only)
             NotificationsSection(viewModel, onManageApps = { showNotificationApps = true })
         }
@@ -478,7 +481,7 @@ fun HeartbeatSection(viewModel: ChatViewModel) {
                 )
             },
             {
-                // Model override always applies (Kai-style); "Default" inherits the
+                // Model override always applies; "Default" inherits the
                 // selected conversation's model.
                 SettingsItem(
                     headlineContent = { Text(stringResource(R.string.heartbeat_model)) },

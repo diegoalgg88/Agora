@@ -1288,4 +1288,30 @@
     <string name="mcp_tavily_auth">Tavily認証</string>
     <string name="mcp_tavily_api_key">Tavily APIキー</string>
     <string name="mcp_tavily_api_key_desc">APIキーは https://tavily.com/api-keys から取得できます。サーバーURLに ?tavilyApiKey=... として追加されます。</string>
+<!-- Email draft review banner -->
+    <string name="email_draft_banner_title">%1$s 宛の送信待ちメール</string>
+    <string name="email_draft_send">送信</string>
+    <string name="email_draft_discard">破棄</string>
+    <string name="email_draft_sending">送信中…</string>
+    <string name="email_draft_retry">再試行</string>
+    <string name="email_draft_failed">送信に失敗しました</string>
+    <string name="email_draft_failed_reason">失敗: %1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">メール</string>
+    <string name="email_accounts">接続済みアカウント</string>
+    <string name="email_accounts_empty">メールアカウントが接続されていません。チャットで「メールを接続して」と依頼し、アプリパスワードを提供してください。</string>
+    <string name="email_accounts_count">%1$d 件のアカウントが接続中</string>
+    <string name="email_status_queued">%1$d 件のメールが次のハートビートを待っています</string>
+    <string name="email_poll_interval">ポーリング間隔</string>
+    <string name="email_poll_interval_desc">%1$d 分ごとに新着メールを確認します。0 はバックグラウンドポーリングを無効にします。</string>
+    <string name="email_interval_never">なし</string>
+    <string name="email_status">メールの状態</string>
+    <string name="email_status_desc">間隔に関係なく今すぐポーリング（接続後の最初のポーリングは最新のメッセージから始まります）。</string>
+    <string name="email_refresh_now">今すぐ更新</string>
+    <string name="email_manage_accounts">アカウント管理</string>
+    <string name="email_account_imap">IMAP: %1$s:%2$d</string>
+    <string name="email_account_remove">削除</string>
+    <string name="email_account_remove_confirm_title">メールアカウントを削除しますか？</string>
+    <string name="email_account_remove_confirm_body">%1$s の接続が解除されます。保存されたメッセージ、保留中の項目、パスワードがこのデバイスから削除されます。</string>
 </resources>

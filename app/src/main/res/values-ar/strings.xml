@@ -1288,4 +1288,30 @@
     <string name="mcp_tavily_auth">مصادقة Tavily</string>
     <string name="mcp_tavily_api_key">مفتاح API الخاص بـ Tavily</string>
     <string name="mcp_tavily_api_key_desc">احصل على مفتاح API الخاص بك من https://tavily.com/api-keys. سيتم إضافته كـ ?tavilyApiKey=... إلى عنوان URL الخادم.</string>
+<!-- Email draft review banner -->
+    <string name="email_draft_banner_title">بريد إلكتروني معلّق إلى %1$s</string>
+    <string name="email_draft_send">إرسال</string>
+    <string name="email_draft_discard">تجاهل</string>
+    <string name="email_draft_sending">جارٍ الإرسال…</string>
+    <string name="email_draft_retry">إعادة المحاولة</string>
+    <string name="email_draft_failed">فشل الإرسال</string>
+    <string name="email_draft_failed_reason">فشل: %1$s</string>
+
+    <!-- Email settings section -->
+    <string name="email_settings_title">البريد الإلكتروني</string>
+    <string name="email_accounts">الحسابات المتصلة</string>
+    <string name="email_accounts_empty">لا يوجد حساب بريد إلكتروني متصل. اطلب في المحادثة: \"connect my email\" وقدّم كلمة مرور التطبيق.</string>
+    <string name="email_accounts_count">%1$d حساب/حسابات متصلة</string>
+    <string name="email_status_queued">%1$d رسالة تنتظر النبضة التالية</string>
+    <string name="email_poll_interval">فاصل الاستعلام</string>
+    <string name="email_poll_interval_desc">التحقق من البريد الجديد كل %1$d دقيقة. 0 يعطّل الاستعلام في الخلفية.</string>
+    <string name="email_interval_never">أبدًا</string>
+    <string name="email_status">حالة البريد</string>
+    <string name="email_status_desc">الاستعلام الآن بغض النظر عن الفاصل (أول استعلام بعد الاتصال يبدأ من أحدث رسالة).</string>
+    <string name="email_refresh_now">تحديث الآن</string>
+    <string name="email_manage_accounts">إدارة الحسابات</string>
+    <string name="email_account_imap">IMAP: %1$s:%2$d</string>
+    <string name="email_account_remove">إزالة</string>
+    <string name="email_account_remove_confirm_title">إزالة حساب البريد الإلكتروني؟</string>
+    <string name="email_account_remove_confirm_body">سيتم قطع اتصال %1$s. تُحذف الرسائل المخزنة والعناصر المعلقة وكلمة المرور من هذا الجهاز.</string>
 </resources>

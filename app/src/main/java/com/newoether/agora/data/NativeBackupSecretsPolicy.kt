@@ -29,6 +29,7 @@ internal object NativeBackupSecretsPolicy {
             proxyPassword = sm.proxyPassword.first(),
             shellDevices = shellSecrets,
             embeddingApiKeys = embeddingSecrets,
+            emailPasswords = sm.emailAccountSettings.exportPasswords(),
             mcpHeaders = mcpSecrets,
             mcpUrls = mcpUrlSecrets,
         )
@@ -161,6 +162,17 @@ internal object NativeBackupSecretsPolicy {
                 if (importedUrl != null) withHeaders.copy(url = importedUrl) else withHeaders
             },
         )
+
+        val emailAccounts = sm.emailAccounts.first()
+        val emailIds = emailAccounts.mapTo(mutableSetOf()) { it.id }
+        val orphanEmailSecrets = data.emailPasswords.keys.count { it !in emailIds }
+        if (orphanEmailSecrets > 0) {
+            warnings += "ignored $orphanEmailSecrets email credential record(s) without a matching account"
+        }
+        val finalEmailPasswords = data.emailPasswords.filterKeys { it in emailIds }
+        if (finalEmailPasswords.isNotEmpty()) {
+            sm.emailAccountSettings.importAccounts(emailAccounts, finalEmailPasswords)
+        }
 
         return warnings
     }

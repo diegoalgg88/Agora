@@ -348,7 +348,7 @@ class ProotSandboxManager(
 
     // Copy libtalloc.so -> libtalloc.so.2 in writable dir for linker resolution.
     // Android linker searches by exact filename, not SONAME.
-    // Kai's proot DT_NEEDED is "libtalloc.so.2" but jniLibs has "libtalloc.so".
+    // The bundled proot's DT_NEEDED is "libtalloc.so.2" but jniLibs has "libtalloc.so".
     private val tallocDir: File by lazy {
         File(context.filesDir, "lib").apply { mkdirs() }
     }

@@ -253,6 +253,7 @@ class AppContainer(
                 smsToolProvider,
                 notificationToolProvider,
                 assistantDeviceToolProvider,
+                emailToolProvider,
             ),
         )
     }
@@ -388,6 +389,8 @@ class AppContainer(
             taskExecutionEngine = taskExecutionEngine,
             appForegroundTracker = AppForegroundTracker,
             loopManager = loopManager,
+            emailStore = emailStore,
+            emailPoller = emailPoller,
         )
     }
 
@@ -401,6 +404,38 @@ class AppContainer(
 
     val smsToolProvider: SmsToolProvider by lazy {
         SmsToolProvider(smsStore, smsReader, smsSender, smsDraftStore, settingsRepository)
+    }
+
+    // ── Email ────────────────────────────────────────────────
+
+    val emailStore: com.newoether.agora.data.EmailStore by lazy {
+        com.newoether.agora.data.EmailStore(chatDao, database)
+    }
+
+    val emailDraftStore: com.newoether.agora.data.EmailDraftStore by lazy {
+        com.newoether.agora.data.EmailDraftStore(
+            chatDao = chatDao,
+            database = database,
+            accountResolver = { id -> settingsManager.emailAccountSettings.accountsOnce().firstOrNull { it.id == id } },
+            passwordResolver = { id -> settingsManager.emailAccountSettings.passwordFor(id) },
+        )
+    }
+
+    val emailPoller: com.newoether.agora.data.EmailPoller by lazy {
+        com.newoether.agora.data.EmailPoller(
+            emailStore = emailStore,
+            accountProvider = { settingsManager.emailAccountSettings.accountsOnce() },
+            passwordProvider = { id -> settingsManager.emailAccountSettings.passwordFor(id) },
+        )
+    }
+
+    val emailToolProvider: com.newoether.agora.tool.EmailToolProvider by lazy {
+        com.newoether.agora.tool.EmailToolProvider(
+            emailStore = emailStore,
+            emailDraftStore = emailDraftStore,
+            settingsRepository = settingsRepository,
+            settingsManager = settingsManager,
+        )
     }
 
     // ── Notifications ────────────────────────────────────────
@@ -488,6 +523,7 @@ class AppContainer(
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             mcpRegistry, mcpToolProvider, taskExecutionEngine,
             heartbeatToolProvider, smsToolProvider, smsDraftStore, smsStore, smsPoller, smsSender,
-            notificationToolProvider, assistantDeviceToolProvider,
+            emailDraftStore, emailStore, emailPoller,
+            notificationToolProvider, assistantDeviceToolProvider, emailToolProvider,
         )
 }
