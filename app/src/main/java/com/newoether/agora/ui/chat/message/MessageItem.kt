@@ -95,6 +95,8 @@ internal fun contextCompactPillPresentation(status: MessageStatus): ContextCompa
 @Composable
 internal fun MessageItem(
     message: ChatMessage,
+    /** requestKind of the Run this message belongs to (open conversation); null = pre-v37 run. */
+    runRequestKind: String? = null,
     onEdit: (String, String) -> Unit,
     segmentAppearanceRegistry: SegmentAppearanceRegistry,
     modifier: Modifier = Modifier,
@@ -353,6 +355,7 @@ internal fun MessageItem(
                 } else if (message.participant == Participant.USER) {
                     UserMessageBubble(
                         message = displayMessage,
+                        runRequestKind = runRequestKind,
                         shape = shape,
                         backgroundColor = backgroundColor,
                         textColor = textColor,

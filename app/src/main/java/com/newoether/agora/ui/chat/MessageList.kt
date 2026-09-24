@@ -107,6 +107,7 @@ internal fun MessageList(
     bottomBarHeight: androidx.compose.ui.unit.Dp = 0.dp,
     viewportHeight: Int = 0,
     messageHeights: SnapshotStateMap<String, Int> = remember { mutableStateMapOf() },
+    runRequestKinds: Map<String, String?> = emptyMap(),
     observeMessage: (String) -> Flow<ChatMessage?> = { flowOf(null) },
     onMessageHydrated: (String?, String) -> Unit = { _, _ -> },
     onEditMessage: suspend (String, String) -> Boolean = { _, _ -> false },
@@ -753,6 +754,7 @@ internal fun MessageList(
         val deleteTargetMessageId = presentation?.deleteTargetMessageId ?: message.id
         MessageItem(
             message = message,
+            runRequestKind = message.runId?.let { runRequestKinds[it] },
             segmentAppearanceRegistry = segmentAppearanceRegistry,
             modifier = (if (message.id in branchReplacementExitIds) {
                 Modifier.graphicsLayer {

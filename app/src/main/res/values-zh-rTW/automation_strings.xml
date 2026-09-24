@@ -81,6 +81,9 @@
     <string name="automation_daemon_mode">守護程序模式</string>
     <string name="automation_daemon_mode_desc">保持前景服務執行，讓應用程式未開啟時背景工作（心跳、SMS 輪詢、通知）仍能繼續</string>
     <string name="automation_heartbeat">心跳</string>
+    <string name="heartbeat_prompt_badge">Heartbeat 檢查</string>
+    <string name="heartbeat_prompt_collapsed">%1$s，已收合。輕觸以展開 Heartbeat 提示。</string>
+    <string name="heartbeat_prompt_expanded">%1$s，已展開。輕觸以收合。</string>
     <string name="heartbeat_enabled">已啟用</string>
     <string name="heartbeat_enabled_desc">在活躍時段定期執行自我檢查</string>
     <string name="heartbeat_interval">間隔</string>

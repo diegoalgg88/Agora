@@ -609,6 +609,7 @@ class TaskExecutionEngine(
                     modelId = generationSnapshot.selectedModelId,
                     userTimestamp = now,
                     touchConversationOnAdmission = false,
+                    requestKind = requestKind,
                 ),
             )
             runCreated = true

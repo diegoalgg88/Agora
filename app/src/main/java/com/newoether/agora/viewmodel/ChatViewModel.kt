@@ -541,8 +541,8 @@ class ChatViewModel(
     fun showPdfPreview(pages: List<String>, startIndex: Int) = mediaPreview.showPdf(pages, startIndex)
     fun showFilePreview(fileName: String, content: String) = mediaPreview.showFile(fileName, content)
     fun clearPreviews() = mediaPreview.clear()
-
     val messages: StateFlow<List<ChatMessage>> = conversationUi.messages
+    val runRequestKinds: StateFlow<Map<String, String?>> = conversationUi.runRequestKinds
     val isLoading: StateFlow<Boolean> = conversationUi.isLoading
     val generatingInConversationId: StateFlow<String?> =
         conversationUi.generatingInConversationId

@@ -43,6 +43,8 @@ data class RunEntity(
     val endReason: RunEndReason? = null,
     val currentPass: Int = 0,
     val legacyAmbiguous: Boolean = false,
+    /** Origin kind of the admitted request ("chat", "heartbeat", "task", ...); null for pre-v37 runs. */
+    val requestKind: String? = null,
 ) {
     init {
         require(currentPass >= 0)

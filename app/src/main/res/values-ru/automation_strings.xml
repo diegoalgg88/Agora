@@ -81,6 +81,9 @@
     <string name="automation_daemon_mode">Режим демона</string>
     <string name="automation_daemon_mode_desc">Держать службу на переднем плане, чтобы фоновые задачи (heartbeat, проверка SMS, уведомления) продолжали работать, когда приложение не открыто</string>
     <string name="automation_heartbeat">Heartbeat</string>
+    <string name="heartbeat_prompt_badge">Проверка Heartbeat</string>
+    <string name="heartbeat_prompt_collapsed">%1$s, свёрнуто. Нажмите, чтобы развернуть запрос heartbeat.</string>
+    <string name="heartbeat_prompt_expanded">%1$s, развёрнуто. Нажмите, чтобы свернуть.</string>
     <string name="heartbeat_enabled">Включено</string>
     <string name="heartbeat_enabled_desc">Выполнять периодические самопроверки в активные часы</string>
     <string name="heartbeat_interval">Интервал</string>

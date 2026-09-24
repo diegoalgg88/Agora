@@ -81,6 +81,9 @@
     <string name="automation_daemon_mode">Chế độ daemon</string>
     <string name="automation_daemon_mode_desc">Giữ dịch vụ chạy nền trước để các tác vụ nền (heartbeat, kiểm tra SMS, thông báo) tiếp tục khi ứng dụng không mở</string>
     <string name="automation_heartbeat">Heartbeat</string>
+    <string name="heartbeat_prompt_badge">Kiểm tra Heartbeat</string>
+    <string name="heartbeat_prompt_collapsed">%1$s, đã thu gọn. Nhấn để mở rộng prompt heartbeat.</string>
+    <string name="heartbeat_prompt_expanded">%1$s, đã mở rộng. Nhấn để thu gọn.</string>
     <string name="heartbeat_enabled">Đã bật</string>
     <string name="heartbeat_enabled_desc">Chạy tự kiểm tra định kỳ trong giờ hoạt động</string>
     <string name="heartbeat_interval">Khoảng thời gian</string>

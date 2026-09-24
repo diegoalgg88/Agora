@@ -81,6 +81,9 @@
     <string name="automation_daemon_mode">وضع الخفي</string>
     <string name="automation_daemon_mode_desc">إبقاء خدمة في المقدمة حتى تستمر المهام في الخلفية (heartbeat، استطلاع SMS، الإشعارات) عندما يكون التطبيق غير مفتوح</string>
     <string name="automation_heartbeat">نبض النظام</string>
+    <string name="heartbeat_prompt_badge">فحص Heartbeat</string>
+    <string name="heartbeat_prompt_collapsed">‏%1$s، مطوي. انقر لتوسيع موجه Heartbeat.</string>
+    <string name="heartbeat_prompt_expanded">‏%1$s، موسّع. انقر للطي.</string>
     <string name="heartbeat_enabled">مفعّل</string>
     <string name="heartbeat_enabled_desc">تشغيل فحوصات ذاتية دورية خلال ساعات النشاط</string>
     <string name="heartbeat_interval">الفاصل الزمني</string>

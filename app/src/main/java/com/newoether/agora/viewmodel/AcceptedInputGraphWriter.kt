@@ -37,6 +37,8 @@ internal class AcceptedInputGraphWriter(
         val newConversation: ChatEntity? = null,
         val newConversationSettings: ConversationSettings? = null,
         val newChatPersistSnapshot: NewChatPersistEntity? = null,
+        /** Origin kind persisted on the Run ("chat", "heartbeat", "task", "loop", ...). */
+        val requestKind: String,
     ) {
         val conversationId: String get() = inputEffect.identity.conversationId
         val runId: String get() = inputEffect.identity.runId
@@ -47,6 +49,7 @@ internal class AcceptedInputGraphWriter(
             require(modelMessageId.isNotBlank())
             require(modelId.isNotBlank())
             require(newConversation == null || newConversation.id == conversationId)
+            require(requestKind.isNotBlank())
         }
     }
 
@@ -106,6 +109,7 @@ internal class AcceptedInputGraphWriter(
             activeSlot = 1,
             startedAt = request.userTimestamp,
             lastCheckpointAt = modelTimestamp,
+            requestKind = request.requestKind,
         )
         val selectionUpdates = mapOf(
             userMessage.parentId to userMessage.id,

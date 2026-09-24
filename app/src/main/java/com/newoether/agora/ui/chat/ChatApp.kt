@@ -257,6 +257,7 @@ fun ChatApp(
             streamingTailController.isAutoFollowing || absoluteBottomScrollPhase.isActive,
     )
     val messageHydration = rememberChatMessageHydrationBindings(viewModel, customProviders)
+    val runRequestKinds by viewModel.runRequestKinds.collectAsState()
     val conversationInteraction = rememberConversationInteractionState(
         currentConversationId = currentConversationId,
         messages = displayMessagesState,
@@ -575,6 +576,7 @@ fun ChatApp(
                                 bottomBarHeight = bottomBarHeight + shareSelectionBarSpace,
                                 viewportHeight = viewportHeightPx,
                                 messageHeights = messageHeights,
+                                runRequestKinds = runRequestKinds,
                                 observeMessage = messageHydration.observeMessage,
                                 onMessageHydrated = scrollCoordinator::recordMessageHydrated,
                                 lifecycleAppearanceRegistry = messageLifecycleAppearanceRegistry,

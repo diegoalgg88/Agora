@@ -64,11 +64,13 @@ class AcceptedInputGraphWriterTest {
                 modelId = "OpenAI:model",
                 userTimestamp = 100L,
                 touchConversationOnAdmission = false,
+                requestKind = "chat",
             ),
             beforeRoomCommit = { beforeCommitCalled = true },
         )
 
         assertEquals("selected-run", insertedRun.parentRunId)
+        assertEquals("chat", insertedRun.requestKind)
         assertEquals("selected", result.userMessage.parentId)
         assertEquals("new-user", result.modelMessage.parentId)
         assertEquals(listOf("new-user", "new-model"), insertedMessages.map { it.id })
@@ -116,6 +118,7 @@ class AcceptedInputGraphWriterTest {
                 modelId = "OpenAI:model",
                 userTimestamp = 100L,
                 touchConversationOnAdmission = true,
+                requestKind = "chat",
                 newConversation = com.newoether.agora.data.local.ChatEntity(
                     id = "conversation",
                     title = "New",
@@ -132,6 +135,61 @@ class AcceptedInputGraphWriterTest {
             Json.decodeFromString<ConversationSettings>(checkNotNull(insertedSettingsJson)),
         )
         assertEquals(persistSnapshot, insertedPersistSnapshot)
+    }
+
+    @Test
+    fun commit_persistsHeartbeatRequestKindOnTheRun() = runTest {
+        val repository = mockk<ConversationRepository>()
+        coEvery {
+            repository.getProviderContextTopologySnapshot("conversation")
+        } returns ProviderContextTopologySnapshot(
+            selectedBranchesJson = """{"root":"selected"}""",
+            messages = listOf(
+                message("root", null, Participant.USER, 1L, "old-run").toTopology(),
+            ),
+        )
+
+        lateinit var insertedRun: RunEntity
+        coEvery {
+            repository.createRunWithMessages(any(), any(), any(), any(), any(), any())
+        } coAnswers {
+            insertedRun = firstArg()
+            val messages = secondArg<List<MessageEntity>>()
+            RunGraphCommit(messages, thirdArg(), emptyMap())
+        }
+
+        AcceptedInputGraphWriter(repository).commit(
+            AcceptedInputGraphWriter.Request(
+                inputEffect = inputEffect("conversation", "hb-run"),
+                userMessageId = "hb-user",
+                modelMessageId = "hb-model",
+                userText = "## Pending SMS\n...",
+                modelId = "OpenAI:model",
+                userTimestamp = 100L,
+                touchConversationOnAdmission = false,
+                requestKind = "heartbeat",
+            )
+        )
+
+        assertEquals("heartbeat", insertedRun.requestKind)
+    }
+
+    @Test
+    fun request_rejectsBlankRequestKind() = runTest {
+        val repository = mockk<ConversationRepository>()
+        val request = runCatching {
+            AcceptedInputGraphWriter.Request(
+                inputEffect = inputEffect("conversation", "bad-run"),
+                userMessageId = "user",
+                modelMessageId = "model",
+                userText = "prompt",
+                modelId = "OpenAI:model",
+                userTimestamp = 100L,
+                touchConversationOnAdmission = false,
+                requestKind = "  ",
+            )
+        }
+        assertEquals(true, request.isFailure)
     }
 
     private fun message(

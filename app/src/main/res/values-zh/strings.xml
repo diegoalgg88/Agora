@@ -1397,6 +1397,9 @@
     <string name="automation_daemon_mode">守护进程模式</string>
     <string name="automation_daemon_mode_desc">保持前台服务运行，以便应用未打开时后台任务（心跳、SMS 轮询、通知）仍能继续</string>
     <string name="automation_heartbeat">心跳</string>
+    <string name="heartbeat_prompt_badge">Heartbeat 检查</string>
+    <string name="heartbeat_prompt_collapsed">%1$s，已折叠。点按展开 Heartbeat 提示词。</string>
+    <string name="heartbeat_prompt_expanded">%1$s，已展开。点按折叠。</string>
     <string name="heartbeat_enabled">已启用</string>
     <string name="heartbeat_enabled_desc">在活跃时段定期运行自检</string>
     <string name="heartbeat_interval">间隔</string>

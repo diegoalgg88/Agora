@@ -36,6 +36,7 @@ import com.newoether.agora.R
 import com.newoether.agora.util.noOpBringIntoView
 import com.newoether.agora.model.AttachmentItem
 import com.newoether.agora.model.ChatMessage
+import com.newoether.agora.model.isHeartbeatPromptMessage
 import com.newoether.agora.ui.chat.AttachmentThumbnailItem
 import com.newoether.agora.ui.chat.ThumbnailClickHandlers
 import com.newoether.agora.ui.chat.resolveAttachmentType
@@ -85,6 +86,8 @@ internal fun projectStoredMediaOccurrences(
 @Composable
 internal fun UserMessageBubble(
     message: ChatMessage,
+    /** requestKind of the Run this message belongs to; "heartbeat" renders as a collapsed badge row (F2). */
+    runRequestKind: String? = null,
     shape: Shape,
     backgroundColor: Color,
     textColor: Color,
@@ -118,6 +121,25 @@ internal fun UserMessageBubble(
     val editFocusRequester = remember(message.id) { FocusRequester() }
     LaunchedEffect(isEditing, editFocusRequester) {
         if (isEditing) editFocusRequester.requestFocus()
+    }
+
+    // Heartbeat prompts render as a collapsed badge row (default) instead of a full bubble —
+    // same message, different presentation; tap expands the full prompt text.
+    if (isHeartbeatPromptMessage(message.participant, runRequestKind) && !isEditing) {
+        HeartbeatPromptBadgeRow(
+            text = message.text,
+            contextAlpha = contextAlpha,
+            showActions = showActions,
+            onLongPress = {
+                haptics.longPress()
+                showMenu = true
+            },
+            onShowDelete = onShowDelete,
+            onCopy = {
+                clipboardManager.setText(AnnotatedString(message.text))
+            },
+        )
+        return
     }
 
     Column(

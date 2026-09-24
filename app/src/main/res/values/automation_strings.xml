@@ -102,6 +102,9 @@
 
     <!-- Settings - Automation Page - Heartbeat -->
     <string name="automation_heartbeat">Heartbeat</string>
+    <string name="heartbeat_prompt_badge">Heartbeat check</string>
+    <string name="heartbeat_prompt_collapsed">%1$s, collapsed. Tap to expand the heartbeat prompt.</string>
+    <string name="heartbeat_prompt_expanded">%1$s, expanded. Tap to collapse.</string>
     <string name="heartbeat_enabled">Enabled</string>
     <string name="heartbeat_enabled_desc">Run periodic self-checks during active hours</string>
     <string name="heartbeat_interval">Interval</string>

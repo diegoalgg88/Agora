@@ -81,6 +81,9 @@
     <string name="automation_daemon_mode">데몬 모드</string>
     <string name="automation_daemon_mode_desc">앱이 열려 있지 않을 때도 백그라운드 작업(하트비트, SMS 폴링, 알림)이 계속 실행되도록 포그라운드 서비스를 유지합니다</string>
     <string name="automation_heartbeat">하트비트</string>
+    <string name="heartbeat_prompt_badge">Heartbeat 확인</string>
+    <string name="heartbeat_prompt_collapsed">%1$s, 접힘. 탭하여 Heartbeat 프롬프트를 펼칩니다.</string>
+    <string name="heartbeat_prompt_expanded">%1$s, 펼쳐짐. 탭하여 접습니다.</string>
     <string name="heartbeat_enabled">사용</string>
     <string name="heartbeat_enabled_desc">활성 시간 동안 주기적으로 자체 점검 실행</string>
     <string name="heartbeat_interval">간격</string>

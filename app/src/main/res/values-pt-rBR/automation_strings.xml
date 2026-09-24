@@ -81,6 +81,9 @@
     <string name="automation_daemon_mode">Modo daemon</string>
     <string name="automation_daemon_mode_desc">Manter um serviço em primeiro plano para que tarefas em segundo plano (heartbeat, verificação de SMS, notificações) continuem quando o app não estiver aberto</string>
     <string name="automation_heartbeat">Heartbeat</string>
+    <string name="heartbeat_prompt_badge">Verificação de heartbeat</string>
+    <string name="heartbeat_prompt_collapsed">%1$s, recolhido. Toque para expandir o prompt do heartbeat.</string>
+    <string name="heartbeat_prompt_expanded">%1$s, expandido. Toque para recolher.</string>
     <string name="heartbeat_enabled">Ativado</string>
     <string name="heartbeat_enabled_desc">Executar autoverificações periódicas durante os horários ativos</string>
     <string name="heartbeat_interval">Intervalo</string>

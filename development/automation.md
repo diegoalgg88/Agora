@@ -105,13 +105,19 @@ callers: `promote_learning` (heartbeat), SMS, notification, assistant-device,
 and email tools — so the model can act on what the prompt shows without
 changing the Task/Loop default tool set.
 
-## 10. Open decision: heartbeat prompt as ordinary user input
+## 10. Heartbeat prompt rendering (badge/collapse)
 
-The heartbeat prompt is persisted as a plain USER message, so each run renders
-a large multi-section prompt bubble in the conversation. **Decided (2026-09-23):
-persist `requestKind` on the Run/Message and badge/collapse heartbeat-origin
-messages in the UI.** Requires a Room migration (v36→v37); tracked as a separate
-follow-up plan — do not implement UI changes for this ad hoc.
+The heartbeat prompt is persisted as a USER message of a Run whose `requestKind` is
+recorded at the single durable boundary both interactive and headless sends share
+(`AcceptedInputGraphWriter.commit()`; Room v37, `runs.requestKind` nullable — pre-v37
+runs are null and render unchanged). UI rule: a USER message whose Run's
+`requestKind == "heartbeat"` renders as a collapsed badge row (`HeartbeatPromptBadgeRow`,
+label `heartbeat_prompt_badge`) with a one-line preview; tap expands the full prompt,
+tap again collapses. Expand state is ephemeral UI state — never persisted; default
+collapsed. It is the same message with a different presentation (no dual rendering).
+Other kinds (task, loop, compact, ...) may adopt badges later without schema changes —
+the column is generic; only `heartbeat` renders specially today. The projection is
+conversation-scoped via the existing `getRunsForConversation` flow (no new query).
 
 ## 11. Test map
 
@@ -121,5 +127,8 @@ follow-up plan — do not implement UI changes for this ad hoc.
 | Prompt sections, caps, sort order | `HeartbeatPromptBuilderTest` |
 | Previous-results extraction (tool rows excluded, labels, cap, empty) | `HeartbeatRecentResponsesTest` |
 | Busy/Failure/Success outcome semantics | `HeartbeatSchedulerBusyPathTest` |
+| Heartbeat prompt badge/collapse rendering decision | `HeartbeatPromptRenderingTest` |
+| requestKind persistence at the accepted-input boundary | `AcceptedInputGraphWriterTest` |
+| Room v36→v37 runs.requestKind migration | `Migration36To37Test` |
 | Log recording bounds | `HeartbeatManagerTest` |
 | Conversation resolution/migration | `HeartbeatConversationRepositoryTest` |

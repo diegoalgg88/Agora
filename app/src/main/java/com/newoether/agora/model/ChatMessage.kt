@@ -201,6 +201,14 @@ fun ChatMessage.isContextCompact(): Boolean =
 fun ChatMessage.isSuccessfulContextCompact(): Boolean =
     isContextCompact() && status == MessageStatus.SUCCESS
 
+/**
+ * True when this USER message is a heartbeat-origin prompt (Run.requestKind == "heartbeat")
+ * and must render as a collapsed badge row instead of a full bubble. Null (pre-v37 runs)
+ * and every other kind render as the ordinary bubble.
+ */
+fun isHeartbeatPromptMessage(participant: Participant, requestKind: String?): Boolean =
+    participant == Participant.USER && requestKind == "heartbeat"
+
 @Immutable
 data class StableMessageList(val list: List<ChatMessage> = emptyList())
 

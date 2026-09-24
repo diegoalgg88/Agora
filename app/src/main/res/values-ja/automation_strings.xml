@@ -81,6 +81,9 @@
     <string name="automation_daemon_mode">デーモンモード</string>
     <string name="automation_daemon_mode_desc">アプリを開いていないときもバックグラウンドタスク（ハートビート、SMSポーリング、通知）が継続するよう、フォアグラウンドサービスを維持します</string>
     <string name="automation_heartbeat">ハートビート</string>
+    <string name="heartbeat_prompt_badge">Heartbeat チェック</string>
+    <string name="heartbeat_prompt_collapsed">%1$s、折りたたまれています。タップしてHeartbeatプロンプトを展開。</string>
+    <string name="heartbeat_prompt_expanded">%1$s、展開されています。タップして折りたたむ。</string>
     <string name="heartbeat_enabled">有効</string>
     <string name="heartbeat_enabled_desc">アクティブ時間帯に定期的な自己チェックを実行</string>
     <string name="heartbeat_interval">間隔</string>

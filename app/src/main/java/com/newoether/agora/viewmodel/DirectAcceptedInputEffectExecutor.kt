@@ -215,6 +215,7 @@ internal class DirectAcceptedInputEffectExecutor(
                         newConversation = request.newConversation,
                         newConversationSettings = request.newConversationSettings,
                         newChatPersistSnapshot = request.newChatPersistSnapshot,
+                        requestKind = request.requestKind,
                     ),
                     beforeRoomCommit = {
                         if (!request.wasNewChat && isConversationOpen(request.conversationId)) {

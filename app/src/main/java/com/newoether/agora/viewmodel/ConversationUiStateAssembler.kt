@@ -17,6 +17,8 @@ import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.runningFold
@@ -49,6 +51,21 @@ internal class ConversationUiStateAssembler(
     private val onConversationLoadFailed: (String) -> Unit = {},
 ) {
     val renderStore = ConversationRenderStore()
+
+    /**
+     * requestKind per RunId for the OPEN conversation only (reuses getRunsForConversation —
+     * no new query; conversation-scoped per the load-performance contract). Pre-v37 runs
+     * map to null and render unchanged. Lazily subscribed: no repository reads until the
+     * message UI actually collects this (ChatApp does, per open conversation).
+     */
+    val runRequestKinds: StateFlow<Map<String, String?>> = currentConversationId
+        .flatMapLatest { id ->
+            if (id == null) flowOf(emptyMap()) else {
+                conversations.getRunsForConversation(id)
+                    .map { runs -> runs.associate { it.id to it.requestKind } }
+            }
+        }
+        .stateIn(scope, SharingStarted.Lazily, emptyMap())
 
     val allMessages: StateFlow<List<ChatMessage>> = renderStore.snapshot
         .map { it.allMessages }

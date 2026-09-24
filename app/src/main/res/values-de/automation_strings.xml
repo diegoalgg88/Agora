@@ -81,6 +81,9 @@
     <string name="automation_daemon_mode">Daemon-Modus</string>
     <string name="automation_daemon_mode_desc">Einen Dienst im Vordergrund aktiv halten, damit Hintergrundaufgaben (Heartbeat, SMS-Abfrage, Benachrichtigungen) weiterlaufen, wenn die App nicht geöffnet ist</string>
     <string name="automation_heartbeat">Heartbeat</string>
+    <string name="heartbeat_prompt_badge">Heartbeat-Prüfung</string>
+    <string name="heartbeat_prompt_collapsed">%1$s, eingeklappt. Tippen, um den Heartbeat-Prompt zu erweitern.</string>
+    <string name="heartbeat_prompt_expanded">%1$s, erweitert. Tippen zum Einklappen.</string>
     <string name="heartbeat_enabled">Aktiviert</string>
     <string name="heartbeat_enabled_desc">Periodische Selbstprüfungen während der aktiven Zeiten ausführen</string>
     <string name="heartbeat_interval">Intervall</string>
