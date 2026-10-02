@@ -42,5 +42,8 @@ AGENTS.md
 # Transient research artifacts (Kai replication / live-voice debugging)
 memory_report.txt
 .qwen/tmp/
-tmp/kai.apk
-tmp/websocat.*.exe
+
+# Local debug junk: JVM crash dumps, scratch dir, tool caches
+hs_err_pid*.log
+/tmp/
+/.cache/
