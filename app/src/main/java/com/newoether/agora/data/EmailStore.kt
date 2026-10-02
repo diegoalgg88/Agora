@@ -81,7 +81,34 @@ class EmailStore(
      */
     suspend fun removePending(keys: List<Pair<String, Long>>) = withContext(Dispatchers.IO) {
         if (keys.isNotEmpty()) {
-            chatDao.deletePendingEmails(keys.map { (accountId, uid) -> "$accountId:$uid" })
+            database.withTransaction { deletePendingKeys(keys) }
+        }
+    }
+
+    /**
+     * Heartbeat consume-on-success as ONE durable boundary: deletes exactly the delivered
+     * pending rows and advances each account's watermark to the highest delivered UID.
+     * A crash can no longer leave rows deleted with a stale watermark (or the reverse), and
+     * an account whose sync row is gone (removed account) is skipped rather than resurrected.
+     */
+    suspend fun consumePending(keys: List<Pair<String, Long>>) = withContext(Dispatchers.IO) {
+        if (keys.isEmpty()) return@withContext
+        database.withTransaction {
+            deletePendingKeys(keys)
+            for ((accountId, uids) in keys.groupBy({ it.first }, { it.second })) {
+                val current = chatDao.getEmailSyncState(accountId) ?: continue
+                val advanced = maxOf(current.lastSeenUid, uids.max())
+                if (advanced != current.lastSeenUid) {
+                    chatDao.upsertEmailSyncState(current.copy(lastSeenUid = advanced))
+                }
+            }
+        }
+    }
+
+    /** Chunked so a large backlog never exceeds SQLite's bound-variable limit (999 on old API levels). */
+    private suspend fun deletePendingKeys(keys: List<Pair<String, Long>>) {
+        keys.chunked(DELETE_CHUNK).forEach { chunk ->
+            chatDao.deletePendingEmails(chunk.map { (accountId, uid) -> "$accountId:$uid" })
         }
     }
 
@@ -91,13 +118,48 @@ class EmailStore(
             chatDao.getEmailMessage(accountId, uid)
         }
 
-    /** Durable removal of every stored row belonging to one account (account teardown). */
+    /**
+     * Durable removal of every stored row belonging to one account (account teardown):
+     * pending queue, messages, sync state and staged drafts, in one transaction.
+     */
     suspend fun removeAccountData(accountId: String) = withContext(Dispatchers.IO) {
         database.withTransaction {
             chatDao.deletePendingEmailsForAccount(accountId)
             chatDao.deleteEmailMessagesForAccount(accountId)
             chatDao.deleteEmailSyncState(accountId)
+            chatDao.deleteEmailDraftsForAccount(accountId)
         }
+    }
+
+    /**
+     * Reconciles Room with the connected account list after a bulk change that cannot
+     * cascade per account (e.g. a REPLACE restore that dropped accounts). Deletes pending,
+     * messages, sync state and drafts of every account not in [connectedAccountIds], in
+     * one transaction. Callers must pass the list read from disk (awaited), not an eager
+     * StateFlow default, because an empty list purges all email rows.
+     */
+    suspend fun purgeDisconnectedAccounts(connectedAccountIds: Collection<String>) =
+        withContext(Dispatchers.IO) {
+            val ids = connectedAccountIds.toList()
+            database.withTransaction {
+                if (ids.isEmpty()) {
+                    // An archive with zero accounts leaves every row orphaned; NOT IN cannot
+                    // bind an empty collection (SQLite syntax error), so delete-all is explicit.
+                    chatDao.deleteAllPendingEmails()
+                    chatDao.deleteAllEmailMessages()
+                    chatDao.deleteAllEmailSyncStates()
+                    chatDao.deleteAllEmailDrafts()
+                } else {
+                    chatDao.deletePendingEmailsOutside(ids)
+                    chatDao.deleteEmailMessagesOutside(ids)
+                    chatDao.deleteEmailSyncStatesOutside(ids)
+                    chatDao.deleteEmailDraftsOutside(ids)
+                }
+            }
+        }
+
+    private companion object {
+        const val DELETE_CHUNK = 400
     }
 
     private fun EmailMessageData.toEntity() = EmailMessageEntity(

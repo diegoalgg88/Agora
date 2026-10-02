@@ -211,17 +211,10 @@ class HeartbeatScheduler(
                 notificationStore.removePending(snapshot.notificationKeys)
             }
             if (snapshot.emailKeys.isNotEmpty()) {
-                emailStore.removePending(snapshot.emailKeys)
-                // Advance each account's watermark past the delivered batch so the user's
-                // own check_email never repeats what the heartbeat already showed.
-                val uidsByAccount = snapshot.emailKeys.groupBy({ it.first }, { it.second })
-                for ((accountId, uids) in uidsByAccount) {
-                    val state = emailStore.getSyncStateOnce(accountId)
-                    emailStore.updateSyncState(
-                        accountId,
-                        state.copy(lastSeenUid = maxOf(state.lastSeenUid, uids.max())),
-                    )
-                }
+                // One transaction: delete the delivered rows AND advance each account's
+                // watermark past them, so the user's own check_email never repeats what the
+                // heartbeat showed and a crash cannot leave the two out of step.
+                emailStore.consumePending(snapshot.emailKeys)
             }
         }
         notificationStore.performRetentionSweep()
@@ -248,7 +241,16 @@ class HeartbeatScheduler(
         val customPrompt = settingsRepository.heartbeatPrompt.value
         val pendingSms = smsStore.getPendingSnapshot()
         val pendingNotifications = notificationStore.getPendingSnapshot()
-        val pendingEmails = emailStore.getPendingSnapshot()
+        // Rows of an account that is no longer connected (removed, or dropped by a
+        // replace-restore) are never delivered to the model.
+        val pendingEmails = emailStore.getPendingSnapshot().let { pending ->
+            if (pending.isEmpty()) {
+                pending
+            } else {
+                val connectedIds = settingsRepository.emailAccounts.value.map { it.id }.toSet()
+                pending.filter { it.accountId in connectedIds }
+            }
+        }
 
         // Bounded tail query: only final model responses, newest first. Never load the full
         // message graph for this — the heartbeat conversation grows without bound.

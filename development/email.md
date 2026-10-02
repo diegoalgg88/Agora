@@ -58,8 +58,10 @@ Room schema v36 (migration `MIGRATION_35_36`, CREATE-only).
 - **Consume-on-success only**: after a successful heartbeat run, exactly the
   snapshot keys the AI saw are removed and each account's watermark advances to
   the snapshot's max UID — so the user's own `check_email` never repeats what the
-  heartbeat already showed. A failed run (or messages arriving during the call)
-  survive to the next heartbeat.
+  heartbeat already showed. Deletion and watermark advance are ONE Room
+  transaction (`EmailStore.consumePending`), chunked below SQLite's bound-variable
+  limit; an account without a sync row is skipped, never resurrected. A failed
+  run (or messages arriving during the call) survive to the next heartbeat.
 - **Delivery cap semantics (decision P-2)**: batches larger than 20 deliver the
   20 most recent; messages between watermark positions are NOT lost — they remain
   in the inbox and findable via `search_email`.
@@ -70,8 +72,17 @@ Room schema v36 (migration `MIGRATION_35_36`, CREATE-only).
   `EmailDraftStore` and answer that the user must confirm. The AI cannot dispatch
   mail. The **user's Send tap in the review banner is the only path** that runs
   SMTP (PENDING → SENDING → SENT/FAILED, cap 20 drafts).
-- Fail-closed: missing account or password records FAILED with a reason; drafts
-  not in PENDING are never re-sent.
+- Fail-closed: missing account or password records FAILED with a reason.
+- Dispatch is claimed atomically (`claimEmailDraftForSending`: PENDING or FAILED →
+  SENDING in one UPDATE); only the caller that wins the claim reaches SMTP, so
+  concurrent taps cannot double-send. FAILED drafts may be retried by the user;
+  SENDING and SENT drafts are never dispatched (the banner offers no Retry while
+  SENDING).
+- A failed Sent-folder copy after SMTP acceptance is best-effort and never marks
+  the draft FAILED (a Retry would deliver the email twice).
+- Drafts stranded in SENDING by a dead process are marked FAILED once per process
+  (`recoverInterruptedDrafts`) with a "check your Sent folder" reason — never
+  auto-resent.
 - Sent copy: filed over IMAP into the account's configured folder → server
   SPECIAL-USE `\Sent` (RFC 6154) → common names → CREATE as last resort. APPEND
   is always attempted with the real message (a rejected mailbox leaves no trace).
@@ -90,6 +101,12 @@ Room schema v36 (migration `MIGRATION_35_36`, CREATE-only).
 - Account resolution accepts account_id or email address, with a single-account
   fallback; ambiguity returns the connected-account list so the model can
   self-correct.
+- `search_email` criteria (`from`, `subject`, `since`) combine with AND; a
+  criterion that matches nothing yields no results and never falls back to a
+  looser search.
+- `setup_email` for an address that is already connected updates that account in
+  place (same id, so watermark/queue/drafts survive a password rotation); it
+  never creates a duplicate account.
 
 ## 8. Secret hygiene (decision P-5)
 
@@ -100,8 +117,20 @@ Room schema v36 (migration `MIGRATION_35_36`, CREATE-only).
 - Portable archives never carry passwords: accounts export without them;
   `NativeBackupSecrets.emailPasswords` (the secrets entry) is the only password
   transport, and restore drops records without a matching account with a warning.
-- Account removal cascades: password + sync state + pending + messages for that
-  account, in transactions.
+- Account removal cascades: password + account record (DataStore) first, then
+  sync state + pending + messages + drafts for that account in ONE Room
+  transaction (`EmailStore.removeAccountData`). The single entry point is
+  `EmailUiBridge.removeAccount` (non-cancellable); `SettingsRepository` must not
+  remove accounts on its own because it cannot reach Room.
+- Restore reconciliation: after a native-archive settings restore that carried
+  `emailAccounts`, `DataImporter` calls `EmailStore.purgeDisconnectedAccounts` with
+  the account ids read from disk (awaited, never an eager StateFlow default),
+  deleting pending/messages/sync state/drafts of every account no longer connected
+  in one transaction. An empty connected list (archive with zero accounts) purges
+  every email row via explicit delete-all statements — `NOT IN` cannot bind an empty
+  collection. A failure is reported as an import warning, not a failed import.
+- Read-side defense (kept as a second layer): pending rows of an account that is
+  not connected are never delivered by the heartbeat or listed by `check_email`.
 
 ## 9. Portability
 
@@ -117,8 +146,10 @@ Room schema v36 (migration `MIGRATION_35_36`, CREATE-only).
   unfolding, RFC 5322 dates) — `ImapClientTest`, `SmtpClientTest`.
 - Watermark boundaries: seed, dedup vs pending, per-account uid collision, cap
   50, failure without watermark movement — `EmailPollerTest`.
-- Draft lifecycle: transitions, fail-closed, Gmail skip, staging-never-sends —
-  `EmailDraftStoreTest`, `EmailToolProviderTest`.
+- Draft lifecycle: atomic claim (lost claim never reaches SMTP), FAILED retry,
+  SENDING/SENT refusal, sent-copy failure stays SENT, interrupted recovery,
+  fail-closed, Gmail skip, staging-never-sends — `EmailDraftStoreTest`,
+  `EmailToolProviderTest`.
 - Password-echo: marked password must not appear in any result/exception —
   `EmailToolProviderTest` (4 cases, success + login failure + connect exception).
 - Heartbeat section rendering: presence/omission, cap 20, sort order —

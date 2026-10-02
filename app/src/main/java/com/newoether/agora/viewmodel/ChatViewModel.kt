@@ -92,7 +92,7 @@ class ChatViewModel(
     private val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider, private val emailToolProvider: com.newoether.agora.tool.EmailToolProvider,) : AndroidViewModel(application) {
     val settings: SettingsRepository = settingsRepository
     val smsUi: SmsUiBridge = SmsUiBridge(smsDraftStore, smsStore, smsPoller, smsSender, viewModelScope)
-    val emailUi: EmailUiBridge = EmailUiBridge(emailDraftStore, emailStore, emailPoller, viewModelScope)
+    val emailUi: EmailUiBridge = EmailUiBridge(emailDraftStore, emailStore, emailPoller, settingsRepository, viewModelScope)
 
     /**
      * Conversation/message persistence behind the repository layer. CRUD, cascade-delete,

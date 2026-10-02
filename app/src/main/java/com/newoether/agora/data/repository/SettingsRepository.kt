@@ -952,7 +952,8 @@ class SettingsRepository(
     // ── Email ──────────────────────────────────────────────────
     fun saveEmailPollIntervalMinutes(minutes: Int) = scope.launch { settingsManager.emailAccountSettings.savePollIntervalMinutes(minutes) }
     fun addEmailAccount(account: EmailAccount, password: String) = scope.launch { settingsManager.emailAccountSettings.addAccount(account, password) }
-    fun removeEmailAccount(accountId: String) = scope.launch { settingsManager.emailAccountSettings.removeAccount(accountId) }
+    // Account removal lives in EmailUiBridge.removeAccount: it must cascade into Room
+    // (pending/messages/sync state/drafts), which this DataStore-only repository cannot reach.
 
     // ── Daemon ─────────────────────────────────────────────────
     fun setDaemonEnabled(enabled: Boolean) = scope.launch { settingsManager.saveDaemonEnabled(enabled) }

@@ -582,6 +582,20 @@ class DataImporter(
                             resolveSystemPromptId = promptImport::resolve,
                         )
                         warnings.forEach { errors += "Settings: $it" }
+                        if (settingsObject.containsKey("emailAccounts")) {
+                            // The restore may have dropped accounts; Room rows of accounts that are
+                            // no longer connected must not outlive them (development/email.md §8).
+                            try {
+                                EmailStore(chatDao, database).purgeDisconnectedAccounts(
+                                    settingsManager.emailAccountSettings.accountsOnce().map { it.id },
+                                )
+                            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                                throw cancelled
+                            } catch (error: Exception) {
+                                errors += "Settings: email cleanup skipped: " +
+                                    (error.localizedMessage ?: "unknown error")
+                            }
+                        }
                         fontApplied = restoredFont != null && manifest.version >= 4
 
                         if (manifest.version < 4) {

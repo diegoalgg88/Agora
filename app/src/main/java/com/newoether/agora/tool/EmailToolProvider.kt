@@ -133,8 +133,13 @@ class EmailToolProvider(
             runCatching { probe.logout() }
         }
 
+        // Reconnecting an address that is already connected (e.g. a rotated App Password)
+        // updates that account in place: same id keeps its watermark, queue and drafts and
+        // never creates a duplicate that would be polled and delivered twice.
+        val existing = settingsManager.emailAccountSettings.accountsOnce()
+            .firstOrNull { it.email.equals(email, ignoreCase = true) }
         val account = EmailAccount(
-            id = java.util.UUID.randomUUID().toString(),
+            id = existing?.id ?: java.util.UUID.randomUUID().toString(),
             email = email,
             imapHost = resolvedImapHost,
             imapPort = resolvedImapPort,
@@ -143,19 +148,21 @@ class EmailToolProvider(
             useStartTls = useStartTls,
         )
         settingsManager.emailAccountSettings.addAccount(account, password)
-        return "Email account connected: $email\n" +
+        val verb = if (existing != null) "updated" else "connected"
+        return "Email account $verb: $email\n" +
             "IMAP: $resolvedImapHost:$resolvedImapPort, SMTP: $resolvedSmtpHost:$resolvedSmtpPort\n" +
             "account_id: ${account.id}$note"
     }
 
     /** Lists the pending queue — emails the heartbeat has not shown the AI yet. */
     private suspend fun checkEmail(): String {
-        val pending = emailStore.getPendingSnapshot()
+        val accounts = settingsManager.emailAccountSettings.accountsOnce()
+        val accountEmails = accounts.associate { it.id to it.email }
+        // Orphaned rows of a removed account are never surfaced.
+        val pending = emailStore.getPendingSnapshot().filter { it.accountId in accountEmails }
         if (pending.isEmpty()) {
             return "No new emails. Use search_email to find a known message by sender or subject."
         }
-        val accounts = settingsManager.emailAccountSettings.accountsOnce()
-        val accountEmails = accounts.associate { it.id to it.email }
         return buildString {
             append("You have ${pending.size} new email(s) not yet shown:\n\n")
             for (msg in pending.takeLast(20).asReversed()) {
@@ -223,19 +230,14 @@ class EmailToolProvider(
                 return "IMAP login failed for ${account.email} — the stored credentials were rejected."
             }
             imap.selectInbox()
-            val uids = buildList {
-                when {
-                    !from.isNullOrBlank() && !subject.isNullOrBlank() -> {
-                        val byFrom = imap.searchByFrom(from).toSet()
-                        addAll(imap.searchBySubject(subject).filter { it in byFrom })
-                    }
-                    !from.isNullOrBlank() -> addAll(imap.searchByFrom(from))
-                    !subject.isNullOrBlank() -> addAll(imap.searchBySubject(subject))
-                    else -> {}
-                }
-            }.ifEmpty {
-                if (since.isNullOrBlank()) emptyList() else imap.searchSince(since)
+            // Every provided criterion must match (AND). A criterion that matches nothing
+            // yields no results; it never silently falls back to a looser search.
+            val criteria = buildList<Set<Long>> {
+                if (!from.isNullOrBlank()) add(imap.searchByFrom(from).toSet())
+                if (!subject.isNullOrBlank()) add(imap.searchBySubject(subject).toSet())
+                if (!since.isNullOrBlank()) add(imap.searchSince(since).toSet())
             }
+            val uids = criteria.reduce { acc, matched -> acc intersect matched }.sorted()
             if (uids.isEmpty()) {
                 return "No emails found matching the given criteria on ${account.email}."
             }

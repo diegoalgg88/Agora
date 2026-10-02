@@ -332,5 +332,58 @@ class EmailToolProviderTest {
         }
     }
 
+    @Test
+    fun `search_email combines criteria with AND and never falls back to a looser search`() = runBlocking {
+        val imap = mockk<ImapClient>(relaxed = true)
+        coEvery { imap.login(any(), any()) } returns true
+        coEvery { imap.searchByFrom("bob") } returns listOf(1L, 2L)
+        coEvery { imap.searchSince("01-Jan-2026") } returns listOf(8L, 9L)
+        val provider = provider(accounts = listOf(account), imapFactory = { imap })
+
+        val result = provider.execute(
+            "search_email",
+            """{"from": "bob", "since": "01-Jan-2026"}""",
+            mockGenerationContext(),
+        )
+
+        assertTrue(result.contains("No emails found"))
+        io.mockk.coVerify(exactly = 0) { imap.fetchHeaders(any(), any()) }
+    }
+
+    @Test
+    fun `check_email hides pending rows of an account that is no longer connected`() = runBlocking {
+        val emailStore = mockk<EmailStore>()
+        coEvery { emailStore.getPendingSnapshot() } returns listOf(
+            EmailPendingData("removed-account", 5L, "x@y.com", "Ghost", 1000L, "boo"),
+        )
+        val provider = provider(accounts = listOf(account), emailStore = emailStore)
+
+        val result = provider.execute("check_email", "{}", mockGenerationContext())
+
+        assertTrue(result.contains("No new emails"))
+        assertFalse(result.contains("Ghost"))
+    }
+
+    @Test
+    fun `setup_email for an already connected address updates it in place`() = runBlocking {
+        val imap = mockk<ImapClient>(relaxed = true)
+        coEvery { imap.login(any(), any()) } returns true
+        val settingsManager = mockk<SettingsManager>(relaxed = true)
+        coEvery { settingsManager.emailAccountSettings.accountsOnce() } returns listOf(account)
+        val saved = mutableListOf<EmailAccount>()
+        coEvery { settingsManager.emailAccountSettings.addAccount(capture(saved), any()) } returns Unit
+        val provider = provider(accounts = listOf(account), imapFactory = { imap }, settingsManager = settingsManager)
+
+        val result = provider.execute(
+            "setup_email",
+            """{"email": "user@fastmail.com", "password": "rotated-pw"}""",
+            mockGenerationContext(),
+        )
+
+        assertTrue(result.contains("updated"))
+        assertTrue("same id keeps watermark, queue and drafts", saved.single().id == account.id)
+        assertFalse(result.contains("rotated-pw"))
+    }
+
     private fun mockGenerationContext(): GenerationContext = mockk(relaxed = true)
 }

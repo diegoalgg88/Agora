@@ -63,13 +63,15 @@ class EmailDraftStore(
     }
 
     /**
-     * User-triggered send (banner Approve): flips the draft to SENDING, dispatches via
-     * SMTP, files the Sent copy over IMAP, then records SENT or FAILED (with the
-     * failure reason). Returns false if the draft is missing or no longer PENDING.
+     * User-triggered send (banner Send / Retry): atomically claims the draft
+     * (PENDING or FAILED -> SENDING), dispatches via SMTP, files the Sent copy over IMAP,
+     * then records SENT or FAILED (with the failure reason). Returns false if the draft is
+     * missing, already SENDING/SENT, or another caller won the claim — so concurrent taps
+     * can never dispatch the same message twice.
      */
     suspend fun sendDraft(draftId: String): Boolean {
         val draft = drafts.first().find { it.id == draftId } ?: return false
-        if (draft.status != EmailDraftStatus.PENDING) return false
+        if (draft.status != EmailDraftStatus.PENDING && draft.status != EmailDraftStatus.FAILED) return false
         val account = accountResolver(draft.accountId) ?: run {
             updateStatus(draftId, EmailDraftStatus.FAILED, "Account no longer connected")
             return false
@@ -79,7 +81,8 @@ class EmailDraftStore(
             return false
         }
 
-        updateStatus(draftId, EmailDraftStatus.SENDING)
+        val claimed = withContext(Dispatchers.IO) { chatDao.claimEmailDraftForSending(draftId) }
+        if (claimed == 0) return false
         try {
             val smtp = smtpClientFactory(account)
             smtp.connect()
@@ -98,7 +101,15 @@ class EmailDraftStore(
                     updateStatus(draftId, EmailDraftStatus.FAILED, "SMTP rejected the message")
                     return false
                 }
-                saveCopyToSentFolder(account, password, raw)
+                // SMTP already accepted the message: a failed Sent-copy is best-effort and must
+                // never turn the draft FAILED, or Retry would deliver the email a second time.
+                try {
+                    saveCopyToSentFolder(account, password, raw)
+                } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                    throw cancelled
+                } catch (_: Exception) {
+                    // Intentionally ignored; the recipient already has the message.
+                }
             } finally {
                 smtp.quit()
             }
@@ -143,6 +154,18 @@ class EmailDraftStore(
         }
     }
 
+    /**
+     * Drafts left in SENDING belong to a process that died mid-send, so their outcome is
+     * unknown. Marks them FAILED once per process (the store is process-scoped) so the user
+     * can check the Sent folder before deciding to retry or discard — never auto-resent.
+     */
+    suspend fun recoverInterruptedDrafts() {
+        if (!recovered.compareAndSet(false, true)) return
+        withContext(Dispatchers.IO) {
+            chatDao.failInterruptedEmailDrafts(INTERRUPTED_REASON)
+        }
+    }
+
     /** Removes non-pending drafts older than [cutoffEpochMs] (7 days). */
     suspend fun cleanupOldDrafts(cutoffEpochMs: Long = System.currentTimeMillis() - CLEANUP_AGE_MS) =
         withContext(Dispatchers.IO) {
@@ -173,7 +196,11 @@ class EmailDraftStore(
         lastError = lastError,
     )
 
+    private val recovered = java.util.concurrent.atomic.AtomicBoolean(false)
+
     companion object {
+        private const val INTERRUPTED_REASON =
+            "Sending was interrupted - check your Sent folder before retrying"
         private const val MAX_DRAFTS = 20
         private const val CLEANUP_AGE_MS = 7 * 24 * 60 * 60 * 1000L
     }

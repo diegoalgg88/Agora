@@ -88,6 +88,50 @@ interface ChatEmailDao {
     @Query("DELETE FROM email_drafts WHERE id = :id")
     suspend fun deleteEmailDraft(id: String): Int
 
+    /**
+     * Atomic dispatch claim: PENDING (first send) or FAILED (retry) -> SENDING in one
+     * statement. Returns 1 only for the single caller that won the transition, so two
+     * concurrent taps can never both reach SMTP. SENDING is deliberately not claimable.
+     */
+    @Query("UPDATE email_drafts SET status = 'SENDING', lastError = NULL WHERE id = :id AND status IN ('PENDING', 'FAILED')")
+    suspend fun claimEmailDraftForSending(id: String): Int
+
+    /** Marks drafts left in SENDING by a dead process as FAILED (outcome unknown). */
+    @Query("UPDATE email_drafts SET status = 'FAILED', lastError = :reason WHERE status = 'SENDING'")
+    suspend fun failInterruptedEmailDrafts(reason: String): Int
+
+    @Query("DELETE FROM email_drafts WHERE accountId = :accountId")
+    suspend fun deleteEmailDraftsForAccount(accountId: String): Int
+
+    // ── Orphan reconciliation (rows of accounts that are no longer connected) ──
+    // The *Outside variants cannot bind an empty collection (SQLite rejects `NOT IN ()`),
+    // so the caller routes a genuinely empty connected list to the deleteAll variants —
+    // an archive with zero accounts leaves every email row orphaned.
+
+    @Query("DELETE FROM email_pending WHERE accountId NOT IN (:connectedIds)")
+    suspend fun deletePendingEmailsOutside(connectedIds: List<String>): Int
+
+    @Query("DELETE FROM email_messages WHERE accountId NOT IN (:connectedIds)")
+    suspend fun deleteEmailMessagesOutside(connectedIds: List<String>): Int
+
+    @Query("DELETE FROM email_sync_state WHERE accountId NOT IN (:connectedIds)")
+    suspend fun deleteEmailSyncStatesOutside(connectedIds: List<String>): Int
+
+    @Query("DELETE FROM email_drafts WHERE accountId NOT IN (:connectedIds)")
+    suspend fun deleteEmailDraftsOutside(connectedIds: List<String>): Int
+
+    @Query("DELETE FROM email_pending")
+    suspend fun deleteAllPendingEmails(): Int
+
+    @Query("DELETE FROM email_messages")
+    suspend fun deleteAllEmailMessages(): Int
+
+    @Query("DELETE FROM email_sync_state")
+    suspend fun deleteAllEmailSyncStates(): Int
+
+    @Query("DELETE FROM email_drafts")
+    suspend fun deleteAllEmailDrafts(): Int
+
     @Query("DELETE FROM email_drafts WHERE status != 'PENDING' AND createdAtEpochMs < :cutoff")
     suspend fun cleanupOldEmailDrafts(cutoff: Long): Int
 }

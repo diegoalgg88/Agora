@@ -252,7 +252,7 @@ fun EmailSection(viewModel: ChatViewModel) {
                 confirmButton = {
                     TextButton(
                         onClick = {
-                            viewModel.settings.removeEmailAccount(accountToRemove.id)
+                            viewModel.emailUi.removeAccount(accountToRemove.id)
                             confirmRemoveAccountId = null
                         },
                     ) {

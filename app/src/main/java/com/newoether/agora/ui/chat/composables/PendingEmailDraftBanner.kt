@@ -140,9 +140,8 @@ private fun EmailDraftCard(
                         style = MaterialTheme.typography.labelMedium,
                     )
                     Spacer(modifier = Modifier.width(8.dp))
-                    TextButton(onClick = onSend) {
-                        Text(stringResource(R.string.email_draft_retry))
-                    }
+                    // No Retry while SENDING: the store only accepts PENDING/FAILED, and a second
+                    // dispatch of an in-flight message would duplicate it.
                     TextButton(onClick = onDiscard) {
                         Text(stringResource(R.string.email_draft_discard))
                     }
