@@ -132,6 +132,23 @@ class LocalProvider(
             return@runChat
         }
         if (requiresToolCapableTemplate && !template.supportsTools) {
+            // Content-free diagnosis: the embedded template never touched llama.cpp's
+            // tool probe fields. Length + tool-field reference flags identify the common
+            // causes (flat/legacy template, Jinja probe failure) without logging template
+            // or prompt content. A split tool_use template is already handled natively
+            // before this rejection fires.
+            val embeddedTemplate = engine.getChatTemplate()
+            if (embeddedTemplate != null) {
+                DebugLog.w(
+                    TAG,
+                    "Template lacks tool support: length=${embeddedTemplate.length}, " +
+                        "refsTools=${embeddedTemplate.contains("tools")}, " +
+                        "refsToolCalls=${embeddedTemplate.contains("tool_calls")}, " +
+                        "requestedTools=${templateTools.size}"
+                )
+            } else {
+                DebugLog.w(TAG, "Template lacks tool support and no embedded template is readable")
+            }
             emit(StreamEvent.Error(GenerationError.LocalModel(
                 "The local model chat template does not support tool calling."
             )))

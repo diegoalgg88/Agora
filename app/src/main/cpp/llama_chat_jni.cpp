@@ -889,13 +889,22 @@ Java_com_newoether_agora_api_LlamaChatEngine_nativeChatApplyTemplate(
     env->DeleteLocalRef(tools);
     env->DeleteLocalRef(request_class);
 
-    const auto caps = common_chat_templates_get_caps(handle->chat_templates.get());
+    const bool needs_tool_template = !inputs.tools.empty() || has_tool_history;
+    // Probe the same template the apply path will render with: a split-template model
+    // (separate chat_template.tool_use) must be judged by its tool_use template's caps,
+    // not by the default template, which never touches tool fields.
+    const auto caps = common_chat_templates_get_caps(handle->chat_templates.get(), needs_tool_template);
     const auto supports = [&](const char * name) {
         const auto found = caps.find(name);
         return found != caps.end() && found->second;
     };
     const bool supports_tools = supports("supports_tools") && supports("supports_tool_calls");
-    if ((!inputs.tools.empty() || has_tool_history) && !supports_tools) {
+    if (needs_tool_template && !supports_tools) {
+        LOGE("Chat template rejected: supports_tools=%d supports_tool_calls=%d "
+             "supports_object_arguments=%d tools=%d tool_history=%d",
+             supports("supports_tools"), supports("supports_tool_calls"),
+             supports("supports_object_arguments"),
+             static_cast<int>(inputs.tools.size()), has_tool_history ? 1 : 0);
         return make_template_result(env, common_chat_params{}, false);
     }
 

@@ -78,7 +78,6 @@ class LocalLlamaOwnershipSourceContractTest {
         assertTrue(native.contains("supports(\"supports_tool_calls\")"))
         assertTrue(native.contains("!inputs.tools.empty() || has_tool_history"))
         assertFalse(native.contains("llama_chat_apply_template("))
-
         assertTrue(engine.contains("class LlamaChatTemplateRequest("))
         assertTrue(engine.contains("class LlamaChatTemplateResult("))
         assertTrue(engine.contains("class ChatTemplateToolCall("))
@@ -94,6 +93,52 @@ class LocalLlamaOwnershipSourceContractTest {
         assertFalse(provider.contains("Tool call:"))
         assertFalse(provider.contains("Tool result:"))
         assertTrue(provider.contains("enableThinking = config.thinkingEnabled"))
+    }
+
+    @Test
+    fun `tool capability is probed on the template the apply path renders with`() {
+        val native = mainCppSource("llama_chat_jni.cpp")
+        val provider = mainSource("com/newoether/agora/api/local/LocalProvider.kt")
+        val engine = mainSource("com/newoether/agora/api/LlamaChatEngine.kt")
+        val chatHeader = vendoredLlamaSource("common/chat.h")
+        val chatImpl = vendoredLlamaSource("common/chat.cpp")
+
+        // The JNI must probe the same template common_chat_templates_apply renders with:
+        // split-template models (separate chat_template.tool_use) are misjudged by the
+        // default template's caps, which never touch tool fields.
+        assertTrue(native.contains(
+            "common_chat_templates_get_caps(handle->chat_templates.get(), needs_tool_template)"
+        ))
+        val probe = native
+            .substringAfter("const bool needs_tool_template = !inputs.tools.empty() || has_tool_history;")
+            .substringBefore("try {")
+        assertTrue(probe.contains("needs_tool_template && !supports_tools"))
+
+        // The vendored accessor carries the apply-time selection rule.
+        assertTrue(chatHeader.contains("bool with_tools = false"))
+        assertTrue(chatImpl.contains("with_tools && chat_templates->template_tool_use"))
+
+        // Rejection is diagnosable: bounded capability flags on the native side, and
+        // content-free embedded-template metadata (never the template or prompt itself)
+        // through the previously dead getChatTemplate path.
+        assertTrue(native.contains("Chat template rejected: supports_tools="))
+        assertTrue(native.contains("supports_object_arguments=%d tools=%d tool_history=%d"))
+        assertTrue(provider.contains("engine.getChatTemplate()"))
+        assertTrue(provider.contains("Template lacks tool support: length="))
+        assertTrue(provider.contains("embeddedTemplate.contains(\"tools\")"))
+        assertTrue(provider.contains("embeddedTemplate.contains(\"tool_calls\")"))
+        assertFalse(provider.contains("embeddedTemplate.take("))
+        assertTrue(engine.contains("fun getChatTemplate(): String? {"))
+    }
+
+    private fun vendoredLlamaSource(relativePath: String): String {
+        var directory = File(requireNotNull(System.getProperty("user.dir"))).absoluteFile
+        repeat(8) {
+            val candidate = File(directory, "thirdparty/llama.cpp/$relativePath")
+            if (candidate.isFile) return candidate.readText()
+            directory = directory.parentFile ?: error("Reached filesystem root")
+        }
+        error("Unable to locate the vendored llama.cpp source: $relativePath")
     }
 
     @Test

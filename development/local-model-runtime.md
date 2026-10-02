@@ -103,6 +103,25 @@ become neutral zero. Both native sampler chains use llama.cpp's penalties sample
 64-token history window, neutral repeat penalty `1.0`, and the captured frequency/presence values;
 they must not replace those values with a repeat-penalty approximation.
 
+### Tool capability probing
+
+Whether a model template "supports tool calling" is decided by llama.cpp's Jinja capability probe
+(`jinja::caps_get`): the embedded template is executed with probe inputs (an OpenAI-shaped `tools`
+array plus a `tool_calls`/`tool` history) and only templates that actually read those fields report
+capability. Agora fails closed when a request needs tools (tool definitions attached, or tool history
+in context) and the probed template lacks the capability — never substituting a generic tool prompt,
+which could silently apply the wrong role/control-token protocol.
+
+The capability probe must target **the same template the apply path renders with**. A GGUF may
+embed a separate `chat_template.tool_use`; `common_chat_templates_apply` selects it whenever tools
+are present, so the caps probe (`common_chat_templates_get_caps`, `with_tools = true`) must select
+it too — probing only the default template misjudges split-template models whose default template
+never mentions tool fields. Legacy or flat-schema templates that genuinely cannot render llama.cpp's
+OpenAI-shaped tool input are still rejected by design; upstream's generic-fallback tolerance is not
+adopted. Rejection diagnostics are content-free on both layers: capability flags natively, and
+template length plus tool-field reference booleans in the Provider — never the template source or
+prompt content.
+
 ## 4. Strict FIFO admission
 
 Every submitted Local task is counted as queued-or-active before it waits for the process permit.
