@@ -61,4 +61,5 @@
     <string name="live_voice_channel_desc">Notificación persistente mientras hay una llamada de voz activa</string>
     <string name="assistant_overlay_call">Llamar</string>
     <string name="assistant_overlay_call_disabled">Activa las llamadas de voz en Ajustes primero</string>
+    <string name="live_voice_error_mic_failed">El micrófono dejó de funcionar. Se terminó la llamada.</string>
 </resources>

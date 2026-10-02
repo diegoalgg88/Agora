@@ -61,4 +61,5 @@
     <string name="live_voice_channel_desc">Notification persistante pendant un appel vocal</string>
     <string name="assistant_overlay_call">Appeler</string>
     <string name="assistant_overlay_call_disabled">Activez d\'abord les appels vocaux dans les paramètres</string>
+    <string name="live_voice_error_mic_failed">Le microphone ne fonctionne plus. Appel terminé.</string>
 </resources>

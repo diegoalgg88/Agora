@@ -61,4 +61,5 @@
     <string name="live_voice_channel_desc">إشعار دائم أثناء المكالمة الصوتية</string>
     <string name="assistant_overlay_call">اتصال</string>
     <string name="assistant_overlay_call_disabled">فعّل المكالمات الصوتية في الإعدادات أولاً</string>
+    <string name="live_voice_error_mic_failed">توقف الميكروفون عن العمل. تم إنهاء المكالمة.</string>
 </resources>

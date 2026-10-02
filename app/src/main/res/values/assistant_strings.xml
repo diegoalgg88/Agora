@@ -61,4 +61,5 @@
     <string name="live_voice_channel_desc">Ongoing notification while a voice call is active</string>
     <string name="assistant_overlay_call">Call</string>
     <string name="assistant_overlay_call_disabled">Enable voice calls in Settings first</string>
+    <string name="live_voice_error_mic_failed">The microphone stopped working. The call was ended.</string>
 </resources>

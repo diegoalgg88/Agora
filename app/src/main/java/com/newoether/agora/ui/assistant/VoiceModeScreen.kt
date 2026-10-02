@@ -101,9 +101,13 @@ class VoiceModeActivity : ComponentActivity() {
                     muted = muted,
                     echoHint = echoHint,
                     errorMessage = errorMessage,
-                    audioLevel = audioLevel,
+                    audioLevelProvider = { audioLevel },
                     transcriptLog = transcriptLog,
-                    showUserCaption = callState == LiveCallState.ACTIVE,
+                    // The user's in-flight caption stays visible while reconnecting: the user
+                    // may keep speaking across the drop and their words are still accumulating
+                    // in the pending line (the controller preserves turnInputText).
+                    showUserCaption = callState == LiveCallState.ACTIVE ||
+                        callState == LiveCallState.RECONNECTING,
                     // Reads transcriptVersion so transcript mutations recompose this scope.
                     transcriptVersion = transcriptVersion,
                     onToggleMute = ::toggleMute,
@@ -133,12 +137,18 @@ class VoiceModeActivity : ComponentActivity() {
             },
             onAudioLevel = { level -> audioLevel = level },
             onTranscript = { user, model ->
-                transcriptLog.onTranscript(user, model)
-                transcriptVersion++
+                // LiveTranscriptLog is main-thread confined (see its KDoc): the controller
+                // fires from OkHttp's reader thread, so every mutation lands on main here.
+                runOnUiThread {
+                    transcriptLog.onTranscript(user, model)
+                    transcriptVersion++
+                }
             },
             onTurnCommitted = {
-                transcriptLog.commitTurn()
-                transcriptVersion++
+                runOnUiThread {
+                    transcriptLog.commitTurn()
+                    transcriptVersion++
+                }
             },
         ).also {
             echoHint = !it.isEchoCancellationAvailable
@@ -185,7 +195,8 @@ private fun VoiceModeScreen(
     muted: Boolean,
     echoHint: Boolean,
     errorMessage: String?,
-    audioLevel: Float,
+    /** Deferred so the ~31 Hz mic-level updates recompose only [CallOrb], not this whole tree. */
+    audioLevelProvider: () -> Float,
     transcriptLog: LiveTranscriptLog,
     showUserCaption: Boolean,
     transcriptVersion: Int,
@@ -229,7 +240,7 @@ private fun VoiceModeScreen(
                     textAlign = TextAlign.Center,
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-                CallOrb(state = state, muted = muted, audioLevel = audioLevel)
+                CallOrb(state = state, muted = muted, audioLevelProvider = audioLevelProvider)
                 if (state == LiveCallState.ENDED && errorMessage != null) {
                     Text(
                         text = errorMessage,
@@ -352,9 +363,14 @@ private fun LiveTranscriptPanel(
  * - Ended: neutral static disc.
  */
 @Composable
-private fun CallOrb(state: LiveCallState, muted: Boolean, audioLevel: Float) {
+private fun CallOrb(state: LiveCallState, muted: Boolean, audioLevelProvider: () -> Float) {
     val motionPolicy = LocalAgoraMotionPolicy.current
     val allowMotion = motionPolicy.allowContinuousMotion
+
+    // Read here (not at the screen scope): the ~31 Hz level updates confine recomposition
+    // to this orb instead of the whole call screen. Plain call, not `by` delegation — the
+    // explicit compose getValue import shadows the stdlib lambda operator.
+    val audioLevel = audioLevelProvider()
 
     val levelScale by animateFloatAsState(
         targetValue = 1f + audioLevel * 0.5f,

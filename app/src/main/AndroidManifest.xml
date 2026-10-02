@@ -127,7 +127,8 @@
             android:name=".assistant.AssistantActivity"
             android:exported="true"
             android:launchMode="singleTask"
-            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.AssistantOverlay">
             <intent-filter>
                 <action android:name="android.intent.action.ASSIST" />
                 <category android:name="android.intent.category.DEFAULT" />

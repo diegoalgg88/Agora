@@ -343,7 +343,15 @@ class AssistantOverlayState(
 @Composable
 fun AssistantOverlayContent(state: AssistantOverlayState) {
     val generating = state.status == AssistantOverlayState.Status.Generating
-    Column(modifier = Modifier.fillMaxWidth().padding(16.dp)) {
+    // Scrollable so prompt + long response + controls stay reachable when the IME or a tall
+    // transcript exceeds the remaining sheet height (edge-to-edge: the window does not
+    // resize for the keyboard on its own).
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+    ) {
         Text(
             text = stringResource(R.string.assistant_overlay_title),
             style = MaterialTheme.typography.titleMedium,
@@ -529,7 +537,15 @@ private fun AssistantSendButton(
  *  configured appearance instead of AgoraTheme's defaults. Mirrors the collection in
  *  MainActivity; settings flows are live, so theme changes apply without restarting the host.
  *  Also provides the Agora motion policy so reduce-motion is honored on assistant surfaces
- *  exactly like in the main app. */
+ *  exactly like in the main app.
+ *
+ *  Deliberately NOT routed through [com.newoether.agora.di.AppContainer]: the theme must paint
+ *  before the DatabaseStartupGate publishes the container (the assistant overlay and call
+ *  screen can open on a cold start, and an unthemed flash is worse than a direct read), so it
+ *  constructs its own SettingsManager here. Safe only because `Context.dataStore` is a
+ *  singleton preferencesDataStore delegate — every SettingsManager in this process shares one
+ *  DataStore handle, so the extra cost is one cheap wrapper object, not a second store. Do not
+ *  copy this pattern for anything that needs the container's repositories. */
 @Composable
 fun AssistantAppTheme(content: @Composable () -> Unit) {
     val appContext = LocalContext.current.applicationContext

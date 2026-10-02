@@ -61,4 +61,5 @@
     <string name="live_voice_channel_desc">음성 통화 중 상시 알림</string>
     <string name="assistant_overlay_call">통화</string>
     <string name="assistant_overlay_call_disabled">먼저 설정에서 음성 통화를 사용하세요</string>
+    <string name="live_voice_error_mic_failed">마이크가 작동하지 않습니다. 통화가 종료되었습니다.</string>
 </resources>

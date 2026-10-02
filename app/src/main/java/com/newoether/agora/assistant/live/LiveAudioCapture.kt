@@ -1,10 +1,12 @@
 package com.newoether.agora.assistant.live
 
 import android.annotation.SuppressLint
+import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
 import android.media.AudioRecord
 import android.media.MediaRecorder
+import android.os.Build
 import android.os.Process
 import java.util.concurrent.atomic.AtomicBoolean
 
@@ -19,6 +21,10 @@ internal class LiveAudioCapture(
     /** Normalized (0f..1f) RMS amplitude of each captured frame — drives the call-screen
      *  animation. Cheap enough to compute per frame (1024 samples, ~32 ms cadence). */
     private val onLevel: (Float) -> Unit = {},
+    /** The mic entered a dead state (`read` returned an error such as ERROR_DEAD_OBJECT after
+     *  the system revoked or re-routed the input). Fired at most once per call; the controller
+     *  ends the call visibly instead of leaving a "connected but deaf" session busy-spinning. */
+    private val onFailure: () -> Unit = {},
 ) {
     private var record: AudioRecord? = null
     private var echoCanceler: android.media.audiofx.AcousticEchoCanceler? = null
@@ -27,6 +33,8 @@ internal class LiveAudioCapture(
     private var audioManager: AudioManager? = null
     private var previousMode: Int = -1
     private var previousSpeakerphoneOn: Boolean = false
+    private var forcedSpeakerRoute = false
+    private var captureThread: Thread? = null
 
     val echoCancellationAvailable: Boolean
         get() = android.media.audiofx.AcousticEchoCanceler.isAvailable()
@@ -49,13 +57,14 @@ internal class LiveAudioCapture(
         }
         audioManager = context.getSystemService(AudioManager::class.java)
         previousMode = audioManager?.mode ?: -1
-        previousSpeakerphoneOn = audioManager?.isSpeakerphoneOn ?: false
         audioManager?.mode = AudioManager.MODE_IN_COMMUNICATION
-        // USAGE_VOICE_COMMUNICATION playback (LiveAudioPlayback) + MODE_IN_COMMUNICATION follow
+        // MODE_IN_COMMUNICATION + USAGE_VOICE_COMMUNICATION playback (LiveAudioPlayback) follow
         // normal telephony routing, which defaults to the earpiece — force the loudspeaker so a
-        // hands-free assistant call doesn't regress into a barely-audible in-ear call. Restored
-        // in stop().
-        audioManager?.isSpeakerphoneOn = true
+        // hands-free assistant call doesn't regress into a barely-audible in-ear call. A
+        // connected headset wins over the loudspeaker: the user chose where to listen. See
+        // forceSpeakerRoute() for the API-31 split (the legacy speakerphone toggle is a no-op
+        // for targetSdk S+ — owner report 2026-09-28: call audio came out of the earpiece).
+        forceSpeakerRoute()
         if (android.media.audiofx.AcousticEchoCanceler.isAvailable()) {
             echoCanceler = android.media.audiofx.AcousticEchoCanceler.create(recorder.audioSessionId)
         }
@@ -70,20 +79,42 @@ internal class LiveAudioCapture(
             val buffer = ByteArray(FRAME_BYTES)
             while (running.get()) {
                 val read = recorder.read(buffer, 0, FRAME_BYTES)
-                if (read <= 0) continue
+                if (!running.get()) break // stop() raced this read: not a failure
+                if (read < 0) {
+                    // read() reports errors as negative values (e.g. ERROR_DEAD_OBJECT after a
+                    // revoked/re-routed input). Retrying would busy-spin with a dead recorder:
+                    // surface the failure and let the controller end the call. `running` must
+                    // stay TRUE here: the controller's teardown calls stop(), whose
+                    // compareAndSet(true, false) gate is what releases the recorder, effects
+                    // and the forced audio mode/route — clearing it first would leak them all.
+                    onFailure()
+                    break
+                }
+                if (read == 0) continue
                 val chunk = if (read == FRAME_BYTES) buffer.copyOf() else buffer.copyOf(read)
+                if (!running.get()) break // stop() raced this frame: drop it
                 onLevel(pcm16RmsLevel(chunk))
                 onFrame(chunk)
             }
-        }.apply { name = "LiveVoiceCapture" }.start()
+        }.apply { name = "LiveVoiceCapture" }.also { captureThread = it }.start()
     }
 
     fun stop() {
         if (!running.compareAndSet(true, false)) return
-        record?.let { recorder ->
-            runCatching { recorder.stop() }
-            recorder.release()
+        // Order matters: stop() unblocks a pending read, the thread is retired, and only then
+        // is the recorder released — never release under a thread still inside read().
+        record?.let { recorder -> runCatching { recorder.stop() } }
+        // Retire the callback thread before this method returns, so no late onFrame/onLevel
+        // fires after stop(). Guarded: the mic-failure path (onFailure → controller failCall →
+        // stop()) lands here ON the capture thread, and joining oneself would stall for the
+        // full timeout.
+        captureThread?.let { thread ->
+            if (Thread.currentThread() !== thread) {
+                runCatching { thread.join(THREAD_JOIN_TIMEOUT_MILLIS) }
+            }
         }
+        captureThread = null
+        record?.release()
         echoCanceler?.release()
         echoCanceler = null
         noiseSuppressor?.release()
@@ -91,9 +122,60 @@ internal class LiveAudioCapture(
         record = null
         audioManager?.let {
             if (previousMode >= 0) it.mode = previousMode
-            it.isSpeakerphoneOn = previousSpeakerphoneOn
         }
+        restoreSpeakerRoute()
         audioManager = null
+    }
+
+    /**
+     * Routes call audio to the loudspeaker unless a headset is already the active
+     * communication device. API 31+: [AudioManager.setCommunicationDevice] — the legacy
+     * `isSpeakerphoneOn` toggle is deprecated and a NO-OP for apps targeting S+, which is why
+     * the call used to fall back to the earpiece. API 26–30: the legacy toggle, skipped when a
+     * Bluetooth SCO route is already up (wired headsets route themselves on MODE_IN_COMMUNICATION).
+     */
+    private fun forceSpeakerRoute() {
+        val manager = audioManager ?: return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val active = manager.communicationDevice
+            if (active != null && isHeadsetType(active.type)) return
+            val speaker = manager.availableCommunicationDevices.firstOrNull {
+                it.type == AudioDeviceInfo.TYPE_BUILTIN_SPEAKER
+            }
+            if (speaker != null && manager.setCommunicationDevice(speaker)) {
+                forcedSpeakerRoute = true
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            if (!manager.isBluetoothScoOn) {
+                previousSpeakerphoneOn = manager.isSpeakerphoneOn
+                manager.isSpeakerphoneOn = true
+                forcedSpeakerRoute = true
+            }
+        }
+    }
+
+    /** Undoes exactly what [forceSpeakerRoute] changed — nothing else the user had configured. */
+    private fun restoreSpeakerRoute() {
+        val manager = audioManager ?: return
+        if (!forcedSpeakerRoute) return
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            manager.clearCommunicationDevice()
+        } else {
+            @Suppress("DEPRECATION")
+            manager.isSpeakerphoneOn = previousSpeakerphoneOn
+        }
+        forcedSpeakerRoute = false
+    }
+
+    private fun isHeadsetType(type: Int): Boolean = when (type) {
+        AudioDeviceInfo.TYPE_BLUETOOTH_SCO,
+        AudioDeviceInfo.TYPE_BLE_HEADSET,
+        AudioDeviceInfo.TYPE_WIRED_HEADSET,
+        AudioDeviceInfo.TYPE_WIRED_HEADPHONES,
+        AudioDeviceInfo.TYPE_USB_HEADSET,
+        -> true
+        else -> false
     }
 
     companion object {
@@ -101,6 +183,7 @@ internal class LiveAudioCapture(
         /** 1024 samples ≈ 32 ms at 16 kHz — inside the ~20–40 ms window (plan §10.7). */
         const val FRAME_SAMPLES = 1024
         const val FRAME_BYTES = FRAME_SAMPLES * 2
+        private const val THREAD_JOIN_TIMEOUT_MILLIS = 300L
 
         /** RMS of a PCM16LE frame, normalized against a loud-speech reference amplitude and
          *  clamped to 0f..1f. Not calibrated audio metering — just enough signal for a call-

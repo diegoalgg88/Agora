@@ -11,4 +11,28 @@
         <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
         <item name="postSplashScreenTheme">@style/Theme.Agora</item>
     </style>
+
+    <!-- Assistant overlay window: a translucent top-sheet that reads as an overlay popping
+         over the foreground app, never as a full app launch. Replaces the 2010-era
+         Theme.Translucent.NoTitleBar that produced the full-screen activity-open zoom and
+         the cold-start app-icon splash — both perceived by the owner as "it opened the full
+         app" (2026-09-28). The light dim separates the sheet from the app behind it; the
+         window animation is the quick slide+fade defined in AssistantOverlay.Animation.
+         Used by AssistantActivity (Samsung ACTION_ASSIST path). -->
+    <style name="Theme.AssistantOverlay" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.32</item>
+        <item name="android:windowAnimationStyle">@style/AssistantOverlay.Animation</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+
+    <style name="AssistantOverlay.Animation" parent="@android:style/Animation">
+        <item name="android:windowEnterAnimation">@anim/assistant_overlay_enter</item>
+        <item name="android:windowExitAnimation">@anim/assistant_overlay_exit</item>
+    </style>
 </resources>

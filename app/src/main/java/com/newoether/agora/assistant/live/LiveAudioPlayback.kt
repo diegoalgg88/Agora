@@ -53,10 +53,11 @@ internal class LiveAudioPlayback {
         }
     }
 
+    /** The lock only decides liveness; the potentially-blocking [AudioTrack.write] runs
+     *  outside it, so a stalled writer never keeps [stop] or [flushForInterruption] waiting. */
     fun enqueue(pcm16: ByteArray) {
-        synchronized(lock) {
-            track?.write(pcm16, 0, pcm16.size)
-        }
+        val current = synchronized(lock) { track } ?: return
+        runCatching { current.write(pcm16, 0, pcm16.size) }
     }
 
     /** Barge-in: drop everything queued and currently playing, then keep the track open. */
@@ -73,14 +74,14 @@ internal class LiveAudioPlayback {
     }
 
     fun stop() {
-        synchronized(lock) {
-            track?.let {
-                runCatching {
-                    it.stop()
-                    it.release()
-                }
-            }
+        val current = synchronized(lock) {
+            val captured = track
             track = null
+            captured
+        } ?: return
+        runCatching {
+            current.stop()
+            current.release()
         }
     }
 

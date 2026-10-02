@@ -3,27 +3,21 @@ package com.newoether.agora.assistant.live
 import android.content.Context
 import com.newoether.agora.AgoraApplication
 import com.newoether.agora.R
-import com.newoether.agora.data.local.ChatDao
 import com.newoether.agora.data.local.ChatEntity
-import com.newoether.agora.data.local.MessageEntity
-import com.newoether.agora.data.local.RunEntity
-import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.di.AppContainer
-import com.newoether.agora.model.MessageStatus
-import com.newoether.agora.model.Participant
-import com.newoether.agora.model.RunEndReason
-import com.newoether.agora.model.RunStatus
 import com.newoether.agora.util.Constants
 import com.newoether.agora.util.DebugLog
 import com.newoether.agora.viewmodel.selectedVisibleContextMessageIds
 import java.util.Base64
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -41,19 +35,30 @@ internal enum class LiveCallState { IDLE, CONNECTING, ACTIVE, RECONNECTING, ENDE
  * generation pipeline, queue, or Stop path — the call simply ends and the transcript is already
  * durable. Reconnection via `sessionResumption` is automatic, surfaced as a brief
  * "Reconnecting…" state (owner decision §10.9.4). Audio is never persisted.
+ *
+ * Conversation identity: ONE conversation per call, resolved once in [prepareConversation]
+ * (newest `"assistant-voice"` chat when the reuse toggle was on at call start, otherwise a fresh
+ * one created lazily with the first persisted turn). Every turn of the call chains inside it.
+ *
+ * Persistence ownership: completed turns and the hang-up flush are enqueued on [persistQueue]
+ * and committed by ONE consumer, so commits are strictly ordered and never overlap (the chain
+ * `leaf*` fields are only touched there), and the consumer runs on [persistScope], which
+ * [dispose] deliberately does not cancel so the last turn survives an immediate UI teardown.
  */
 internal class LiveVoiceSessionController(
     private val appContext: Context,
     private val onStateChange: (LiveCallState, String?) -> Unit,
     /** Normalized (0f..1f) mic input level, sampled at capture cadence (~32 ms). Drives the
-     *  call-screen animation; not persisted or sent anywhere. */
+     *  call-screen animation; not persisted or sent anywhere. May be called off the main thread. */
     private val onAudioLevel: (Float) -> Unit = {},
     /** Live transcript of the turn in flight: everything the user has said so far this turn
      *  and everything the model has said so far this turn. Called after each server update;
-     *  the turn's accumulated text, not a delta. Drives the call screen's live captions. */
+     *  the turn's accumulated text, not a delta. Drives the call screen's live captions.
+     *  May be called off the main thread — the receiver must confine its own state. */
     private val onTranscript: (user: String, model: String) -> Unit = { _, _ -> },
     /** Fired when the in-flight turn is committed (turnComplete) or flushed on teardown —
-     *  the live-caption view finalizes its pending lines into the transcript history. */
+     *  the live-caption view finalizes its pending lines into the transcript history. May be
+     *  called off the main thread. */
     private val onTurnCommitted: () -> Unit = {},
 ) {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
@@ -71,7 +76,15 @@ internal class LiveVoiceSessionController(
     @Volatile private var voiceName: String = ""
     @Volatile private var sensitivity: VoiceSensitivity = VoiceSensitivity.DEFAULT
 
-    /** Newest persisted MODEL message / Run — the chain parent of the next turn. */
+    /** The single conversation this call persists into; fixed by [prepareConversation]. */
+    @Volatile private var conversationId: String? = null
+
+    /** Conversation row not yet written: created together with the first persisted turn so a
+     *  call without speech never leaves an empty chat behind. Cleared once upserted. */
+    @Volatile private var pendingConversation: ChatEntity? = null
+
+    /** Newest persisted MODEL message / Run — the chain parent of the next turn. Only the
+     *  [persistQueue] consumer (and [prepareConversation], before any turn) touches these. */
     @Volatile private var leafMessageId: String? = null
     @Volatile private var leafRunId: String? = null
 
@@ -80,6 +93,12 @@ internal class LiveVoiceSessionController(
     private val turnOutputText = StringBuilder()
     @Volatile private var muted = false
 
+    private class PendingTurn(val spoken: String, val replied: String)
+
+    private val persistQueue = Channel<PendingTurn>(Channel.UNLIMITED)
+    private val persistScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private var persistJob: Job? = null
+
     val isEchoCancellationAvailable: Boolean
         get() = capture?.echoCancellationAvailable
             ?: android.media.audiofx.AcousticEchoCanceler.isAvailable()
@@ -87,6 +106,9 @@ internal class LiveVoiceSessionController(
     fun startCall() {
         check(client == null) { "Call already started" }
         publish(LiveCallState.CONNECTING, null)
+        persistJob = persistScope.launch {
+            for (turn in persistQueue) persistWithRetry(turn)
+        }
         scope.launch {
             val container = (appContext.applicationContext as AgoraApplication).awaitContainer()
             if (container == null) {
@@ -205,10 +227,24 @@ internal class LiveVoiceSessionController(
             delay(delayMillis.coerceAtLeast(RECONNECT_BACKOFF_MILLIS))
             val previous = client ?: return@launch
             val handle = previous.lastResumptionHandle
+            // Contract: close() invalidates every pending callback of the old socket and frees
+            // the client for connect() (see GeminiLiveClient.connect); the same instance is
+            // deliberately reused, so `client` keeps pointing at it.
             previous.close()
-            client = previous
+            // The server never completes a generation cut off by the drop; without this the
+            // stale partial reply would be glued to the next turn's output and persisted.
+            dropInFlightModelTurn()
+            if (client !== previous) return@launch // user hung up while we were closing
             previous.connect(modelId, voiceName, resumptionHandle = handle, sensitivity = sensitivity)
         }
+    }
+
+    private fun dropInFlightModelTurn() {
+        val userSoFar = synchronized(turnInputText) {
+            turnOutputText.setLength(0)
+            turnInputText.toString()
+        }
+        onTranscript(userSoFar, "")
     }
 
     private fun startCapture() {
@@ -224,6 +260,10 @@ internal class LiveVoiceSessionController(
                 }
             },
             onLevel = onAudioLevel,
+            onFailure = {
+                DebugLog.w(TAG, "Microphone read failed; ending call")
+                failCall(appContext.getString(R.string.live_voice_error_mic_failed))
+            },
         ).also { it.start(appContext) }
     }
 
@@ -258,19 +298,20 @@ internal class LiveVoiceSessionController(
         flushDanglingTurn()
     }
 
+    /** Ends the call and releases the controller. Pending turn commits are NOT cancelled: the
+     *  queue is closed and its consumer drains it on [persistScope]. */
     fun dispose() {
         endCall()
         scope.cancel()
+        persistQueue.close()
     }
 
     /**
      * The socket is gone but a user turn may have started; its spoken text is durable
      * conversation content. Persist it with an empty MODEL reply rather than dropping it
      * ("never lose user data", development/README.md §4.2) — without fabricating a response.
-     * Runs on its own scope so it still commits if the UI tears the controller down right away.
+     * Enqueued behind any in-flight turn commit so the chain stays linear.
      */
-    private val flushScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-
     private fun flushDanglingTurn() {
         val spoken = synchronized(turnInputText) {
             val text = turnInputText.toString().trim()
@@ -280,13 +321,14 @@ internal class LiveVoiceSessionController(
         }
         onTurnCommitted()
         if (spoken.isEmpty()) return
-        flushScope.launch { persistTurnBlocking(spoken, replied = "") }
+        persistQueue.trySend(PendingTurn(spoken, replied = ""))
     }
 
     /**
-     * Commits one finished logical turn: fresh Run that begins and ends COMPLETED in a single
-     * transaction (live-slot fence respected), USER row from the input transcription, MODEL row
-     * from the output transcription, chained onto the previous turn's MODEL row.
+     * Commits one finished logical turn: enqueues it for the ordered persistence consumer, which
+     * writes a fresh Run that begins and ends COMPLETED in a single transaction (live-slot fence
+     * respected), USER row from the input transcription, MODEL row from the output
+     * transcription, chained onto the previous turn's MODEL row.
      */
     private fun persistTurn() {
         val (spoken, replied) = synchronized(turnInputText) {
@@ -298,94 +340,102 @@ internal class LiveVoiceSessionController(
         }
         if (spoken.isEmpty() && replied.isEmpty()) return
         onTurnCommitted()
-        scope.launch { persistTurnBlocking(spoken, replied) }
+        persistQueue.trySend(PendingTurn(spoken, replied))
     }
 
-    private suspend fun persistTurnBlocking(spoken: String, replied: String) {
-        runCatching {
-            val container = (appContext.applicationContext as AgoraApplication).awaitContainer()
-                ?: return
-            withContext(Dispatchers.IO) {
-                val conversation = resolveConversation(container)
-                val effectiveModelId = modelId.ifBlank { DEFAULT_MODEL_ID }
-                val runId = UUID.randomUUID().toString()
-                val userMessage = MessageEntity(
-                    id = UUID.randomUUID().toString(),
-                    conversationId = conversation.id,
-                    parentId = leafMessageId,
-                    text = spoken,
-                    status = MessageStatus.SUCCESS,
-                    participant = Participant.USER,
-                    timestamp = System.currentTimeMillis(),
-                    runId = runId,
-                    runSequence = 0,
-                    consumedAtPass = 0,
-                )
-                val modelMessage = MessageEntity(
-                    id = UUID.randomUUID().toString(),
-                    conversationId = conversation.id,
-                    parentId = userMessage.id,
-                    text = replied,
-                    status = MessageStatus.SUCCESS,
-                    participant = Participant.MODEL,
-                    timestamp = userMessage.timestamp + 1,
-                    modelName = effectiveModelId,
-                    runId = runId,
-                    runSequence = 1,
-                )
-                val selectionUpdates = buildMap<String?, String> {
-                    leafMessageId?.let { put(it, userMessage.id) }
-                    put(userMessage.id, modelMessage.id)
-                }
-                container.chatDao.createCompletedRunWithMessages(
-                    run = RunEntity(
-                        id = runId,
-                        conversationId = conversation.id,
-                        parentRunId = leafRunId,
-                        status = RunStatus.COMPLETED,
-                        activeSlot = null,
-                        startedAt = userMessage.timestamp,
-                        lastCheckpointAt = modelMessage.timestamp,
-                        endedAt = modelMessage.timestamp,
-                        endReason = RunEndReason.MODEL_COMPLETED,
-                    ),
-                    messages = listOf(userMessage, modelMessage),
-                    messageSelectionUpdates = selectionUpdates,
-                    conversationModelId = effectiveModelId,
-                    at = modelMessage.timestamp,
-                )
-                leafMessageId = modelMessage.id
-                leafRunId = runId
+    /** Consumer body. Retries only the transient "live Run in this conversation" fence (the
+     *  user may be generating in the same chat when reuse is on); anything else fails closed. */
+    private suspend fun persistWithRetry(turn: PendingTurn) {
+        repeat(MAX_PERSIST_ATTEMPTS) { attempt ->
+            try {
+                val container = (appContext.applicationContext as AgoraApplication).awaitContainer()
+                    ?: return
+                withContext(Dispatchers.IO) { commitTurn(container, turn) }
+                return
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: IllegalStateException) {
+                // Throwable payloads go through the tr-variant (safeThrowableSummary): the
+                // exception message may quote DB rows or user content.
+                DebugLog.w(TAG, "Live turn persist blocked (attempt ${attempt + 1})", e)
+            } catch (e: Exception) {
+                DebugLog.w(TAG, "Live turn persist failed", e)
+                return
             }
-        }.onFailure { DebugLog.w(TAG, "Live turn persist failed: ${it.message}") }
+            if (attempt < MAX_PERSIST_ATTEMPTS - 1) delay(PERSIST_RETRY_BASE_MILLIS shl attempt)
+        }
+        DebugLog.w(TAG, "Live turn dropped after $MAX_PERSIST_ATTEMPTS attempts")
     }
 
-    /** Resolves (creating when needed) the dedicated `"assistant-voice"` conversation. */
-    private suspend fun resolveConversation(container: AppContainer): ChatEntity {
-        val repository = container.conversationRepository
-        val settings = container.settingsRepository
-        val reuse = settings.liveVoiceReuseConversationEnabled.value
-        val existing = if (reuse) repository.getConversationByOrigin(ORIGIN) else null
-        return existing ?: ChatEntity(
-            id = UUID.randomUUID().toString(),
-            title = appContext.getString(R.string.live_voice_conversation_title),
-            origin = ORIGIN,
-        ).also { repository.upsertConversation(it) }
+    private suspend fun commitTurn(container: AppContainer, turn: PendingTurn) {
+        val convId = conversationId
+        if (convId == null) {
+            DebugLog.w(TAG, "Live turn dropped: conversation was never prepared")
+            return
+        }
+        val effectiveModelId = modelId.ifBlank { DEFAULT_MODEL_ID }
+        val graph = buildLiveTurnGraph(
+            conversationId = convId,
+            leafMessageId = leafMessageId,
+            leafRunId = leafRunId,
+            spoken = turn.spoken,
+            replied = turn.replied,
+            modelId = effectiveModelId,
+            now = System.currentTimeMillis(),
+        )
+        // A fresh call conversation is born together with its first turn in ONE transaction
+        // (never a standalone upsert): a crash between the two would strand an empty chat.
+        val fresh = pendingConversation
+        if (fresh != null) {
+            container.chatDao.createConversationCompletedRunWithMessages(
+                conversation = fresh,
+                run = graph.run,
+                messages = listOf(graph.userMessage, graph.modelMessage),
+                messageSelectionUpdates = graph.selectionUpdates,
+                conversationModelId = effectiveModelId,
+                at = graph.modelMessage.timestamp,
+            )
+            pendingConversation = null
+        } else {
+            container.chatDao.createCompletedRunWithMessages(
+                run = graph.run,
+                messages = listOf(graph.userMessage, graph.modelMessage),
+                messageSelectionUpdates = graph.selectionUpdates,
+                conversationModelId = effectiveModelId,
+                at = graph.modelMessage.timestamp,
+            )
+        }
+        leafMessageId = graph.modelMessage.id
+        leafRunId = graph.run.id
     }
 
-    /** Seeds the turn chain from the conversation's selected leaf before the first turn. */
+    /**
+     * Fixes the call's single conversation. With reuse on (read ONCE, here) the newest
+     * `"assistant-voice"` conversation is continued and the chain is seeded from its selected
+     * leaf; otherwise a fresh conversation is prepared but only written with the first turn.
+     */
     private suspend fun prepareConversation(container: AppContainer) {
-        val conversation = resolveConversation(container)
-        if (leafMessageId != null) return
-        container.conversationRepository
-            .getProviderContextTopologySnapshot(conversation.id)
-            ?.let { snapshot ->
-                val leafId = selectedVisibleContextMessageIds(snapshot).lastOrNull()
-                snapshot.messages.firstOrNull { it.id == leafId }?.let { leaf ->
-                    leafMessageId = leaf.id
-                    leafRunId = leaf.runId
-                }
+        val repository = container.conversationRepository
+        val reuse = container.settingsRepository.liveVoiceReuseConversationEnabled.value
+        val existing = if (reuse) repository.getConversationByOrigin(ORIGIN) else null
+        if (existing == null) {
+            val fresh = ChatEntity(
+                id = UUID.randomUUID().toString(),
+                title = appContext.getString(R.string.live_voice_conversation_title),
+                origin = ORIGIN,
+            )
+            pendingConversation = fresh
+            conversationId = fresh.id
+            return
+        }
+        conversationId = existing.id
+        repository.getProviderContextTopologySnapshot(existing.id)?.let { snapshot ->
+            val leafId = selectedVisibleContextMessageIds(snapshot).lastOrNull()
+            snapshot.messages.firstOrNull { it.id == leafId }?.let { leaf ->
+                leafMessageId = leaf.id
+                leafRunId = leaf.runId
             }
+        }
     }
 
     private fun publish(state: LiveCallState, error: String?) {
@@ -399,6 +449,8 @@ internal class LiveVoiceSessionController(
         const val RECONNECT_BACKOFF_MILLIS = 1_000L
         const val MAX_RECONNECT_BACKOFF_MILLIS = 8_000L
         const val MAX_RECONNECT_ATTEMPTS = 5
+        const val MAX_PERSIST_ATTEMPTS = 4
+        const val PERSIST_RETRY_BASE_MILLIS = 250L
 
         fun activeGoogleApiKey(settings: SettingsRepository): String? {
             val activeKey = settings.activeApiKeyIds.value[Constants.PROVIDER_GOOGLE]

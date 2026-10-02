@@ -28,6 +28,21 @@ the Android Assist API (`developer.android.com/training/articles/assistant`), an
 Home Assistant Companion app as a production open-source precedent.
 Plan and owner decisions: `docs/PLAN-20260915-SYSTEM-ASSISTANT.md`.
 
+**Overlay window presentation (measured on Samsung One UI, SM-S908E, 2026-09-28):** the
+system gesture is 100% consistent — every observed long-press resolves `ACTION_ASSIST`
+directly to `AssistantActivity` (six of six gestures, SystemUI-launched). What varies is
+only presentation: process-cold first gesture ≈ 1.2 s to first frame (process + Compose
+startup) vs ≈ 200–300 ms warm. The historical "it opened the full app" perception was the
+cold-start window choreography, not routing: the old Holo
+`Theme.Translucent.NoTitleBar` produced the standard full-activity-open zoom animation and
+the Android 12+ app-icon splash flash. `AssistantActivity` therefore uses
+`Theme.AssistantOverlay`: translucent window, transparent splash (icon + background,
+`values-v31`), a quick slide+fade window animation (`AssistantOverlay.Animation`), light
+background dim, and `adjustResize` + `imePadding` + scrollable content so the keyboard
+never covers prompt/response/controls under enforced edge-to-edge. Keep the splash
+overrides in sync between `values/themes.xml` and `values-v31/themes.xml` — resource
+qualifiers replace styles wholesale, they do not merge.
+
 ## Category definition
 
 The system assistant is a **system-level entry point into the ordinary chat pipeline**, not a
@@ -63,7 +78,8 @@ in the conversation list like any other chat.
    `PortableSettingsArchive` (`assistantReuseConversationEnabled`,
    `assistantAttachScreenshotEnabled`, `assistantIncludeScreenTextEnabled`,
    `assistantVoiceInputEnabled`, `liveVoiceEnabled`, `liveVoiceReuseConversationEnabled`,
-   `liveVoiceModelId`, `liveVoiceVoiceName`), and cleared by the full settings reset.
+   `liveVoiceModelId`, `liveVoiceVoiceName`, `liveVoiceSensitivity`), and cleared by the full
+   settings reset.
 8. **API-level guards.** Any API above minSdk 26 (e.g. on-device `SpeechRecognizer`, API 31+)
    must be gated with the corresponding availability check and a fallback (AGENTS.md §3.2.9).
 9. **Live voice calls are a transport, not a pipeline.** The Gemini Live WebSocket may not
@@ -71,6 +87,26 @@ in the conversation list like any other chat.
    `ChatDao.createCompletedRunWithMessages` (fresh Run born terminal, live-slot fence respected,
    Room as sole durable truth). The microphone foreground service starts only from the
    foreground call screen, never from background/automation. No audio is persisted.
+10. **One Live call, one conversation, resolved once.** The call fixes its conversation at
+    start (`LiveVoiceSessionController.prepareConversation`): with the reuse toggle ON it
+    continues the newest `"assistant-voice"` conversation (chain seeded from its selected
+    leaf); with the toggle OFF a fresh conversation is prepared but only **created together
+    with the first persisted turn** — a call without speech never leaves an empty chat behind.
+    The toggle is read once at call start, so changing it mid-call has no effect. Every turn
+    of the call chains inside that one conversation; `createCompletedRunWithMessages` fails
+    closed if a chain parent (message or Run) belongs to a different conversation.
+11. **Live turn commits are serialized and survive teardown.** Completed turns and the
+    hang-up flush are enqueued on a single ordered channel with one consumer; the chain
+    leaf pointers are only touched inside that consumer, so commits are strictly FIFO and can
+    never branch. The consumer runs on a scope `dispose()` does not cancel, so the last spoken
+    turn still persists when the user hangs up immediately after speaking. The consumer
+    retries the transient live-slot fence (`IllegalStateException` from an ordinary generation
+    running in the same reused conversation) a bounded number of times, then drops the turn
+    with a log line — never with corrupted or partial state.
+12. **Late socket callbacks are generation-guarded.** Every `connect()` on the Live WebSocket
+    starts a generation and every `close()` invalidates it: `onClosed`/`onFailure`/frames from
+    a socket a reconnect replaced are dropped, so a stale close can never masquerade as the
+    new connection's health or cancel its setup watchdog.
 
 ## Settings UX
 
@@ -87,8 +123,9 @@ in the conversation list like any other chat.
 
 `assistantReuseConversationEnabled`, `assistantAttachScreenshotEnabled`,
 `assistantIncludeScreenTextEnabled`, `assistantVoiceInputEnabled`,
-`liveVoiceEnabled`, `liveVoiceReuseConversationEnabled`, `liveVoiceModelId` and
-`liveVoiceVoiceName` are exported and imported by `PortableSettingsArchive` and cleared by the
+`liveVoiceEnabled`, `liveVoiceReuseConversationEnabled`, `liveVoiceModelId`,
+`liveVoiceVoiceName` and `liveVoiceSensitivity` are exported and imported by
+`PortableSettingsArchive` and cleared by the
 full settings reset (`AssistantToolSettings.removeAll`).
 
 ## Phased scope
@@ -123,23 +160,35 @@ full settings reset (`AssistantToolSettings.removeAll`).
   through the ordinary generation pipeline. Room stays the durable truth; there is no second
   generation, queue or Stop path. Audio is never persisted; a turn interrupted by the user
   (barge-in) is dropped, and an un-finished spoken turn at hang-up is persisted with an empty
-  model reply rather than lost. Function calling over the Live socket is explicitly deferred
-  (Fase 4.1). Settings: `SettingsLiveVoicePage` (group Assistant) — enable gate, conversation
-  reuse, free-text model id (default `gemini-3.1-flash-live-preview`, must be re-verified against
-  the docs on major updates), free-text voice name (default `Kore`), privacy + cost notices.
+  model reply rather than lost. A reconnect drops the interrupted partial MODEL transcript
+  (the server never completes a generation cut by the drop; gluing its stale half onto the
+  next turn's output would corrupt the persisted text) while preserving the user's spoken
+  input. A dead microphone (`AudioRecord.read` < 0) visibly ends the call instead of leaving
+  a "connected but deaf" session. Function calling over the Live socket is explicitly
+  deferred (Fase 4.1). Settings: `SettingsLiveVoicePage` (group Assistant) — enable gate,
+  conversation reuse, free-text model id (default `gemini-3.1-flash-live-preview`, must be
+  re-verified against the docs on major updates), free-text voice name (default `Kore`),
+  VAD sensitivity selector (persisted as `liveVoiceSensitivity`), privacy + cost notices.
   Portability: `liveVoiceEnabled`, `liveVoiceReuseConversationEnabled`, `liveVoiceModelId`,
-  `liveVoiceVoiceName`. Plan: `docs/PLAN-20260915-SYSTEM-ASSISTANT.md` §10.
+  `liveVoiceVoiceName`, `liveVoiceSensitivity`. Plan: `docs/PLAN-20260915-SYSTEM-ASSISTANT.md` §10.
 - **Call screen (Fase 4.1, 2026-09-17):** `VoiceModeScreen` renders live captions in the top
   area — committed turns plus the in-flight user/model caption lines via the pure
   `LiveTranscriptLog` (display state only; Room stays the durable truth), driven by the
   controller's `onTranscript`/`onTurnCommitted` callbacks with a UI version counter for
-  recomposition. **Mute semantics:** `setMuted` gates ONLY outgoing mic frames — it must never
-  send `audioStreamEnd`, because that frame commits the pending user turn and a committed turn
-  interrupts in-flight model generation (the "mute silences the assistant" bug). The visual
-  language follows Agora themes exclusively (scheme-driven orb/halo/transcript bubbles, no
-  hardcoded colors) and all continuous motion honors `LocalAgoraMotionPolicy` (reduce-motion
-  swaps the breathing orb for a static presence disc); `AssistantAppTheme` provides the motion
-  policy for every assistant surface.
+  recomposition. `LiveTranscriptLog` is **main-thread confined** (the controller fires from
+  OkHttp's reader thread; `VoiceModeActivity` funnels every mutation through `runOnUiThread`)
+  and must never gain its own synchronization instead. The in-flight user caption stays
+  visible during RECONNECTING — the user may keep speaking across the drop. The orb's audio
+  level is passed as a provider lambda so the ~31 Hz mic-level updates recompose only the
+  orb, not the whole screen. **Mute semantics:** `setMuted` gates ONLY outgoing mic frames —
+  it must never send `audioStreamEnd`, because that frame commits the pending user turn and
+  a committed turn interrupts in-flight model generation (the "mute silences the assistant"
+  bug). The visual language follows Agora themes exclusively (scheme-driven orb/halo/transcript
+  bubbles, no hardcoded colors) and all continuous motion honors `LocalAgoraMotionPolicy`
+  (reduce-motion swaps the breathing orb for a static presence disc); `AssistantAppTheme`
+  provides the motion policy for every assistant surface (and deliberately reads settings
+  directly rather than through `AppContainer`, since it must paint before the startup gate
+  publishes the container).
 
 ## Known limitations
 

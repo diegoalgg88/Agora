@@ -66,10 +66,6 @@ class AssistantVoiceInput(
         recognizer = engine
     }
 
-    fun stop() {
-        recognizer?.stopListening()
-    }
-
     fun destroy() {
         recognizer?.destroy()
         recognizer = null

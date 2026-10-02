@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mirror of assistant_overlay_enter: accelerate up-and-out, slightly faster. -->
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:duration="200"
+    android:interpolator="@android:interpolator/accelerate_quad">
+    <translate
+        android:fromYDelta="0"
+        android:toYDelta="-14%p" />
+    <alpha
+        android:fromAlpha="1.0"
+        android:toAlpha="0.0"
+        android:duration="160" />
+</set>

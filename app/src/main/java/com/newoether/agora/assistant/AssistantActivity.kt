@@ -7,6 +7,7 @@ import androidx.activity.compose.setContent
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.Modifier
@@ -40,7 +41,10 @@ class AssistantActivity : ComponentActivity() {
                     shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
                     // Flush below the status bar (top sheet); replaces the old fixed 48dp that
                     // floated the panel lower than the device's actual status bar height.
-                    modifier = Modifier.fillMaxWidth().statusBarsPadding(),
+                    // imePadding keeps prompt + response + controls above the keyboard under
+                    // enforced edge-to-edge (targetSdk 35+), where the window no longer
+                    // resizes implicitly for the IME.
+                    modifier = Modifier.fillMaxWidth().statusBarsPadding().imePadding(),
                 ) {
                     AssistantOverlayContent(state)
                 }

@@ -61,4 +61,5 @@
     <string name="live_voice_channel_desc">音声通話中の常設通知</string>
     <string name="assistant_overlay_call">通話</string>
     <string name="assistant_overlay_call_disabled">先に設定で音声通話を有効にしてください</string>
+    <string name="live_voice_error_mic_failed">マイクが動作しなくなりました。通話を終了しました。</string>
 </resources>

@@ -61,4 +61,5 @@
     <string name="live_voice_channel_desc">語音通話期間的常駐通知</string>
     <string name="assistant_overlay_call">通話</string>
     <string name="assistant_overlay_call_disabled">請先在設定中啟用語音通話</string>
+    <string name="live_voice_error_mic_failed">麥克風已停止運作，通話已結束。</string>
 </resources>

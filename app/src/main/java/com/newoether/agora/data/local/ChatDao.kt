@@ -526,6 +526,17 @@ interface ChatDao :
     ): Boolean {
         require(run.status == RunStatus.COMPLETED && run.activeSlot == null)
         require(messages.size == 2) { "A live turn is exactly one USER and one MODEL row" }
+        // Fail closed on graph drift: the chain parents must live in this same conversation.
+        messages.first().parentId?.let { parentId ->
+            check(getMessage(parentId)?.conversationId == run.conversationId) {
+                "Live turn parent message $parentId is not in conversation ${run.conversationId}"
+            }
+        }
+        run.parentRunId?.let { parentRunId ->
+            check(getRun(parentRunId)?.conversationId == run.conversationId) {
+                "Live turn parent Run $parentRunId is not in conversation ${run.conversationId}"
+            }
+        }
         require(messages.all { it.runId == run.id && it.status == MessageStatus.SUCCESS })
         require(messages.map { it.runSequence } == listOf(0L, 1L))
         val conversation = checkNotNull(getConversation(run.conversationId)) {
@@ -559,6 +570,40 @@ interface ChatDao :
         ) { "Conversation ${run.conversationId} disappeared during live turn commit" }
         setConversationUnreadGeneration(run.conversationId, true)
         return true
+    }
+
+    /**
+     * First Live-voice turn of a call whose conversation was prepared fresh (reuse toggle
+     * off): the conversation row and its terminal Run + USER/MODEL pair commit as ONE durable
+     * acceptance boundary, so a failure between the two can never strand an empty "Live
+     * voice" chat (mirrors [createConversationRunWithMessages] for the Live transport).
+     */
+    @Transaction
+    suspend fun createConversationCompletedRunWithMessages(
+        conversation: ChatEntity,
+        run: RunEntity,
+        messages: List<MessageEntity>,
+        messageSelectionUpdates: Map<String?, String>,
+        conversationModelId: String,
+        at: Long,
+    ): Boolean {
+        require(conversation.id == run.conversationId)
+        check(getConversation(conversation.id) == null) {
+            "Conversation ${conversation.id} already exists"
+        }
+        upsertConversation(
+            conversation.copy(
+                modelId = conversationModelId,
+                lastUpdated = at,
+            ),
+        )
+        return createCompletedRunWithMessages(
+            run = run,
+            messages = messages,
+            messageSelectionUpdates = messageSelectionUpdates,
+            conversationModelId = conversationModelId,
+            at = at,
+        )
     }
 
 

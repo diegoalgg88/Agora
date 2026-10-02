@@ -61,4 +61,5 @@
     <string name="live_voice_channel_desc">Thông báo thường trực trong khi có cuộc gọi thoại</string>
     <string name="assistant_overlay_call">Gọi</string>
     <string name="assistant_overlay_call_disabled">Hãy bật cuộc gọi thoại trong Cài đặt trước</string>
+    <string name="live_voice_error_mic_failed">Micrô đã ngừng hoạt động. Cuộc gọi đã kết thúc.</string>
 </resources>

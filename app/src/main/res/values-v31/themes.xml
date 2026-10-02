@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- API 31+ variant of Theme.AssistantOverlay: identical to the base style in
+         values/themes.xml, plus the splash overrides. A cold-started translucent window
+         would otherwise flash the full app-icon splash screen (the "it opened the full
+         app" perception on the first gesture after the process dies); a transparent splash
+         background + transparent animated icon renders nothing, so the underlying app
+         stays visible until the sheet's own window animation slides it in. Keep in sync
+         with the base style — qualifiers replace styles wholesale, they do not merge. -->
+    <style name="Theme.AssistantOverlay" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:backgroundDimEnabled">true</item>
+        <item name="android:backgroundDimAmount">0.32</item>
+        <item name="android:windowAnimationStyle">@style/AssistantOverlay.Animation</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:windowSplashScreenBackground">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@android:color/transparent</item>
+    </style>
+</resources>

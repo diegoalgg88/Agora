@@ -61,4 +61,5 @@
     <string name="live_voice_channel_desc">Laufende Benachrichtigung während eines Sprachanrufs</string>
     <string name="assistant_overlay_call">Anrufen</string>
     <string name="assistant_overlay_call_disabled">Aktiviere zuerst Sprachanrufe in den Einstellungen</string>
+    <string name="live_voice_error_mic_failed">Das Mikrofon funktioniert nicht mehr. Der Anruf wurde beendet.</string>
 </resources>

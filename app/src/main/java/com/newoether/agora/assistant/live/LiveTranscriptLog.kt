@@ -15,6 +15,13 @@ package com.newoether.agora.assistant.live
  * - The in-flight lines render even while empty: the caption slot shows who is "speaking".
  * - Barge-in resets the model side: the controller reports an empty model transcript after an
  *   interruption, and the log mirrors whatever it is told.
+ *
+ * Main-thread confined, NOT thread-safe: the controller fires its callbacks from OkHttp's
+ * reader thread, so the call screen must funnel every [onTranscript] / [commitTurn] mutation
+ * onto the main thread before touching this class (see VoiceModeActivity). Confinement beats
+ * per-method synchronization here: it also serializes the recomposition version counter and
+ * keeps the committed list's `toList()` snapshot consistent with mutation, with zero lock
+ * overhead on the ~31 Hz caption cadence.
  */
 internal class LiveTranscriptLog {
     private val committed = mutableListOf<Line>()
