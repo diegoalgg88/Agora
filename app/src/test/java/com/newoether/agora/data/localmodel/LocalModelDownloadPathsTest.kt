@@ -91,4 +91,13 @@ class LocalModelDownloadPathsTest {
         assertTrue(LocalModelDownloadPaths.isCompleteDownload(2048L, 2048L))
         assertFalse(LocalModelDownloadPaths.isCompleteDownload(1024L, 2048L))
     }
+
+    @Test
+    fun `contentRangeTotal parses 206 and 416 header forms`() {
+        assertEquals(1107409472L, LocalModelDownloadPaths.contentRangeTotal("bytes 1024-1107409471/1107409472"))
+        assertEquals(1107409472L, LocalModelDownloadPaths.contentRangeTotal("bytes */1107409472"))
+        assertNull(LocalModelDownloadPaths.contentRangeTotal(null))
+        assertNull(LocalModelDownloadPaths.contentRangeTotal("bytes 0-99/0"))
+        assertNull(LocalModelDownloadPaths.contentRangeTotal("garbage"))
+    }
 }

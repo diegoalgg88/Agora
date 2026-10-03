@@ -154,74 +154,134 @@ class LocalModelDownloadWorker(
         if (!outputDir.exists() && !outputDir.mkdirs()) {
             throw IOException("Unable to create Local Model directory")
         }
-
         val outputTmpFile = File(outputDir, LocalModelDownloadPaths.partialFileName(fileName))
-        val partialLength = outputTmpFile.length()
-        publishSeededProgress(partialLength, totalBytes)
-        val connection = openConnection(downloadUrl, LocalModelDownloadPaths.resumeHeaders(partialLength))
-        try {
-            val responseCode = connection.responseCode
-            if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL) {
-                throw IOException("HTTP error code: $responseCode")
-            }
+        publishSeededProgress(outputTmpFile.length(), totalBytes)
 
-            val contentRange = connection.getHeaderField("Content-Range")
-            val append = LocalModelDownloadPaths.shouldAppendToPartial(partialLength, contentRange)
-            var downloadedBytes = LocalModelDownloadPaths.downloadedBytesAfterConnect(partialLength, contentRange)
-            val rateSizeBuffer = mutableListOf<Long>()
-            val rateLatencyBuffer = mutableListOf<Long>()
-
-            connection.inputStream.use { inputStream ->
-                FileOutputStream(outputTmpFile, append).use { outputStream ->
-                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                    var bytesRead: Int
-                    var lastProgressTs = 0L
-                    var deltaBytes = 0L
-                    while (inputStream.read(buffer).also { bytesRead = it } != -1) {
-                        if (isStopped) {
-                            throw CancellationException("Local Model download cancelled")
+        // A stale partial whose size no longer matches the server's file gets discarded
+        // once; the second iteration downloads fresh from byte 0.
+        var resumeFromPartial = true
+        while (true) {
+            val partialLength = outputTmpFile.length()
+            val connection = openConnection(
+                downloadUrl,
+                if (resumeFromPartial) {
+                    LocalModelDownloadPaths.resumeHeaders(partialLength)
+                } else {
+                    mapOf(LocalModelDownloadPaths.ACCEPT_ENCODING_HEADER to LocalModelDownloadPaths.IDENTITY_ENCODING)
+                }
+            )
+            try {
+                val responseCode = connection.responseCode
+                if (responseCode == HTTP_RANGE_NOT_SATISFIABLE) {
+                    // HF's CDN answers 416 without a Content-Range header, so a HEAD probe
+                    // is the reliable way to learn the file's true total size.
+                    val serverTotal = LocalModelDownloadPaths.contentRangeTotal(connection.getHeaderField("Content-Range"))
+                        ?: probeServerTotalBytes(downloadUrl)
+                    if (serverTotal != null && serverTotal > 0L) {
+                        if (partialLength == serverTotal) {
+                            // The partial already holds the whole file (a previous run read the
+                            // server to EOF): finalize instead of failing the download.
+                            finalizeOutput(outputDir, outputTmpFile, fileName)
+                            return
                         }
-                        outputStream.write(buffer, 0, bytesRead)
-                        downloadedBytes += bytesRead
-                        deltaBytes += bytesRead
+                        if (partialLength > 0L && resumeFromPartial) {
+                            DebugLog.w(TAG, "Discarding unusable partial: $partialLength bytes vs server total $serverTotal")
+                            if (!outputTmpFile.delete()) {
+                                throw IOException("Unable to discard stale Local Model partial")
+                            }
+                            resumeFromPartial = false
+                            continue
+                        }
+                    }
+                    throw IOException("HTTP error code: $responseCode")
+                }
+                if (responseCode != HttpURLConnection.HTTP_OK && responseCode != HttpURLConnection.HTTP_PARTIAL) {
+                    throw IOException("HTTP error code: $responseCode")
+                }
 
-                        val curTs = System.currentTimeMillis()
-                        if (curTs - lastProgressTs > PROGRESS_INTERVAL_MS) {
-                            var bytesPerMs = 0f
-                            if (lastProgressTs != 0L) {
-                                if (rateSizeBuffer.size == RATE_WINDOW) rateSizeBuffer.removeAt(0)
-                                rateSizeBuffer.add(deltaBytes)
-                                if (rateLatencyBuffer.size == RATE_WINDOW) rateLatencyBuffer.removeAt(0)
-                                rateLatencyBuffer.add(curTs - lastProgressTs)
-                                deltaBytes = 0L
-                                bytesPerMs = rateSizeBuffer.sum().toFloat() / rateLatencyBuffer.sum()
+                val contentRange = connection.getHeaderField("Content-Range")
+                val serverTotalBytes = if (responseCode == HttpURLConnection.HTTP_PARTIAL) {
+                    LocalModelDownloadPaths.contentRangeTotal(contentRange)
+                } else {
+                    connection.contentLengthLong.takeIf { it > 0L }
+                }
+                val effectiveTotal = serverTotalBytes?.takeIf { it > 0L } ?: totalBytes
+                val append = LocalModelDownloadPaths.shouldAppendToPartial(partialLength, contentRange)
+                var downloadedBytes = LocalModelDownloadPaths.downloadedBytesAfterConnect(partialLength, contentRange)
+                val rateSizeBuffer = mutableListOf<Long>()
+                val rateLatencyBuffer = mutableListOf<Long>()
+
+                connection.inputStream.use { inputStream ->
+                    FileOutputStream(outputTmpFile, append).use { outputStream ->
+                        val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                        var bytesRead: Int
+                        var lastProgressTs = 0L
+                        var deltaBytes = 0L
+                        while (inputStream.read(buffer).also { bytesRead = it } != -1) {
+                            if (isStopped) {
+                                throw CancellationException("Local Model download cancelled")
                             }
-                            var remainingMs = 0f
-                            if (bytesPerMs > 0f && totalBytes > 0L) {
-                                remainingMs = (totalBytes - downloadedBytes) / bytesPerMs
+                            outputStream.write(buffer, 0, bytesRead)
+                            downloadedBytes += bytesRead
+                            deltaBytes += bytesRead
+
+                            val curTs = System.currentTimeMillis()
+                            if (curTs - lastProgressTs > PROGRESS_INTERVAL_MS) {
+                                var bytesPerMs = 0f
+                                if (lastProgressTs != 0L) {
+                                    if (rateSizeBuffer.size == RATE_WINDOW) rateSizeBuffer.removeAt(0)
+                                    rateSizeBuffer.add(deltaBytes)
+                                    if (rateLatencyBuffer.size == RATE_WINDOW) rateLatencyBuffer.removeAt(0)
+                                    rateLatencyBuffer.add(curTs - lastProgressTs)
+                                    deltaBytes = 0L
+                                    bytesPerMs = rateSizeBuffer.sum().toFloat() / rateLatencyBuffer.sum()
+                                }
+                                var remainingMs = 0f
+                                if (bytesPerMs > 0f && effectiveTotal > 0L) {
+                                    remainingMs = (effectiveTotal - downloadedBytes) / bytesPerMs
+                                }
+                                setProgress(
+                                    Data.Builder()
+                                        .putLong(KEY_RECEIVED_BYTES, downloadedBytes)
+                                        .putLong(KEY_DOWNLOAD_RATE, (bytesPerMs * 1000).toLong())
+                                        .putLong(KEY_REMAINING_MS, remainingMs.toLong())
+                                        .build()
+                                )
+                                val percent = DownloadProgress.percent(downloadedBytes, effectiveTotal)
+                                runCatching { setForeground(createForegroundInfo(progress = percent, modelName = displayName)) }
+                                lastProgressTs = curTs
                             }
-                            setProgress(
-                                Data.Builder()
-                                    .putLong(KEY_RECEIVED_BYTES, downloadedBytes)
-                                    .putLong(KEY_DOWNLOAD_RATE, (bytesPerMs * 1000).toLong())
-                                    .putLong(KEY_REMAINING_MS, remainingMs.toLong())
-                                    .build()
-                            )
-                            val percent = DownloadProgress.percent(downloadedBytes, totalBytes)
-                            runCatching { setForeground(createForegroundInfo(progress = percent, modelName = displayName)) }
-                            lastProgressTs = curTs
                         }
                     }
                 }
+
+                // The server declared its own total (Content-Range/Content-Length) — it, not
+                // the catalog's sizeInBytes, is the authority for completion after EOF.
+                if (!LocalModelDownloadPaths.isCompleteDownload(outputTmpFile.length(), effectiveTotal)) {
+                    throw IOException("Incomplete Local Model download")
+                }
+                finalizeOutput(outputDir, outputTmpFile, fileName)
+                return
+            } finally {
+                connection.disconnect()
             }
+        }
+    }
+
+    /** Resolves the file's total size with a HEAD request (used when a 416 lacks Content-Range). */
+    private fun probeServerTotalBytes(url: String): Long? = runCatching {
+        val connection = openConnection(url, emptyMap())
+        try {
+            connection.requestMethod = "HEAD"
+            val code = connection.responseCode
+            if (code != HttpURLConnection.HTTP_OK) return@runCatching null
+            connection.contentLengthLong.takeIf { it > 0L }
         } finally {
             connection.disconnect()
         }
+    }.getOrNull()
 
-        if (!LocalModelDownloadPaths.isCompleteDownload(outputTmpFile.length(), totalBytes)) {
-            throw IOException("Incomplete Local Model download")
-        }
-
+    private fun finalizeOutput(outputDir: File, outputTmpFile: File, fileName: String) {
         val originalFile = File(outputDir, fileName)
         if (originalFile.exists() && !originalFile.delete()) {
             throw IOException("Unable to replace existing Local Model file")
@@ -404,6 +464,7 @@ class LocalModelDownloadWorker(
         const val INITIAL_BACKOFF_SECONDS = 10L
         private const val TAG = "LocalModelDownload"
         private const val CHANNEL_ID = "local_model_downloads"
+        private const val HTTP_RANGE_NOT_SATISFIABLE = 416
         private const val PROGRESS_INTERVAL_MS = 200L
         private const val RATE_WINDOW = 5
         private const val CONNECT_TIMEOUT_MS = 15_000

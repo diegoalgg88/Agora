@@ -97,6 +97,15 @@ object LocalModelDownloadPaths {
         return afterBytes.substringBefore('-').toLongOrNull()
     }
 
+    /** Total size declared by a Content-Range header — both the 206 form ("bytes 0-99/100") and the 416 wildcard form. */
+    fun contentRangeTotal(contentRangeHeader: String?): Long? {
+        if (contentRangeHeader == null) return null
+        val afterBytes = contentRangeHeader.substringAfter("bytes", missingDelimiterValue = "")
+        if (afterBytes.isEmpty()) return null
+        val total = afterBytes.trim().substringAfter('/', missingDelimiterValue = "")
+        return total.toLongOrNull()?.takeIf { it > 0L }
+    }
+
     fun catalogEntryIdFromRelativePath(relativePath: String): String? {
         val parts = relativePath.split('/')
         return if (parts.size >= 4 && parts[0] == MODELS_DIR) parts[1] else null
