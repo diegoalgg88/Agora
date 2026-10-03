@@ -72,6 +72,54 @@
       "supportedAccelerators": [],
       "defaultConfig": { "topK": 40, "topP": 0.95, "temperature": 0.7, "maxTokens": 1024, "contextSize": 8192 },
       "minAppVersion": "0.0.0"
+    },
+    {
+      "id": "mythos-nano-q4-k-m",
+      "displayName": "Mythos-nano (Q4_K_M)",
+      "downloadUrl": "https://huggingface.co/squ11z1/Mythos-nano/resolve/main/mythos-nano-Q4_K_M.gguf",
+      "sizeInBytes": 1929902176,
+      "minRamGb": 3,
+      "isGated": false,
+      "capabilities": { "vision": false, "tools": false, "thinking": false },
+      "supportedAccelerators": [],
+      "defaultConfig": { "topK": 40, "topP": 0.95, "temperature": 0.7, "maxTokens": 2048, "contextSize": 8192 },
+      "minAppVersion": "0.0.0"
+    },
+    {
+      "id": "hermes-3-llama-3.1-8b-q4-k-m",
+      "displayName": "Hermes 3 Llama 3.1 8B (Q4_K_M)",
+      "downloadUrl": "https://huggingface.co/NousResearch/Hermes-3-Llama-3.1-8B-GGUF/resolve/main/Hermes-3-Llama-3.1-8B.Q4_K_M.gguf",
+      "sizeInBytes": 4920733824,
+      "minRamGb": 12,
+      "isGated": false,
+      "capabilities": { "vision": false, "tools": true, "thinking": false },
+      "supportedAccelerators": [],
+      "defaultConfig": { "topK": 40, "topP": 0.95, "temperature": 0.7, "maxTokens": 2048, "contextSize": 8192 },
+      "minAppVersion": "0.0.0"
+    },
+    {
+      "id": "llama-3.1-8b-lexi-v2-q4-k-m",
+      "displayName": "Llama 3.1 8B Lexi V2 (Q4_K_M)",
+      "downloadUrl": "https://huggingface.co/bartowski/Llama-3.1-8B-Lexi-Uncensored-V2-GGUF/resolve/main/Llama-3.1-8B-Lexi-Uncensored-V2-Q4_K_M.gguf",
+      "sizeInBytes": 4920739104,
+      "minRamGb": 12,
+      "isGated": false,
+      "capabilities": { "vision": false, "tools": false, "thinking": false },
+      "supportedAccelerators": [],
+      "defaultConfig": { "topK": 40, "topP": 0.95, "temperature": 0.7, "maxTokens": 2048, "contextSize": 8192 },
+      "minAppVersion": "0.0.0"
+    },
+    {
+      "id": "llama-3.3-8b-thinking-heretic-q4-k-m",
+      "displayName": "Llama 3.3 8B Thinking-Heretic (Q4_K_M)",
+      "downloadUrl": "https://huggingface.co/mradermacher/Llama3.3-8B-Instruct-Thinking-Heretic-Uncensored-Claude-4.5-Opus-High-Reasoning-i1-GGUF/resolve/main/Llama3.3-8B-Instruct-Thinking-Heretic-Uncensored-Claude-4.5-Opus-High-Reasoning.i1-Q4_K_M.gguf",
+      "sizeInBytes": 4920741376,
+      "minRamGb": 12,
+      "isGated": false,
+      "capabilities": { "vision": false, "tools": false, "thinking": true },
+      "supportedAccelerators": [],
+      "defaultConfig": { "topK": 40, "topP": 0.95, "temperature": 0.7, "maxTokens": 2048, "contextSize": 8192 },
+      "minAppVersion": "0.0.0"
     }
   ]
 }
