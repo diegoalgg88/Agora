@@ -135,4 +135,30 @@
     <string name="heartbeat_no_runs">لا توجد عمليات تشغيل للنبض مسجلة بعد.</string>
     <string name="heartbeat_log_ok">تم</string>
     <string name="heartbeat_log_failed">فشل</string>
+
+    <!-- Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) -->
+    <string name="task_confirmation_channel_name">تأكيدات المهام</string>
+    <string name="task_confirmation_channel_desc">إشعارات نتائج المهام الآلية والنبضات التي تتطلب انتباهك.</string>
+    <string name="task_confirmation_action_confirm">تأكيد</string>
+    <string name="task_confirmation_action_open_conversation">فتح المحادثة</string>
+    <string name="task_confirmation_action_snooze">تأجيل</string>
+    <string name="task_confirmation_snooze_10">10 دقائق</string>
+    <string name="task_confirmation_snooze_30">30 دقيقة</string>
+    <string name="task_confirmation_snooze_60">ساعة واحدة</string>
+    <string name="task_confirmation_card_expand">عرض المزيد</string>
+    <string name="task_confirmation_card_collapse">عرض أقل</string>
+    <string name="task_confirmation_banner_view">عرض</string>
+    <string name="task_confirmation_banner_confirm">تأكيد</string>
+    <string name="task_confirmation_banner_dismiss">تجاهل</string>
+    <string name="task_confirmation_settings_title">تأكيدات المهام</string>
+    <string name="task_confirmation_settings_desc">أخبرني عندما تنتج مهمة آلية أو نبضة نتيجة تتطلب انتباهك.</string>
+    <string name="task_confirmation_result_title">نتيجة النبضة</string>
+    <string name="daemon_active_status">الأتمتة نشطة</string>
+    <string name="task_confirmation_mode_prompt">طلب التأكيد</string>
+    <string name="task_confirmation_mode_prompt_desc">تأكيد دائم مع أزرار التأكيد والتجاهل والتأجيل، بالإضافة إلى شريط في المحادثة.</string>
+    <string name="task_confirmation_mode_auto">إشعار فقط</string>
+    <string name="task_confirmation_mode_auto_desc">إشعار بسيط يختفي تلقائيًا؛ لا يُحفظ شيء ولا يُطلب أي إجراء.</string>
+    <string name="task_confirmation_card_style_section">بطاقة التأكيد</string>
+    <string name="task_confirmation_card_style_bottom">أسفل</string>
+    <string name="task_confirmation_card_style_centered">وسط</string>
 </resources>

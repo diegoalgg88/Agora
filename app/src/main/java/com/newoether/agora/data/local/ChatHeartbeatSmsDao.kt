@@ -131,4 +131,103 @@ interface ChatHeartbeatSmsDao {
 
     @Upsert
     suspend fun upsertNotificationSyncState(state: NotificationSyncStateEntity)
+
+    // ── Task confirmations DAO (v38) ──────────────────────────
+    // Durable owner of rich task confirmations. See TaskConfirmationEntity for the
+    // table invariants and TaskConfirmationStore for the ownership policy.
+
+    @Insert(onConflict = OnConflictStrategy.IGNORE)
+    suspend fun insertTaskConfirmation(row: TaskConfirmationEntity): Long
+
+    @Query("SELECT * FROM task_confirmations WHERE id = :id")
+    suspend fun getTaskConfirmation(id: String): TaskConfirmationEntity?
+
+    @Query(
+        """
+        SELECT * FROM task_confirmations
+        WHERE sourceType = :sourceType
+          AND conversationId = :conversationId
+          AND (
+              (modelMessageId IS NULL AND :modelMessageId IS NULL)
+              OR modelMessageId = :modelMessageId
+          )
+        LIMIT 1
+        """,
+    )
+    suspend fun findTaskConfirmationByDedupKey(
+        sourceType: String,
+        conversationId: String,
+        modelMessageId: String?,
+    ): TaskConfirmationEntity?
+
+    @Query(
+        """
+        SELECT * FROM task_confirmations
+        WHERE status = 'PENDING'
+        ORDER BY COALESCE(remindAtEpochMs, createdAtEpochMs) DESC, id ASC
+        """,
+    )
+    fun observePendingTaskConfirmations(): Flow<List<TaskConfirmationEntity>>
+
+    @Query(
+        """
+        SELECT * FROM task_confirmations
+        WHERE status = 'PENDING'
+          AND remindAtEpochMs IS NOT NULL
+          AND remindAtEpochMs <= :now
+        ORDER BY remindAtEpochMs ASC, id ASC
+        """,
+    )
+    suspend fun selectDueTaskConfirmations(now: Long): List<TaskConfirmationEntity>
+
+    /** Clears the snooze deadline only while the row is still PENDING; returns rows updated. */
+    @Query(
+        """
+        UPDATE task_confirmations
+        SET remindAtEpochMs = NULL
+        WHERE id = :id AND status = 'PENDING'
+        """,
+    )
+    suspend fun clearTaskConfirmationReminderIfStillPending(id: String): Int
+
+    /** Arms a snooze deadline. Only called by the store's snooze() inside a transaction. */
+    @Query(
+        """
+        UPDATE task_confirmations
+        SET remindAtEpochMs = :remindAtEpochMs
+        WHERE id = :id AND status = 'PENDING'
+        """,
+    )
+    suspend fun armTaskConfirmationReminder(id: String, remindAtEpochMs: Long): Int
+
+    /** Single-winner status transition; returns 0 when the row was no longer [fromStatus]. */
+    @Query(
+        """
+        UPDATE task_confirmations
+        SET status = :toStatus
+        WHERE id = :id AND status = :fromStatus
+        """,
+    )
+    suspend fun transitionTaskConfirmation(id: String, fromStatus: String, toStatus: String): Int
+
+    /**
+     * Caps only PENDING rows. Resolved rows are dedup tombstones bounded by the 7-day cleanup;
+     * counting them toward the cap would let freshly resolved rows evict older unresolved ones.
+     */
+    @Query(
+        """
+        DELETE FROM task_confirmations
+        WHERE status = 'PENDING'
+          AND id NOT IN (
+            SELECT id FROM task_confirmations
+            WHERE status = 'PENDING'
+            ORDER BY createdAtEpochMs DESC, id DESC
+            LIMIT :cap
+        )
+        """,
+    )
+    suspend fun deleteTaskConfirmationsBeyondCap(cap: Int): Int
+
+    @Query("DELETE FROM task_confirmations WHERE createdAtEpochMs < :cutoff")
+    suspend fun cleanupTaskConfirmations(cutoff: Long): Int
 }

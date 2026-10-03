@@ -138,4 +138,30 @@
     <string name="heartbeat_no_runs">No hay ejecuciones de heartbeat registradas aún.</string>
     <string name="heartbeat_log_ok">OK</string>
     <string name="heartbeat_log_failed">Fallido</string>
+
+    <!-- Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) -->
+    <string name="task_confirmation_channel_name">Confirmaciones de tareas</string>
+    <string name="task_confirmation_channel_desc">Notificaciones de resultados de tareas automatizadas y heartbeats que requieren tu atención.</string>
+    <string name="task_confirmation_action_confirm">Confirmar</string>
+    <string name="task_confirmation_action_open_conversation">Abrir conversación</string>
+    <string name="task_confirmation_action_snooze">Posponer</string>
+    <string name="task_confirmation_snooze_10">10 minutos</string>
+    <string name="task_confirmation_snooze_30">30 minutos</string>
+    <string name="task_confirmation_snooze_60">1 hora</string>
+    <string name="task_confirmation_card_expand">Mostrar más</string>
+    <string name="task_confirmation_card_collapse">Mostrar menos</string>
+    <string name="task_confirmation_banner_view">Ver</string>
+    <string name="task_confirmation_banner_confirm">Confirmar</string>
+    <string name="task_confirmation_banner_dismiss">Descartar</string>
+    <string name="task_confirmation_settings_title">Confirmaciones de tareas</string>
+    <string name="task_confirmation_settings_desc">Notifícame cuando una tarea automatizada o un heartbeat produzca un resultado que requiere atención.</string>
+    <string name="task_confirmation_result_title">Resultado del heartbeat</string>
+    <string name="daemon_active_status">Automatización activa</string>
+    <string name="task_confirmation_mode_prompt">Pedir confirmación</string>
+    <string name="task_confirmation_mode_prompt_desc">Confirmación durable con acciones Confirmar, Descartar y Posponer, además del banner en el chat.</string>
+    <string name="task_confirmation_mode_auto">Solo informativa</string>
+    <string name="task_confirmation_mode_auto_desc">Una notificación simple que se descarta sola; no se guarda ni se pregunta nada.</string>
+    <string name="task_confirmation_card_style_section">Tarjeta de confirmación</string>
+    <string name="task_confirmation_card_style_bottom">Abajo</string>
+    <string name="task_confirmation_card_style_centered">Centrada</string>
 </resources>

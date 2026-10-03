@@ -26,6 +26,7 @@ import com.newoether.agora.data.local.migration.MIGRATION_33_34
 import com.newoether.agora.data.local.migration.MIGRATION_34_35
 import com.newoether.agora.data.local.migration.MIGRATION_35_36
 import com.newoether.agora.data.local.migration.MIGRATION_36_37
+import com.newoether.agora.data.local.migration.MIGRATION_37_38
 
 @Database(
     entities = [
@@ -53,6 +54,7 @@ import com.newoether.agora.data.local.migration.MIGRATION_36_37
         EmailSyncStateEntity::class,
         EmailPendingEntity::class,
         EmailDraftEntity::class,
+        TaskConfirmationEntity::class,
     ],
     version = ChatDatabase.CURRENT_VERSION,
     exportSchema = true
@@ -63,7 +65,7 @@ abstract class ChatDatabase : RoomDatabase() {
     abstract fun semanticIndexDao(): SemanticIndexDao
 
     companion object {
-        const val CURRENT_VERSION = 37
+        const val CURRENT_VERSION = 38
         const val DB_NAME = "agora_db"
 
         val ALL_MIGRATIONS = listOf(
@@ -213,6 +215,7 @@ abstract class ChatDatabase : RoomDatabase() {
             MIGRATION_34_35,
             MIGRATION_35_36,
             MIGRATION_36_37,
+            MIGRATION_37_38,
         )
 
         fun inspectCompatibility(context: Context): DatabaseCompatibility {

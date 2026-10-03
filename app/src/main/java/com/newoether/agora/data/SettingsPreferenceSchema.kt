@@ -174,6 +174,15 @@ internal val SMS_POLL_INTERVAL_MINUTES = intPreferencesKey("sms_poll_interval_mi
 // ── Daemon ─────────────────────────────────────────────────
 internal val DAEMON_ENABLED = booleanPreferencesKey("daemon_enabled")
 
+// ── Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) ──
+internal val TASK_CONFIRMATION_ENABLED = booleanPreferencesKey("task_confirmation_enabled")
+// Presentation mode: "prompt" (confirmations with actions, durable rows) or "auto"
+// (informational auto-dismiss notification only, no staging — Universal Installer's
+// AutoNotification analogue). Wire values owned by TaskConfirmationMode.
+internal val TASK_CONFIRMATION_MODE = stringPreferencesKey("task_confirmation_mode")
+// Card anchor: "bottom" (bottom sheet) or "centered" (dialog) — InstallUiStyle analogue.
+internal val TASK_CONFIRMATION_CARD_STYLE = stringPreferencesKey("task_confirmation_card_style")
+
 // ── Notifications ───────────────────────────────────────────
 internal val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
 internal val NOTIFICATIONS_PENDING = stringPreferencesKey("notifications_pending")

@@ -17,7 +17,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -26,7 +25,6 @@ import androidx.compose.ui.unit.dp
 import com.newoether.agora.AgoraApplication
 import com.newoether.agora.data.local.HeartbeatLogEntity
 import com.newoether.agora.R
-import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -39,7 +37,6 @@ import java.time.format.DateTimeFormatter
  */
 @Composable
 fun HeartbeatRunStatusItems() {
-    val scope = rememberCoroutineScope()
     val context = LocalContext.current
     val container = remember {
         (context.applicationContext as? AgoraApplication)?.requireContainer()
@@ -63,8 +60,10 @@ fun HeartbeatRunStatusItems() {
         trailingContent = {
             IconButton(
                 onClick = {
-                    val scheduler = container?.heartbeatScheduler
-                    scope.launch { scheduler?.runHeartbeatNow() }
+                    // Scheduler-owned scope, NOT a composition scope: navigating away from
+                    // Settings to watch the run must not cancel it (USER_STOPPED bug,
+                    // verified on device 2026-10-03).
+                    container?.heartbeatScheduler?.runHeartbeatNowAsync()
                 },
             ) {
                 Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.heartbeat_run_now))
@@ -73,8 +72,7 @@ fun HeartbeatRunStatusItems() {
         modifier = Modifier
             .fillMaxWidth()
             .clickable {
-                val scheduler = container?.heartbeatScheduler
-                scope.launch { scheduler?.runHeartbeatNow() }
+                container?.heartbeatScheduler?.runHeartbeatNowAsync()
             },
     )
 

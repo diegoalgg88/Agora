@@ -135,4 +135,30 @@
     <string name="heartbeat_no_runs">Noch keine Heartbeat-Ausführungen aufgezeichnet.</string>
     <string name="heartbeat_log_ok">OK</string>
     <string name="heartbeat_log_failed">Fehlgeschlagen</string>
+
+    <!-- Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) -->
+    <string name="task_confirmation_channel_name">Aufgabenbestätigungen</string>
+    <string name="task_confirmation_channel_desc">Benachrichtigungen über Ergebnisse automatisierter Aufgaben und Heartbeats, die deine Aufmerksamkeit erfordern.</string>
+    <string name="task_confirmation_action_confirm">Bestätigen</string>
+    <string name="task_confirmation_action_open_conversation">Unterhaltung öffnen</string>
+    <string name="task_confirmation_action_snooze">Später erinnern</string>
+    <string name="task_confirmation_snooze_10">10 Minuten</string>
+    <string name="task_confirmation_snooze_30">30 Minuten</string>
+    <string name="task_confirmation_snooze_60">1 Stunde</string>
+    <string name="task_confirmation_card_expand">Mehr anzeigen</string>
+    <string name="task_confirmation_card_collapse">Weniger anzeigen</string>
+    <string name="task_confirmation_banner_view">Ansehen</string>
+    <string name="task_confirmation_banner_confirm">Bestätigen</string>
+    <string name="task_confirmation_banner_dismiss">Verwerfen</string>
+    <string name="task_confirmation_settings_title">Aufgabenbestätigungen</string>
+    <string name="task_confirmation_settings_desc">Benachrichtige mich, wenn eine automatisierte Aufgabe oder ein Heartbeat ein Ergebnis liefert, das Aufmerksamkeit erfordert.</string>
+    <string name="task_confirmation_result_title">Heartbeat-Ergebnis</string>
+    <string name="daemon_active_status">Automatisierung aktiv</string>
+    <string name="task_confirmation_mode_prompt">Nach Bestätigung fragen</string>
+    <string name="task_confirmation_mode_prompt_desc">Dauerhafte Bestätigung mit Bestätigen, Verwerfen und Später, plus ein Banner im Chat.</string>
+    <string name="task_confirmation_mode_auto">Nur informativ</string>
+    <string name="task_confirmation_mode_auto_desc">Eine einfache Benachrichtigung, die sich selbst entfernt; nichts wird gespeichert oder abgefragt.</string>
+    <string name="task_confirmation_card_style_section">Bestätigungskarte</string>
+    <string name="task_confirmation_card_style_bottom">Unten</string>
+    <string name="task_confirmation_card_style_centered">Zentriert</string>
 </resources>

@@ -160,4 +160,30 @@
     <string name="heartbeat_no_runs">No heartbeat runs recorded yet.</string>
     <string name="heartbeat_log_ok">OK</string>
     <string name="heartbeat_log_failed">Failed</string>
+
+    <!-- Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) -->
+    <string name="task_confirmation_channel_name">Task confirmations</string>
+    <string name="task_confirmation_channel_desc">Notifications for automated task and heartbeat results that need your attention.</string>
+    <string name="task_confirmation_action_confirm">Confirm</string>
+    <string name="task_confirmation_action_open_conversation">Open conversation</string>
+    <string name="task_confirmation_action_snooze">Snooze</string>
+    <string name="task_confirmation_snooze_10">10 minutes</string>
+    <string name="task_confirmation_snooze_30">30 minutes</string>
+    <string name="task_confirmation_snooze_60">1 hour</string>
+    <string name="task_confirmation_card_expand">Show more</string>
+    <string name="task_confirmation_card_collapse">Show less</string>
+    <string name="task_confirmation_banner_view">View</string>
+    <string name="task_confirmation_banner_confirm">Confirm</string>
+    <string name="task_confirmation_banner_dismiss">Dismiss</string>
+    <string name="task_confirmation_settings_title">Task confirmations</string>
+    <string name="task_confirmation_settings_desc">Notify when an automated task or heartbeat produces a result that needs attention.</string>
+    <string name="task_confirmation_result_title">Heartbeat result</string>
+    <string name="daemon_active_status">Automation active</string>
+    <string name="task_confirmation_mode_prompt">Ask for confirmation</string>
+    <string name="task_confirmation_mode_prompt_desc">Durable confirmation with Confirm, Dismiss, and Snooze actions, plus a chat banner.</string>
+    <string name="task_confirmation_mode_auto">Informative only</string>
+    <string name="task_confirmation_mode_auto_desc">A simple auto-dismiss notification; nothing is stored or asked.</string>
+    <string name="task_confirmation_card_style_section">Confirmation card</string>
+    <string name="task_confirmation_card_style_bottom">Bottom</string>
+    <string name="task_confirmation_card_style_centered">Centered</string>
 </resources>

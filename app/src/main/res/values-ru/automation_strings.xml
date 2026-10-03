@@ -135,4 +135,30 @@
     <string name="heartbeat_no_runs">Запуски heartbeat пока не записывались.</string>
     <string name="heartbeat_log_ok">OK</string>
     <string name="heartbeat_log_failed">Ошибка</string>
+
+    <!-- Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) -->
+    <string name="task_confirmation_channel_name">Подтверждения задач</string>
+    <string name="task_confirmation_channel_desc">Уведомления о результатах автоматических задач и heartbeat, требующих вашего внимания.</string>
+    <string name="task_confirmation_action_confirm">Подтвердить</string>
+    <string name="task_confirmation_action_open_conversation">Открыть диалог</string>
+    <string name="task_confirmation_action_snooze">Отложить</string>
+    <string name="task_confirmation_snooze_10">10 минут</string>
+    <string name="task_confirmation_snooze_30">30 минут</string>
+    <string name="task_confirmation_snooze_60">1 час</string>
+    <string name="task_confirmation_card_expand">Показать больше</string>
+    <string name="task_confirmation_card_collapse">Свернуть</string>
+    <string name="task_confirmation_banner_view">Просмотр</string>
+    <string name="task_confirmation_banner_confirm">Подтвердить</string>
+    <string name="task_confirmation_banner_dismiss">Отклонить</string>
+    <string name="task_confirmation_settings_title">Подтверждения задач</string>
+    <string name="task_confirmation_settings_desc">Уведомлять меня, когда автоматическая задача или heartbeat выдаёт результат, требующий внимания.</string>
+    <string name="task_confirmation_result_title">Результат heartbeat</string>
+    <string name="daemon_active_status">Автоматизация активна</string>
+    <string name="task_confirmation_mode_prompt">Запросить подтверждение</string>
+    <string name="task_confirmation_mode_prompt_desc">Постоянное подтверждение с действиями Подтвердить, Отклонить и Отложить, плюс баннер в чате.</string>
+    <string name="task_confirmation_mode_auto">Только уведомление</string>
+    <string name="task_confirmation_mode_auto_desc">Простое уведомление, которое исчезает само; ничего не сохраняется и не запрашивается.</string>
+    <string name="task_confirmation_card_style_section">Карточка подтверждения</string>
+    <string name="task_confirmation_card_style_bottom">Снизу</string>
+    <string name="task_confirmation_card_style_centered">По центру</string>
 </resources>

@@ -9,6 +9,7 @@ import com.newoether.agora.data.EmailStore
 import com.newoether.agora.data.NotificationStore
 import com.newoether.agora.data.SmsPoller
 import com.newoether.agora.data.SmsStore
+import com.newoether.agora.data.TaskConfirmationStore
 import com.newoether.agora.data.local.MessageEntity
 import com.newoether.agora.data.local.RunEntity
 import com.newoether.agora.data.repository.ConversationRepository
@@ -97,6 +98,14 @@ class HeartbeatRecentResponsesTest {
         every { settings.heartbeatConversationId } returns MutableStateFlow(heartbeatConversationId)
         every { settings.heartbeatModel } returns MutableStateFlow(null)
         every { settings.heartbeatPrompt } returns MutableStateFlow("")
+        // Rich confirmations toggle OFF: this suite characterizes the pre-feature prompt,
+        // so the staging path must stay inert here (a relaxed mock's StateFlow .value
+        // does not produce a Boolean — it must be stubbed explicitly).
+        every { settings.taskConfirmationEnabled } returns MutableStateFlow(false)
+        every { settings.taskConfirmationMode } returns
+            MutableStateFlow(com.newoether.agora.data.local.TaskConfirmationMode.PROMPT)
+        every { settings.taskConfirmationCardStyle } returns
+            MutableStateFlow(com.newoether.agora.data.local.TaskConfirmationCardStyle.BOTTOM)
 
         val engine = mockk<TaskExecutionEngine>()
         val promptSlot = slot<String>()
@@ -132,6 +141,11 @@ class HeartbeatRecentResponsesTest {
             loopManager = mockk(relaxed = true),
             emailStore = mockk<EmailStore>(relaxed = true),
             emailPoller = mockk<EmailPoller>(relaxed = true),
+            taskConfirmationStore = mockk<TaskConfirmationStore>(relaxed = true) {
+                coEvery { consumeDueReminders(any()) } returns emptyList()
+                coEvery { cleanupOld(any()) } returns 0
+            },
+            taskPromptNotifier = mockk<com.newoether.agora.service.TaskPromptNotifier>(relaxed = true),
         )
         return scheduler to promptSlot
     }

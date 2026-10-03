@@ -36,6 +36,7 @@ fun PendingDeviceActionBanners(
         PendingSmsBanner(viewModel = viewModel)
         PendingEmailDraftBanner(viewModel = viewModel)
         PendingAssistantActionsBanner()
+        PendingTaskConfirmationsBanner()
     }
 }
 

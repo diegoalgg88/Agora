@@ -320,6 +320,7 @@ class SettingsManager(val context: Context) {
 
     // ── Daemon ─────────────────────────────────────────────────
     val daemonEnabled: Flow<Boolean> = context.dataStore.data.map { it[DAEMON_ENABLED] ?: false }
+    val settingsTaskConfirmations: SettingsTaskConfirmations by lazy { SettingsTaskConfirmations(dataStore) }
 
     suspend fun saveProviderBaseUrl(provider: String, url: String) =
         modelPreferenceStore.saveProviderBaseUrl(provider, url)
@@ -840,6 +841,7 @@ class SettingsManager(val context: Context) {
     suspend fun saveDaemonEnabled(enabled: Boolean) {
         context.dataStore.edit { it[DAEMON_ENABLED] = enabled }
     }
+    suspend fun saveTaskConfirmationEnabled(enabled: Boolean) = settingsTaskConfirmations.saveEnabled(enabled)
     // ── Auto Backup ───────────────────────────────────────────
     suspend fun saveAutoBackupEnabled(enabled: Boolean) {
         context.dataStore.edit { it[AUTO_BACKUP_ENABLED] = enabled }
@@ -941,6 +943,9 @@ class SettingsManager(val context: Context) {
             prefs.remove(EXACT_EXECUTION_ENABLED)
             prefs.remove(AUTOMATION_WAKE_LOCK_ENABLED)
             prefs.remove(DAEMON_ENABLED)
+            prefs.remove(TASK_CONFIRMATION_ENABLED)
+            prefs.remove(TASK_CONFIRMATION_MODE)
+            prefs.remove(TASK_CONFIRMATION_CARD_STYLE)
             prefs.remove(HEARTBEAT_ENABLED)
             prefs.remove(HEARTBEAT_INTERVAL_MINUTES)
             prefs.remove(HEARTBEAT_ACTIVE_HOURS_START)

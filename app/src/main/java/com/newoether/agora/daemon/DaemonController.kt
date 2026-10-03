@@ -1,6 +1,7 @@
 package com.newoether.agora.daemon
 
 import android.content.Context
+import com.newoether.agora.R
 import com.newoether.agora.automation.HeartbeatScheduler
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.service.AgoraForegroundService
@@ -35,7 +36,18 @@ class DaemonController(
         // App came to foreground and daemon is enabled — ensure lease is active
         if (inForeground && settingsRepository.daemonEnabled.value) {
             AgoraForegroundService.acquireLease("daemon")
+            labelDaemonLease()
         }
+    }
+
+    /**
+     * The shared FGS defaults its text to "Generating response…". While the daemon is the
+     * lease holder and nothing is generating, that default misleads (observed on a real
+     * device run, 2026-10-03: a generation long finished but the notification stuck on
+     * "Generando respuesta"). The daemon labels its own keep-alive instead.
+     */
+    private fun labelDaemonLease() {
+        AgoraForegroundService.updateText(context.getString(R.string.daemon_active_status))
     }
 
     fun start() {
@@ -59,6 +71,7 @@ class DaemonController(
 
         // Acquire lease on the shared foreground service
         AgoraForegroundService.acquireLease("daemon")
+        labelDaemonLease()
 
         // Start the heartbeat scheduler
         heartbeatScheduler.start()

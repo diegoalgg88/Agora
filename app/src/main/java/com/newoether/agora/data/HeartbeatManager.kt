@@ -94,9 +94,18 @@ class HeartbeatManager(
         /** Max length of the error text persisted to heartbeat_logs. */
         const val MAX_LOGGED_ERROR_CHARS = 300
 
+        /**
+         * Sentinel the heartbeat prompt asks the model to emit when nothing needs attention.
+         * A successful heartbeat whose trimmed result equals this value (case-insensitive) is
+         * silent and must NOT stage a rich task confirmation. When the result starts with this
+         * sentinel followed by substantive content, the scheduler strips the prefix and
+         * evaluates the remainder. Single source of truth — the prompt below interpolates it.
+         */
+        const val HEARTBEAT_OK_SENTINEL = "HEARTBEAT_OK"
+
         const val DEFAULT_HEARTBEAT_PROMPT =
             "[HEARTBEAT] This is an automatic self-check. Review your memories and pending tasks. " +
-                "If everything looks good and nothing needs attention, respond with exactly: HEARTBEAT_OK\n" +
+                "If everything looks good and nothing needs attention, respond with exactly: $HEARTBEAT_OK_SENTINEL\n" +
                 "If something needs attention (stale memories, due tasks, user follow-ups), address it.\n" +
                 "You cannot enable, disable, or reschedule heartbeat — the schedule is a user setting."
     }

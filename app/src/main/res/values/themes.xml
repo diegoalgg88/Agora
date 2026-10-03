@@ -35,4 +35,10 @@
         <item name="android:windowEnterAnimation">@anim/assistant_overlay_enter</item>
         <item name="android:windowExitAnimation">@anim/assistant_overlay_exit</item>
     </style>
+
+    <!-- Rich task confirmation card: bottom-anchored translucent surface over the current
+         app (plan PLAN-20261002-TASK-CONFIRM). Derives from the proven assistant overlay
+         window (translucent + light dim + transparent bars) — no new window mechanics;
+         the card itself is a plain bottom-aligned Compose Surface. -->
+    <style name="Theme.TaskConfirmation" parent="Theme.AssistantOverlay" />
 </resources>

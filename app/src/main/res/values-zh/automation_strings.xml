@@ -4,4 +4,30 @@
     <string name="heartbeat_conversation_desc">用于心跳的对话。将继承其模型、工具与系统提示词。</string>
     <string name="heartbeat_conversation_none">自动（专用）</string>
     <string name="heartbeat_conversation_pick_title">选择心跳对话</string>
+
+    <!-- Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) -->
+    <string name="task_confirmation_channel_name">任务确认</string>
+    <string name="task_confirmation_channel_desc">需要你关注的自动化任务与心跳结果通知。</string>
+    <string name="task_confirmation_action_confirm">确认</string>
+    <string name="task_confirmation_action_open_conversation">打开会话</string>
+    <string name="task_confirmation_action_snooze">稍后提醒</string>
+    <string name="task_confirmation_snooze_10">10 分钟</string>
+    <string name="task_confirmation_snooze_30">30 分钟</string>
+    <string name="task_confirmation_snooze_60">1 小时</string>
+    <string name="task_confirmation_card_expand">显示更多</string>
+    <string name="task_confirmation_card_collapse">收起</string>
+    <string name="task_confirmation_banner_view">查看</string>
+    <string name="task_confirmation_banner_confirm">确认</string>
+    <string name="task_confirmation_banner_dismiss">忽略</string>
+    <string name="task_confirmation_settings_title">任务确认</string>
+    <string name="task_confirmation_settings_desc">当自动化任务或心跳产生需要关注的结果时通知我。</string>
+    <string name="task_confirmation_result_title">心跳结果</string>
+    <string name="daemon_active_status">自动化运行中</string>
+    <string name="task_confirmation_mode_prompt">请求确认</string>
+    <string name="task_confirmation_mode_prompt_desc">持久的确认，包含确认、忽略和稍后提醒操作，并在聊天中显示横幅。</string>
+    <string name="task_confirmation_mode_auto">仅通知</string>
+    <string name="task_confirmation_mode_auto_desc">自动消失的简单通知；不保存任何内容，也不询问任何操作。</string>
+    <string name="task_confirmation_card_style_section">确认卡片</string>
+    <string name="task_confirmation_card_style_bottom">底部</string>
+    <string name="task_confirmation_card_style_centered">居中</string>
 </resources>

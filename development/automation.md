@@ -98,6 +98,13 @@ consent, and it is the supported way to test the prompt without enabling the
 daemon. It shares the atomic in-flight guard with the loop. This bypass is an
 intentional recorded decision (2026-09-23), not an accident.
 
+**Scope owner (2026-10-03 device-verified fix):** the manual run MUST be launched
+in the scheduler's own process scope (`runHeartbeatNowAsync()`), never in a
+composition scope. Launching it via `rememberCoroutineScope()` from the Settings
+page cancelled the in-flight run the moment the user navigated to the chat to
+watch it: the CancellationException finalized the Run as STOPPED/USER_STOPPED
+with no heartbeat log row — presented as a mysterious "Generation stopped".
+
 ## 9. Tooling during a heartbeat run
 
 `TaskExecutionEngine` is constructed with extra tool providers for headless
@@ -119,16 +126,111 @@ Other kinds (task, loop, compact, ...) may adopt badges later without schema cha
 the column is generic; only `heartbeat` renders specially today. The projection is
 conversation-scoped via the existing `getRunsForConversation` flow (no new query).
 
-## 11. Test map
+## 11. Rich task confirmations (`task_confirmations`, Room v38+)
+
+Opt-in (Settings → Automation → Task confirmations, DataStore
+`taskConfirmationEnabled`, default **false**, exported in `PortableSettingsArchive`).
+With the toggle OFF the heartbeat's pre-feature behaviour is byte-identical.
+
+### Durable owner and identity
+`task_confirmations` is the sole durable owner of a rich confirmation
+(`data/local/TaskConfirmationEntity.kt`, migration `MIGRATION_37_38` — CREATE-only,
+no CHECK constraints: Room ≥2.7 validates them post-migration and the closed-enum
+invariant lives in the typed enums). DAO in `ChatHeartbeatSmsDao`; store is
+`data/TaskConfirmationStore.kt` — deliberately separate from `AssistantActionStore`
+(that one is owned by the device-tools contract and dispatches device effects;
+this one only persists and consumes). Dedup identity is
+`(sourceType, conversationId, modelMessageId)` (unique index): `modelMessageId`
+because `TaskExecutionEngine.Result.Success` exposes only `(modelMessageId, text)` —
+the internal `runId` never leaves the engine, and `modelMessageId` is unique per
+generation. Rows are ephemeral: cap 20 PENDING rows (oldest evicted in the same staging
+transaction; resolved rows are dedup tombstones outside the cap so they can never evict
+an unresolved row), 7-day cleanup riding the heartbeat tick's retention sweep.
+
+### Actionable definition (the filter lives in the scheduler)
+A success result stages a confirmation only when, after `trim()`, it is non-empty
+AND not exactly `HeartbeatManager.HEARTBEAT_OK_SENTINEL` (case-insensitive, ignoring
+markup/punctuation decoration such as `**HEARTBEAT_OK**` or `HEARTBEAT_OK.`) — the
+value the prompt asks the model to emit when nothing needs attention; staging it
+would invert the feature's purpose. A result that STARTS with the sentinel followed
+by substantive content gets the prefix and its immediate separator stripped; a word
+that merely begins with the same letters (`HEARTBEAT_OKAY…`) is content. A body that
+collapses to blank after the plain-text projection is silent. The
+store never sees sentinels; `extractActionableHeartbeatText` (internal,
+`HeartbeatScheduler`) is the single decision point. Staging runs strictly AFTER the
+snapshot consume-on-success and retention sweeps, and is best-effort: a staging/posting
+failure is logged and never skips the watermark advance or the run log (otherwise the
+60 s loop would re-run an already-completed heartbeat).
+
+### Surfaces and consume-on-resolve
+Notification (`service/TaskPromptNotifier`, channel `task_confirmation_v1`,
+IMPORTANCE_HIGH; actions Confirm + Open conversation; DeleteIntent == Dismiss;
+IDs on base 51000+ (20-bit hash space) derived from the confirmation ID so re-posts
+replace, never stack; the localized header comes from the single
+`TaskPromptNotifier.titleResFor` shared by notification, banner and card), the bottom-anchored translucent card (`ui/automation/TaskConfirmationActivity`,
+theme derives from `Theme.AssistantOverlay`), and the chat banner
+(`PendingTaskConfirmationsBanner`, store read straight from the container — collected
+only while the chat composes). Resolutions are single-winner Room transitions
+(`PENDING → ACKNOWLEDGED/DISMISSED` with `status='PENDING'` predicate); the losing
+surface no-ops. Every consuming surface cancels the notification unconditionally, even
+when it lost the race, so no dead action buttons linger.
+If the platform refuses the post (`canPost()` false, permission revoked), the row
+survives for the banner — no orphan result.
+
+### Snooze contract (fetch-and-clear)
+`TaskConfirmationStore.consumeDueReminders(now)` is the ONLY writer of
+`remindAtEpochMs = NULL`. It returns due rows and clears the column in one
+transaction; rows resolved by another surface between SELECT and UPDATE are
+dropped (the clear UPDATE carries the PENDING predicate and reports 0). The
+scheduler's tick calls it every 60 s — even when the heartbeat itself is not due —
+and re-posts only when backgrounded. With the daemon off there is no tick and no
+re-post: the row stays PENDING and resolvable from the banner (snooze is a
+convenience, not a contract).
+
+### Presentation modes and card style (F7, Universal Installer analogue)
+`Settings → Automation → Task confirmations` exposes two presentation modes
+(`taskConfirmationMode`, DataStore, portable): **PROMPT** (default; durable row +
+banner + actionable notification, all §11 semantics above) and **AUTO** — the
+Universal Installer `AutoNotification` analogue: an informational auto-dismiss
+notification ONLY. AUTO stages NOTHING: no durable row, no banner, no actions, no
+delete intent — a result nobody is asked to confirm must not occupy durable state
+(`TaskPromptNotifier.postInfo`, ID derived from source+conversation+message so
+consecutive results replace each other). The HEARTBEAT_OK actionability filter and
+the foreground suppression apply to both modes. Card anchor
+(`taskConfirmationCardStyle`, portable): BOTTOM (sheet) or CENTERED (dialog) — same
+card content, only the anchor/max-width changes (`TaskConfirmationCard(centered=)`).
+Settings lives in `SettingsTaskConfirmations` (sub-object pattern, 999-line budget)
+with radios + live mini-preview mirroring Universal Installer's "Pantalla de
+instalación" preview.
+
+### Deliberate exclusion from `.agora`
+`task_confirmations` is NOT serialized by `DataExporter` and NOT restored by
+`DataImporter`: the rows are ephemeral and reference conversations a REPLACE restore
+may not include; restoring them would create orphans with zero user value. This
+exclusion is deliberate — do not "fix" it by adding export without the
+email-style reconciliation.
+
+### Failure path unchanged
+The pre-feature failure semantics (`!foreground && !success` → plain
+`HeartbeatNotifier` on channel `heartbeat_notifications`) are byte-identical. An
+error is not a reminder: it is never staged, confirmed, or snoozed. Toggle OFF with
+pre-existing PENDING rows: the rows stay visible/resolvable in the banner, no new
+rows are staged, and the 7-day cleanup ages them out if never resolved — expected
+behaviour, not a bug.
+
+## 12. Test map
 
 | Focus | Suite |
 |---|---|
 | Due-gate boundaries incl. midnight wrap | `HeartbeatDueGateTest` |
 | Prompt sections, caps, sort order | `HeartbeatPromptBuilderTest` |
 | Previous-results extraction (tool rows excluded, labels, cap, empty) | `HeartbeatRecentResponsesTest` |
-| Busy/Failure/Success outcome semantics | `HeartbeatSchedulerBusyPathTest` |
+| Busy/Failure/Success outcome semantics | `HeartbeatSchedulerBusyPathTest` (extended: toggle ON/OFF staging, HEARTBEAT_OK silence, foreground-no-post, failure-never-staged) |
 | Heartbeat prompt badge/collapse rendering decision | `HeartbeatPromptRenderingTest` |
 | requestKind persistence at the accepted-input boundary | `AcceptedInputGraphWriterTest` |
 | Room v36→v37 runs.requestKind migration | `Migration36To37Test` |
 | Log recording bounds | `HeartbeatManagerTest` |
 | Conversation resolution/migration | `HeartbeatConversationRepositoryTest` |
+| Rich confirmation store contract (dedup, cap, single-winner, snooze fetch-and-clear, race drop) | `TaskConfirmationStoreTest` |
+| Actionable-text filter (sentinel silence, prefix strip, pass-through) | `HeartbeatActionableTextTest` |
+| Confirmation notification-ID stability/range (base 51000+, production function) | `TaskPromptNotifierIdTest` |

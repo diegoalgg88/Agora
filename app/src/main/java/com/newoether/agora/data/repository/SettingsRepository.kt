@@ -23,6 +23,8 @@ import com.newoether.agora.data.CustomProviderNamePolicy
 import com.newoether.agora.data.EmbeddingModelConfig
 import com.newoether.agora.data.EmailAccount
 import com.newoether.agora.data.LocalChatModelConfig
+import com.newoether.agora.data.local.TaskConfirmationCardStyle
+import com.newoether.agora.data.local.TaskConfirmationMode
 import com.newoether.agora.data.NotificationListenerStatus
 import com.newoether.agora.data.PredefinedVariables
 import com.newoether.agora.data.PromptTemplateItem
@@ -322,6 +324,11 @@ class SettingsRepository(
 
     // ── Daemon ─────────────────────────────────────────────────
     val daemonEnabled: StateFlow<Boolean> = hot(settingsManager.daemonEnabled, false)
+
+    // ── Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) ──
+    val taskConfirmationEnabled: StateFlow<Boolean> = hot(settingsManager.settingsTaskConfirmations.enabled, false)
+    val taskConfirmationMode: StateFlow<TaskConfirmationMode> = hot(settingsManager.settingsTaskConfirmations.mode, TaskConfirmationMode.DEFAULT)
+    val taskConfirmationCardStyle: StateFlow<TaskConfirmationCardStyle> = hot(settingsManager.settingsTaskConfirmations.cardStyle, TaskConfirmationCardStyle.DEFAULT)
 
     // ── Notifications ───────────────────────────────────────────
     val notificationsEnabled: StateFlow<Boolean> = hot(settingsManager.settingsNotifications.notificationsEnabled, false)
@@ -958,6 +965,11 @@ class SettingsRepository(
     // ── Daemon ─────────────────────────────────────────────────
     fun setDaemonEnabled(enabled: Boolean) = scope.launch { settingsManager.saveDaemonEnabled(enabled) }
     fun saveDaemonEnabled(enabled: Boolean) = scope.launch { settingsManager.saveDaemonEnabled(enabled) }
+
+    // ── Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) ──
+    fun setTaskConfirmationEnabled(enabled: Boolean) = scope.launch { settingsManager.saveTaskConfirmationEnabled(enabled) }
+    fun setTaskConfirmationMode(mode: TaskConfirmationMode) = scope.launch { settingsManager.settingsTaskConfirmations.saveMode(mode) }
+    fun setTaskConfirmationCardStyle(style: TaskConfirmationCardStyle) = scope.launch { settingsManager.settingsTaskConfirmations.saveCardStyle(style) }
 
     // ── Notifications ───────────────────────────────────────────
     fun setNotificationsEnabled(enabled: Boolean) = scope.launch { settingsManager.settingsNotifications.saveNotificationsEnabled(enabled) }

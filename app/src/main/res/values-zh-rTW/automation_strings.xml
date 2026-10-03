@@ -135,4 +135,30 @@
     <string name="heartbeat_no_runs">尚無心跳執行記錄。</string>
     <string name="heartbeat_log_ok">成功</string>
     <string name="heartbeat_log_failed">失敗</string>
+
+    <!-- Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) -->
+    <string name="task_confirmation_channel_name">任務確認</string>
+    <string name="task_confirmation_channel_desc">需要你關注的自動化任務與心跳結果通知。</string>
+    <string name="task_confirmation_action_confirm">確認</string>
+    <string name="task_confirmation_action_open_conversation">開啟對話</string>
+    <string name="task_confirmation_action_snooze">稍後提醒</string>
+    <string name="task_confirmation_snooze_10">10 分鐘</string>
+    <string name="task_confirmation_snooze_30">30 分鐘</string>
+    <string name="task_confirmation_snooze_60">1 小時</string>
+    <string name="task_confirmation_card_expand">顯示更多</string>
+    <string name="task_confirmation_card_collapse">收合</string>
+    <string name="task_confirmation_banner_view">檢視</string>
+    <string name="task_confirmation_banner_confirm">確認</string>
+    <string name="task_confirmation_banner_dismiss">略過</string>
+    <string name="task_confirmation_settings_title">任務確認</string>
+    <string name="task_confirmation_settings_desc">當自動化任務或心跳產生需要關注的結果時通知我。</string>
+    <string name="task_confirmation_result_title">心跳結果</string>
+    <string name="daemon_active_status">自動化執行中</string>
+    <string name="task_confirmation_mode_prompt">請求確認</string>
+    <string name="task_confirmation_mode_prompt_desc">持久的確認，包含確認、略過和稍後提醒操作，並在聊天中顯示橫幅。</string>
+    <string name="task_confirmation_mode_auto">僅通知</string>
+    <string name="task_confirmation_mode_auto_desc">自動消失的簡單通知；不儲存任何內容，也不詢問任何操作。</string>
+    <string name="task_confirmation_card_style_section">確認卡片</string>
+    <string name="task_confirmation_card_style_bottom">底部</string>
+    <string name="task_confirmation_card_style_centered">置中</string>
 </resources>

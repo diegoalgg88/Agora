@@ -135,4 +135,30 @@
     <string name="heartbeat_no_runs">ハートビートの実行記録はまだありません。</string>
     <string name="heartbeat_log_ok">成功</string>
     <string name="heartbeat_log_failed">失敗</string>
+
+    <!-- Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) -->
+    <string name="task_confirmation_channel_name">タスク確認</string>
+    <string name="task_confirmation_channel_desc">注意が必要な自動タスクやハートビートの結果の通知。</string>
+    <string name="task_confirmation_action_confirm">確認</string>
+    <string name="task_confirmation_action_open_conversation">会話を開く</string>
+    <string name="task_confirmation_action_snooze">後で通知</string>
+    <string name="task_confirmation_snooze_10">10分</string>
+    <string name="task_confirmation_snooze_30">30分</string>
+    <string name="task_confirmation_snooze_60">1時間</string>
+    <string name="task_confirmation_card_expand">さらに表示</string>
+    <string name="task_confirmation_card_collapse">表示を減らす</string>
+    <string name="task_confirmation_banner_view">表示</string>
+    <string name="task_confirmation_banner_confirm">確認</string>
+    <string name="task_confirmation_banner_dismiss">破棄</string>
+    <string name="task_confirmation_settings_title">タスク確認</string>
+    <string name="task_confirmation_settings_desc">自動タスクやハートビートが注意を要する結果を返したときに通知します。</string>
+    <string name="task_confirmation_result_title">ハートビートの結果</string>
+    <string name="daemon_active_status">自動化が実行中</string>
+    <string name="task_confirmation_mode_prompt">確認を求める</string>
+    <string name="task_confirmation_mode_prompt_desc">確認・破棄・後で通知の操作がある永続的な確認に加え、チャット内のバナー。</string>
+    <string name="task_confirmation_mode_auto">通知のみ</string>
+    <string name="task_confirmation_mode_auto_desc">自動で消えるシンプルな通知。何も保存せず、何も尋ねません。</string>
+    <string name="task_confirmation_card_style_section">確認カード</string>
+    <string name="task_confirmation_card_style_bottom">下</string>
+    <string name="task_confirmation_card_style_centered">中央</string>
 </resources>

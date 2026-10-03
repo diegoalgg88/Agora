@@ -391,6 +391,8 @@ class AppContainer(
             loopManager = loopManager,
             emailStore = emailStore,
             emailPoller = emailPoller,
+            taskConfirmationStore = taskConfirmationStore,
+            taskPromptNotifier = taskPromptNotifier,
         )
     }
 
@@ -501,6 +503,17 @@ class AppContainer(
 
     val assistantActionStore: com.newoether.agora.data.AssistantActionStore by lazy {
         com.newoether.agora.data.AssistantActionStore(chatDao, database)
+    }
+
+    // Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM). Separate store from
+    // assistantActionStore by contract: this one owns automation result confirmations
+    // and never dispatches device effects.
+    val taskConfirmationStore: com.newoether.agora.data.TaskConfirmationStore by lazy {
+        com.newoether.agora.data.TaskConfirmationStore(chatDao, database)
+    }
+
+    val taskPromptNotifier: com.newoether.agora.service.TaskPromptNotifier by lazy {
+        com.newoether.agora.service.TaskPromptNotifier(appContext)
     }
 
     val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider by lazy {

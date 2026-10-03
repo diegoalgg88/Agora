@@ -135,6 +135,22 @@
             </intent-filter>
         </activity>
 
+        <!-- Rich task confirmation: bottom-anchored card over the current app. Theme derives
+             from the proven translucent assistant overlay; NOT excluded from recents (same
+             OEM picker reason as AssistantActivity). Exported=false: only our own
+             PendingIntents (notification, chat banner) reach it. -->
+        <activity
+            android:name=".ui.automation.TaskConfirmationActivity"
+            android:exported="false"
+            android:launchMode="singleTask"
+            android:windowSoftInputMode="adjustResize"
+            android:theme="@style/Theme.TaskConfirmation" />
+
+        <!-- Rich task confirmation notification actions (Confirm / swipe-away Dismiss). -->
+        <receiver
+            android:name=".automation.TaskConfirmationReceiver"
+            android:exported="false" />
+
         <!-- WorkManager owns the foreground lifecycle for scheduled automation runs. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

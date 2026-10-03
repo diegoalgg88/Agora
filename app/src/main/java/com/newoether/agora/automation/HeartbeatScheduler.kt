@@ -7,6 +7,9 @@ import com.newoether.agora.data.HeartbeatManager
 import com.newoether.agora.data.NotificationStore
 import com.newoether.agora.data.SmsPoller
 import com.newoether.agora.data.SmsStore
+import com.newoether.agora.data.TaskConfirmationStore
+import com.newoether.agora.data.local.TaskConfirmationMode
+import com.newoether.agora.data.local.TaskConfirmationSource
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.getOrCreateHeartbeatConversationId
 import com.newoether.agora.data.repository.getRecentFinalModelResponses
@@ -14,12 +17,17 @@ import com.newoether.agora.data.repository.migrateHeartbeatConversationSetting
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.service.AppForegroundTracker
 import com.newoether.agora.service.HeartbeatNotifier
+import com.newoether.agora.service.TaskPromptNotifier
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+
+/** Markup/whitespace a model may wrap around the HEARTBEAT_OK marker; never content. */
+private val DECORATION_CHARS = charArrayOf('*', '_', '`', '"', '\'', ' ', '\n', '\r', '\t')
 
 /**
  * Dedicated scheduler for heartbeat and SMS polling.
@@ -44,6 +52,8 @@ class HeartbeatScheduler(
     private val loopManager: LoopManager,
     private val emailStore: EmailStore,
     private val emailPoller: EmailPoller,
+    private val taskConfirmationStore: TaskConfirmationStore,
+    private val taskPromptNotifier: TaskPromptNotifier,
 ) {
     private val scope = kotlinx.coroutines.CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var job: Job? = null
@@ -92,11 +102,59 @@ class HeartbeatScheduler(
         executeHeartbeat()
     }
 
+    /**
+     * Fire-and-forget [runHeartbeatNow] launched in the scheduler's own process scope.
+     *
+     * Settings' "Run now" must NEVER mount the run on a composition scope: navigating from
+     * Settings to the chat to watch the generation disposes the Settings composition, which
+     * cancelled the in-flight run and finalized it as STOPPED/USER_STOPPED with no log row
+     * (verified twice on device, 2026-10-03). The scheduler scope survives navigation and
+     * shares the in-flight CAS with the loop, so overlap semantics are unchanged.
+     */
+    fun runHeartbeatNowAsync(): Job = scope.launch {
+        // The scheduler scope has no CoroutineExceptionHandler: an escaping exception would
+        // reach the process-level handler and crash the app. The loop path already catches;
+        // this fire-and-forget path must hold the same line.
+        try {
+            executeHeartbeat()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            com.newoether.agora.util.DebugLog.e("HeartbeatScheduler", "Manual heartbeat failed", e)
+        }
+    }
+
     private suspend fun runCycle() {
         // Run heartbeat if due
         if (heartbeatManager.isHeartbeatDue()) {
             awaitInitialLoad()
             executeHeartbeat()
+        }
+
+        // Rich task confirmations: snooze due-gate (plan PLAN-20261002-TASK-CONFIRM).
+        // Runs on every tick — even when the heartbeat itself is not due — so a snoozed
+        // reminder re-posts at its own deadline. consumeDueReminders is fetch-and-clear:
+        // the same transaction that returns the due rows clears remindAtEpochMs, otherwise
+        // this tick would re-post the same row every 60s until resolved. Rows resolved by
+        // another surface (notification action, banner, card) between SELECT and UPDATE
+        // are dropped by the status='PENDING' predicate.
+        runCatching {
+            val due = taskConfirmationStore.consumeDueReminders(System.currentTimeMillis())
+            if (due.isNotEmpty() &&
+                !appForegroundTracker.isInForeground &&
+                taskPromptNotifier.canPost()
+            ) {
+                for (row in due) {
+                    taskPromptNotifier.post(
+                        confirmationId = row.id,
+                        sourceType = row.sourceType,
+                        body = row.bodyText,
+                        conversationId = row.conversationId,
+                    )
+                }
+            }
+        }.onFailure { error ->
+            com.newoether.agora.util.DebugLog.e("HeartbeatScheduler", "Snooze due-gate failed", error)
         }
 
         // Poll SMS if enabled, rate-limited by the configured poll interval
@@ -177,7 +235,24 @@ class HeartbeatScheduler(
         val userSelectedId = settingsRepository.heartbeatConversationId.value
         val heartbeatConversationId: String =
             if (!userSelectedId.isNullOrBlank()) {
-                userSelectedId
+                // Orphaned pin heal (verified against a real device run, 2026-10-03: three
+                // consecutive "Conversation not found" failures after the pinned conversation
+                // was deleted). Verify-then-clear: if the pinned conversation no longer
+                // exists, clear the setting and fall back to the dedicated auto-created one
+                // instead of failing every tick against a dead id.
+                val exists = getConversationRepository().getConversation(userSelectedId) != null
+                if (exists) {
+                    userSelectedId
+                } else {
+                    settingsRepository.saveHeartbeatConversationId(null)
+                    com.newoether.agora.util.DebugLog.w(
+                        "HeartbeatScheduler",
+                        "Pinned heartbeat conversation missing; cleared setting",
+                    )
+                    getConversationRepository().getOrCreateHeartbeatConversationId(
+                        modelId = settingsRepository.heartbeatModel.value,
+                    )
+                }
             } else {
                 getConversationRepository().getOrCreateHeartbeatConversationId(
                     modelId = settingsRepository.heartbeatModel.value,
@@ -218,6 +293,19 @@ class HeartbeatScheduler(
             }
         }
         notificationStore.performRetentionSweep()
+        try {
+            taskConfirmationStore.cleanupOld()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // Retention is housekeeping; it must never skip the watermark/log bookkeeping below.
+            com.newoether.agora.util.DebugLog.w("HeartbeatScheduler", "Task confirmation cleanup failed", e)
+        }
+
+        // Surfacing runs after consume-on-success and the retention sweep (see the helper).
+        if (success && result is TaskExecutionEngine.Result.Success) {
+            surfaceTaskConfirmation(heartbeatConversationId, result)
+        }
 
         // Log the result. Failure advances the watermark too: without it, a persistently
         // failing provider would be retried every 60s tick instead of waiting out the interval.
@@ -234,6 +322,72 @@ class HeartbeatScheduler(
         // Send push notification if backgrounded
         if (!appForegroundTracker.isInForeground && !success) {
             sendHeartbeatNotification(resultText)
+        }
+    }
+
+    /**
+     * Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM): surfaces the result when the
+     * toggle is ON AND the result is actionable. Runs AFTER the snapshot consume-on-success and
+     * the retention sweeps so the pre-feature semantics are untouched. "Actionable" is decided
+     * HERE — the store never sees sentinels: the common clean-heartbeat result is HEARTBEAT_OK,
+     * which the user explicitly does not want surfaced.
+     *
+     * Best-effort by contract: the snapshot is already consumed and the run already succeeded,
+     * so a staging/posting failure must NOT skip the watermark advance and the run log below —
+     * otherwise the 60s loop would re-run (and re-bill) a heartbeat that already completed.
+     */
+    private suspend fun surfaceTaskConfirmation(
+        conversationId: String,
+        result: TaskExecutionEngine.Result.Success,
+    ) {
+        try {
+            if (!settingsRepository.taskConfirmationEnabled.value) return
+            val actionable = extractActionableHeartbeatText(result.text) ?: return
+            val plainBody = plainTextForConfirmation(actionable)
+            // Markdown-only remainders ("###") collapse to empty; the store rejects blank bodies.
+            if (plainBody.isBlank()) return
+            val background = !appForegroundTracker.isInForeground && taskPromptNotifier.canPost()
+            if (settingsRepository.taskConfirmationMode.value == TaskConfirmationMode.AUTO) {
+                // AUTO (Universal Installer's AutoNotification analogue): informational only —
+                // NO staging, NO banner, NO actions. A result nobody is asked to confirm must
+                // not occupy durable state.
+                if (background) {
+                    taskPromptNotifier.postInfo(
+                        sourceType = TaskConfirmationSource.HEARTBEAT.name,
+                        body = plainBody,
+                        conversationId = conversationId,
+                        modelMessageId = result.modelMessageId,
+                    )
+                }
+                return
+            }
+            val staged = taskConfirmationStore.stage(
+                TaskConfirmationStore.Draft(
+                    source = TaskConfirmationSource.HEARTBEAT,
+                    conversationId = conversationId,
+                    // modelMessageId (not runId): Result.Success only exposes
+                    // (modelMessageId, text); modelMessageId is unique per generation.
+                    modelMessageId = result.modelMessageId,
+                    // Neutral durable title: UI surfaces localize their own headers.
+                    title = "Heartbeat",
+                    // Stripped once so every surface inherits the same clean durable body.
+                    bodyText = plainBody,
+                ),
+            )
+            // Post only in background: in the foreground the chat banner surfaces the row
+            // without a heads-up interrupting the user.
+            if (background) {
+                taskPromptNotifier.post(
+                    confirmationId = staged.id,
+                    sourceType = staged.sourceType,
+                    body = staged.bodyText,
+                    conversationId = staged.conversationId,
+                )
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            com.newoether.agora.util.DebugLog.e("HeartbeatScheduler", "Task confirmation surfacing failed", e)
         }
     }
 
@@ -306,5 +460,65 @@ class HeartbeatScheduler(
 
     private suspend fun sendHeartbeatNotification(message: String) {
         heartbeatNotifier.sendHeartbeatNotification("Heartbeat Check", message)
+    }
+
+    /**
+     * The actionable remainder of a heartbeat result, or null when the result is silent
+     * (plan PLAN-20261002-TASK-CONFIRM decision 8). Silent means: empty after trim, or
+     * exactly [HeartbeatManager.HEARTBEAT_OK_SENTINEL] case-insensitive — the value the
+     * heartbeat prompt asks the model to emit when nothing needs attention. A result that
+     * STARTS with the sentinel followed by substantive content (e.g.
+     * "HEARTBEAT_OK — el backup lleva 3 días fallando") gets the prefix and its immediate
+     * separator stripped, so a formal prefix never swallows real content.
+     */
+    internal fun extractActionableHeartbeatText(raw: String): String? {
+        val trimmed = raw.trim()
+        if (trimmed.isEmpty()) return null
+        val sentinel = HeartbeatManager.HEARTBEAT_OK_SENTINEL
+        // Models routinely decorate the marker ("**HEARTBEAT_OK**", "`HEARTBEAT_OK`",
+        // "HEARTBEAT_OK."); decoration is not content, so it must not defeat the silent path.
+        val unwrapped = trimmed.trimStart(*DECORATION_CHARS)
+        if (unwrapped.regionMatches(0, sentinel, 0, sentinel.length, ignoreCase = true)) {
+            val next = unwrapped.getOrNull(sentinel.length)
+            // "HEARTBEAT_OKAY…" is ordinary text that merely starts with the same letters.
+            if (next == null || !(next.isLetterOrDigit() || next == '_')) {
+                val remainder = unwrapped.substring(sentinel.length)
+                    .trimStart(*DECORATION_CHARS, '—', '–', '-', ':', '.', '!', ',', ';')
+                    .trim()
+                // Nothing substantive left (e.g. "HEARTBEAT_OK.") → silent.
+                return remainder.takeIf { r -> r.any { it.isLetterOrDigit() } }
+            }
+        }
+        return trimmed
+    }
+
+    /**
+     * Plain-text projection of an actionable heartbeat result for the rich-confirmation
+     * surfaces (notification shade, chat banner, bottom card). None of them render markdown,
+     * so bold/italic markers, heading hashes, backticks, and bullet syntax are stripped ONCE
+     * here — the durable row stores the clean text and every surface inherits the same body.
+     * Content is otherwise untouched: no line-merging, no truncation (surfaces clamp with
+     * maxLines/BigText themselves).
+     */
+    internal fun plainTextForConfirmation(raw: String): String = buildString {
+        for (line in raw.lines()) {
+            var text = line.trimStart()
+            // Emphasis/backticks are invisible syntax, not content. Stripped BEFORE headings:
+            // "**###**" must end up empty, not leave a bare "###" behind.
+            text = text.replace("**", "").replace("__", "")
+                .replace("`", "")
+                .trimStart()
+            // Heading markers: "## Title" → "Title".
+            while (text.startsWith("#")) text = text.substring(1).trimStart()
+            // List markers render as bullets natively; strip the marker keep the item.
+            text = text.removePrefix("- ").removePrefix("* ").removePrefix("+ ")
+                .removePrefix("• ")
+                .trimStart()
+            if (text.isNotEmpty()) {
+                if (isNotEmpty()) append('\n')
+                append(text)
+            }
+        }
+        toString()
     }
 }

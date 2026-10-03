@@ -277,6 +277,13 @@ fun SettingsAutomationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         )
                     },
                     {
+                        // Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM). Extracted
+                        // item: this page sits near the 999-line file budget.
+                        TaskConfirmationSettingsItem(
+                            settingsRepository = viewModel.settings,
+                        )
+                    },
+                    {
                         SettingsItem(
                             headlineContent = {
                                 Text(stringResource(R.string.automation_wake_lock))

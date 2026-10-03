@@ -174,6 +174,11 @@ internal object PortableSettingsArchive {
         
         // Automation background services
         put("daemonEnabled", JsonPrimitive(sm.daemonEnabled.first()))
+
+        // Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM)
+        put("taskConfirmationEnabled", JsonPrimitive(sm.settingsTaskConfirmations.enabled.first()))
+        put("taskConfirmationMode", JsonPrimitive(sm.settingsTaskConfirmations.mode.first().name))
+        put("taskConfirmationCardStyle", JsonPrimitive(sm.settingsTaskConfirmations.cardStyle.first().name))
         
         // Heartbeat
         put("heartbeatEnabled", JsonPrimitive(sm.heartbeatEnabled.first()))
@@ -525,6 +530,19 @@ internal object PortableSettingsArchive {
 
         // Automation background services
         obj.boolean("daemonEnabled")?.let { sm.saveDaemonEnabled(it) }
+
+        // Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM)
+        obj.boolean("taskConfirmationEnabled")?.let { sm.saveTaskConfirmationEnabled(it) }
+        obj.string("taskConfirmationMode")?.let {
+            sm.settingsTaskConfirmations.saveMode(
+                com.newoether.agora.data.local.TaskConfirmationMode.fromWire(it),
+            )
+        }
+        obj.string("taskConfirmationCardStyle")?.let {
+            sm.settingsTaskConfirmations.saveCardStyle(
+                com.newoether.agora.data.local.TaskConfirmationCardStyle.fromWire(it),
+            )
+        }
 
         // Heartbeat
         obj.boolean("heartbeatEnabled")?.let { sm.saveHeartbeatEnabled(it) }

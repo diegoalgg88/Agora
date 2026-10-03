@@ -135,4 +135,30 @@
     <string name="heartbeat_no_runs">Aucune exécution de heartbeat enregistrée pour l\'instant.</string>
     <string name="heartbeat_log_ok">OK</string>
     <string name="heartbeat_log_failed">Échoué</string>
+
+    <!-- Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM) -->
+    <string name="task_confirmation_channel_name">Confirmations de tâches</string>
+    <string name="task_confirmation_channel_desc">Notifications des résultats de tâches automatisées et de heartbeats nécessitant votre attention.</string>
+    <string name="task_confirmation_action_confirm">Confirmer</string>
+    <string name="task_confirmation_action_open_conversation">Ouvrir la conversation</string>
+    <string name="task_confirmation_action_snooze">Reporter</string>
+    <string name="task_confirmation_snooze_10">10 minutes</string>
+    <string name="task_confirmation_snooze_30">30 minutes</string>
+    <string name="task_confirmation_snooze_60">1 heure</string>
+    <string name="task_confirmation_card_expand">Afficher plus</string>
+    <string name="task_confirmation_card_collapse">Afficher moins</string>
+    <string name="task_confirmation_banner_view">Voir</string>
+    <string name="task_confirmation_banner_confirm">Confirmer</string>
+    <string name="task_confirmation_banner_dismiss">Ignorer</string>
+    <string name="task_confirmation_settings_title">Confirmations de tâches</string>
+    <string name="task_confirmation_settings_desc">Me notifier quand une tâche automatisée ou un heartbeat produit un résultat nécessitant mon attention.</string>
+    <string name="task_confirmation_result_title">Résultat du heartbeat</string>
+    <string name="daemon_active_status">Automatisation active</string>
+    <string name="task_confirmation_mode_prompt">Demander confirmation</string>
+    <string name="task_confirmation_mode_prompt_desc">Confirmation durable avec les actions Confirmer, Ignorer et Reporter, plus une bannière dans le chat.</string>
+    <string name="task_confirmation_mode_auto">Informatif uniquement</string>
+    <string name="task_confirmation_mode_auto_desc">Une notification simple qui se supprime seule ; rien n\'est enregistré ni demandé.</string>
+    <string name="task_confirmation_card_style_section">Carte de confirmation</string>
+    <string name="task_confirmation_card_style_bottom">En bas</string>
+    <string name="task_confirmation_card_style_centered">Centrée</string>
 </resources>
