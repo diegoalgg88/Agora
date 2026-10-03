@@ -782,6 +782,33 @@
     <string name="model_id_label">ID del modelo</string>
     <string name="model_alias_label">Alias</string>
 
+    <!-- Local Model Catalog (download) -->
+    <string name="local_model_catalog_title">Catálogo de modelos</string>
+    <string name="local_model_catalog_browse">Explorar catálogo</string>
+    <string name="local_model_catalog_empty">No hay modelos en el catálogo</string>
+    <string name="local_model_catalog_empty_desc">Revisa tu conexión e inténtalo de nuevo</string>
+    <string name="local_model_catalog_loading">Cargando catálogo…</string>
+    <string name="local_model_catalog_retry">Reintentar</string>
+    <string name="local_model_catalog_gated">Requiere iniciar sesión en huggingface.co</string>
+    <string name="local_model_download">Descargar</string>
+    <string name="local_model_downloading">Descargando… %1$d%%</string>
+    <string name="local_model_download_queued">En cola</string>
+    <string name="local_model_download_speed_eta">%1$s/s · quedan %2$s</string>
+    <string name="local_model_download_pause">Pausar</string>
+    <string name="local_model_download_resume_dl">Reanudar</string>
+    <string name="local_model_download_ready">Listo</string>
+    <string name="local_model_download_failed">Falló — toca para reintentar</string>
+    <string name="local_model_download_cancel">¿Cancelar descarga?</string>
+    <string name="local_model_download_cancel_text">¿Cancelar la descarga de \'%1$s\'? El archivo parcial permanece en disco y la descarga puede reanudarse después.</string>
+    <string name="local_model_ram_warning">Requiere ~%1$d GB de RAM</string>
+    <string name="local_model_download_notification_channel">Descargas de modelos</string>
+    <string name="local_model_download_notification_channel_description">Progreso de las descargas de modelos locales</string>
+    <string name="local_model_download_notification_title">Descargando modelo</string>
+    <string name="local_model_download_notification_content">%1$s · %2$d%%</string>
+    <string name="local_model_download_notification_progress">%1$d%%</string>
+    <string name="local_model_badge_tools">Herramientas</string>
+    <string name="local_model_badge_thinking">Razonamiento</string>
+
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Memoria y datos</string>
     <string name="settings_group_appearance_language">Apariencia e idioma</string>

@@ -89,7 +89,7 @@ class ChatViewModel(
     private val taskExecutionEngine: com.newoether.agora.automation.TaskExecutionEngine, private val heartbeatToolProvider: HeartbeatToolProvider, private val smsToolProvider: SmsToolProvider,
     private val smsDraftStore: com.newoether.agora.data.SmsDraftStore, private val smsStore: com.newoether.agora.data.SmsStore, private val smsPoller: com.newoether.agora.data.SmsPoller, private val smsSender: com.newoether.agora.sms.SmsSender, private val emailDraftStore: com.newoether.agora.data.EmailDraftStore, private val emailStore: com.newoether.agora.data.EmailStore, private val emailPoller: com.newoether.agora.data.EmailPoller,
     private val notificationToolProvider: com.newoether.agora.tool.NotificationToolProvider,
-    private val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider, private val emailToolProvider: com.newoether.agora.tool.EmailToolProvider,) : AndroidViewModel(application) {
+    private val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider, private val emailToolProvider: com.newoether.agora.tool.EmailToolProvider, val modelManager: ModelManager, val localModelDownloadManager: com.newoether.agora.data.LocalModelDownloadManager, val modelCatalogRepository: com.newoether.agora.data.catalog.ModelCatalogRepository,) : AndroidViewModel(application) {
     val settings: SettingsRepository = settingsRepository
     val smsUi: SmsUiBridge = SmsUiBridge(smsDraftStore, smsStore, smsPoller, smsSender, viewModelScope)
     val emailUi: EmailUiBridge = EmailUiBridge(emailDraftStore, emailStore, emailPoller, settingsRepository, viewModelScope)
@@ -212,8 +212,7 @@ class ChatViewModel(
         resumeAutomationScheduling = taskManager::refreshSchedulingAfterImport,
     )
 
-    /** Local (on-device) chat-model configuration CRUD. */
-    val modelManager = ModelManager(settings, viewModelScope)
+    /** Local (on-device) chat-model configuration CRUD — process-scoped singleton injected from AppContainer. */
     private val customModelConfiguration = CustomModelConfigurationController(
         providers = providerRegistry,
         conversations = convRepo,

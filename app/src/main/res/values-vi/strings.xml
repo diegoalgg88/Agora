@@ -785,6 +785,33 @@
     <string name="model_id_label">ID mô hình</string>
     <string name="model_alias_label">Tên thay thế</string>
 
+    <!-- Local Model Catalog (download) -->
+    <string name="local_model_catalog_title">Danh mục mô hình</string>
+    <string name="local_model_catalog_browse">Xem danh mục</string>
+    <string name="local_model_catalog_empty">Không có mô hình nào trong danh mục</string>
+    <string name="local_model_catalog_empty_desc">Kiểm tra kết nối và thử lại</string>
+    <string name="local_model_catalog_loading">Đang tải danh mục…</string>
+    <string name="local_model_catalog_retry">Thử lại</string>
+    <string name="local_model_catalog_gated">Cần đăng nhập huggingface.co</string>
+    <string name="local_model_download">Tải xuống</string>
+    <string name="local_model_downloading">Đang tải… %1$d%%</string>
+    <string name="local_model_download_queued">Đang chờ</string>
+    <string name="local_model_download_speed_eta">%1$s/giây · còn %2$s</string>
+    <string name="local_model_download_pause">Tạm dừng</string>
+    <string name="local_model_download_resume_dl">Tiếp tục</string>
+    <string name="local_model_download_ready">Sẵn sàng</string>
+    <string name="local_model_download_failed">Thất bại — chạm để thử lại</string>
+    <string name="local_model_download_cancel">Hủy tải xuống?</string>
+    <string name="local_model_download_cancel_text">Hủy tải xuống \'%1$s\'? Tệp một phần vẫn còn trên thiết bị và có thể tiếp tục sau.</string>
+    <string name="local_model_ram_warning">Cần ~%1$d GB RAM</string>
+    <string name="local_model_download_notification_channel">Tải xuống mô hình</string>
+    <string name="local_model_download_notification_channel_description">Tiến độ tải xuống mô hình cục bộ</string>
+    <string name="local_model_download_notification_title">Đang tải mô hình xuống</string>
+    <string name="local_model_download_notification_content">%1$s · %2$d%%</string>
+    <string name="local_model_download_notification_progress">%1$d%%</string>
+    <string name="local_model_badge_tools">Công cụ</string>
+    <string name="local_model_badge_thinking">Suy luận</string>
+
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Bộ nhớ &amp; Dữ liệu</string>
     <string name="settings_group_appearance_language">Giao diện &amp; Ngôn ngữ</string>

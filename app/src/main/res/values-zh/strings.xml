@@ -926,6 +926,33 @@
     <string name="local_chat_delete_text">确定要删除 \'%1$s\' 吗？这将同时删除模型文件。</string>
     <string name="model_id_label">模型 ID</string>
     <string name="model_alias_label">别名</string>
+
+    <!-- Local Model Catalog (download) -->
+    <string name="local_model_catalog_title">模型目录</string>
+    <string name="local_model_catalog_browse">浏览目录</string>
+    <string name="local_model_catalog_empty">目录中没有模型</string>
+    <string name="local_model_catalog_empty_desc">请检查网络连接后重试</string>
+    <string name="local_model_catalog_loading">正在加载目录…</string>
+    <string name="local_model_catalog_retry">重试</string>
+    <string name="local_model_catalog_gated">需要登录 huggingface.co</string>
+    <string name="local_model_download">下载</string>
+    <string name="local_model_downloading">下载中… %1$d%%</string>
+    <string name="local_model_download_queued">排队中</string>
+    <string name="local_model_download_speed_eta">%1$s/秒 · 剩余 %2$s</string>
+    <string name="local_model_download_pause">暂停</string>
+    <string name="local_model_download_resume_dl">继续</string>
+    <string name="local_model_download_ready">就绪</string>
+    <string name="local_model_download_failed">失败 — 点按重试</string>
+    <string name="local_model_download_cancel">取消下载？</string>
+    <string name="local_model_download_cancel_text">取消 \'%1$s\' 的下载？部分文件会保留在设备上，之后可以继续下载。</string>
+    <string name="local_model_ram_warning">需要约 %1$d GB 内存</string>
+    <string name="local_model_download_notification_channel">模型下载</string>
+    <string name="local_model_download_notification_channel_description">本地模型下载进度</string>
+    <string name="local_model_download_notification_title">正在下载模型</string>
+    <string name="local_model_download_notification_content">%1$s · %2$d%%</string>
+    <string name="local_model_download_notification_progress">%1$d%%</string>
+    <string name="local_model_badge_tools">工具</string>
+    <string name="local_model_badge_thinking">思考</string>
     <string name="local_title">本地</string>
     <string name="not_configured">未配置</string>
     <string name="provider_built_in">内置提供商</string>

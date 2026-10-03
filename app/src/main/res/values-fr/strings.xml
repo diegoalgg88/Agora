@@ -782,6 +782,33 @@
     <string name="model_id_label">ID du modèle</string>
     <string name="model_alias_label">Alias</string>
 
+    <!-- Local Model Catalog (download) -->
+    <string name="local_model_catalog_title">Catalogue de modèles</string>
+    <string name="local_model_catalog_browse">Parcourir le catalogue</string>
+    <string name="local_model_catalog_empty">Aucun modèle du catalogue disponible</string>
+    <string name="local_model_catalog_empty_desc">Vérifiez votre connexion et réessayez</string>
+    <string name="local_model_catalog_loading">Chargement du catalogue…</string>
+    <string name="local_model_catalog_retry">Réessayer</string>
+    <string name="local_model_catalog_gated">Connexion à huggingface.co requise</string>
+    <string name="local_model_download">Télécharger</string>
+    <string name="local_model_downloading">Téléchargement… %1$d%%</string>
+    <string name="local_model_download_queued">En file d\'attente</string>
+    <string name="local_model_download_speed_eta">%1$s/s · %2$s restantes</string>
+    <string name="local_model_download_pause">Interrompre</string>
+    <string name="local_model_download_resume_dl">Reprendre</string>
+    <string name="local_model_download_ready">Prêt</string>
+    <string name="local_model_download_failed">Échec — touchez pour réessayer</string>
+    <string name="local_model_download_cancel">Annuler le téléchargement ?</string>
+    <string name="local_model_download_cancel_text">Annuler le téléchargement de \'%1$s\' ? Le fichier partiel reste sur l\'appareil et le téléchargement pourra être repris plus tard.</string>
+    <string name="local_model_ram_warning">Nécessite ~%1$d Go de RAM</string>
+    <string name="local_model_download_notification_channel">Téléchargements de modèles</string>
+    <string name="local_model_download_notification_channel_description">Progression des téléchargements de modèles locaux</string>
+    <string name="local_model_download_notification_title">Téléchargement du modèle</string>
+    <string name="local_model_download_notification_content">%1$s · %2$d%%</string>
+    <string name="local_model_download_notification_progress">%1$d%%</string>
+    <string name="local_model_badge_tools">Outils</string>
+    <string name="local_model_badge_thinking">Raisonnement</string>
+
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Mémoire et données</string>
     <string name="settings_group_appearance_language">Apparence et langue</string>

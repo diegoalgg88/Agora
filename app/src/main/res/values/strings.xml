@@ -841,6 +841,33 @@
     <string name="model_id_label">Model ID</string>
     <string name="model_alias_label">Alias</string>
 
+    <!-- Local Model Catalog (download) -->
+    <string name="local_model_catalog_title">Model Catalog</string>
+    <string name="local_model_catalog_browse">Browse catalog</string>
+    <string name="local_model_catalog_empty">No catalog models available</string>
+    <string name="local_model_catalog_empty_desc">Check your connection and try again</string>
+    <string name="local_model_catalog_loading">Loading catalog…</string>
+    <string name="local_model_catalog_retry">Retry</string>
+    <string name="local_model_catalog_gated">Requires sign-in on huggingface.co</string>
+    <string name="local_model_download">Download</string>
+    <string name="local_model_downloading">Downloading… %1$d%%</string>
+    <string name="local_model_download_queued">Queued</string>
+    <string name="local_model_download_speed_eta">%1$s/s · %2$s left</string>
+    <string name="local_model_download_pause">Pause</string>
+    <string name="local_model_download_resume_dl">Resume</string>
+    <string name="local_model_download_ready">Ready</string>
+    <string name="local_model_download_failed">Failed — tap to retry</string>
+    <string name="local_model_download_cancel">Cancel download?</string>
+    <string name="local_model_download_cancel_text">Cancel the download of \'%1$s\'? The partial file stays on disk and the download can be resumed later.</string>
+    <string name="local_model_ram_warning">Requires ~%1$d GB of RAM</string>
+    <string name="local_model_download_notification_channel">Model downloads</string>
+    <string name="local_model_download_notification_channel_description">Progress of local model downloads</string>
+    <string name="local_model_download_notification_title">Downloading model</string>
+    <string name="local_model_download_notification_content">%1$s · %2$d%%</string>
+    <string name="local_model_download_notification_progress">%1$d%%</string>
+    <string name="local_model_badge_tools">Tools</string>
+    <string name="local_model_badge_thinking">Thinking</string>
+
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Memory &amp; Data</string>
     <string name="settings_group_appearance_language">Appearance &amp; Language</string>

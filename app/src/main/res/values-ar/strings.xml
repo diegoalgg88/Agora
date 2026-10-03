@@ -782,6 +782,33 @@
     <string name="model_id_label">معرّف النموذج</string>
     <string name="model_alias_label">اسم مستعار</string>
 
+    <!-- Local Model Catalog (download) -->
+    <string name="local_model_catalog_title">كتالوج النماذج</string>
+    <string name="local_model_catalog_browse">استعراض الكتالوج</string>
+    <string name="local_model_catalog_empty">لا توجد نماذج في الكتالوج</string>
+    <string name="local_model_catalog_empty_desc">تحقق من اتصالك وحاول مرة أخرى</string>
+    <string name="local_model_catalog_loading">جارٍ تحميل الكتالوج…</string>
+    <string name="local_model_catalog_retry">إعادة المحاولة</string>
+    <string name="local_model_catalog_gated">يتطلب تسجيل الدخول في huggingface.co</string>
+    <string name="local_model_download">تنزيل</string>
+    <string name="local_model_downloading">جارٍ التنزيل… %1$d%%</string>
+    <string name="local_model_download_queued">في قائمة الانتظار</string>
+    <string name="local_model_download_speed_eta">%1$s/ث · يتبقى %2$s</string>
+    <string name="local_model_download_pause">إيقاف مؤقت</string>
+    <string name="local_model_download_resume_dl">استئناف</string>
+    <string name="local_model_download_ready">جاهز</string>
+    <string name="local_model_download_failed">فشل — انقر لإعادة المحاولة</string>
+    <string name="local_model_download_cancel">إلغاء التنزيل؟</string>
+    <string name="local_model_download_cancel_text">إلغاء تنزيل \'%1$s\'؟ يبقى الملف الجزئي على القرص ويمكن استئناف التنزيل لاحقًا.</string>
+    <string name="local_model_ram_warning">يتطلب ~%1$d غيغابايت من الذاكرة</string>
+    <string name="local_model_download_notification_channel">تنزيلات النماذج</string>
+    <string name="local_model_download_notification_channel_description">تقدم تنزيلات النماذج المحلية</string>
+    <string name="local_model_download_notification_title">جارٍ تنزيل النموذج</string>
+    <string name="local_model_download_notification_content">%1$s · %2$d%%</string>
+    <string name="local_model_download_notification_progress">%1$d%%</string>
+    <string name="local_model_badge_tools">أدوات</string>
+    <string name="local_model_badge_thinking">تفكير</string>
+
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">الذاكرة والبيانات</string>
     <string name="settings_group_appearance_language">المظهر واللغة</string>

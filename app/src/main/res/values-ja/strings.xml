@@ -782,6 +782,33 @@
     <string name="model_id_label">モデル ID</string>
     <string name="model_alias_label">エイリアス</string>
 
+    <!-- Local Model Catalog (download) -->
+    <string name="local_model_catalog_title">モデルカタログ</string>
+    <string name="local_model_catalog_browse">カタログを見る</string>
+    <string name="local_model_catalog_empty">カタログにモデルがありません</string>
+    <string name="local_model_catalog_empty_desc">接続を確認して再試行してください</string>
+    <string name="local_model_catalog_loading">カタログを読み込み中…</string>
+    <string name="local_model_catalog_retry">再試行</string>
+    <string name="local_model_catalog_gated">huggingface.co へのサインインが必要です</string>
+    <string name="local_model_download">ダウンロード</string>
+    <string name="local_model_downloading">ダウンロード中… %1$d%%</string>
+    <string name="local_model_download_queued">待機中</string>
+    <string name="local_model_download_speed_eta">%1$s/秒 · 残り %2$s</string>
+    <string name="local_model_download_pause">一時停止</string>
+    <string name="local_model_download_resume_dl">再開</string>
+    <string name="local_model_download_ready">準備完了</string>
+    <string name="local_model_download_failed">失敗 — タップして再試行</string>
+    <string name="local_model_download_cancel">ダウンロードをキャンセルしますか？</string>
+    <string name="local_model_download_cancel_text">\'%1$s\' のダウンロードをキャンセルしますか？部分ファイルは端末に残り、後から再開できます。</string>
+    <string name="local_model_ram_warning">約%1$d GB の RAM が必要です</string>
+    <string name="local_model_download_notification_channel">モデルのダウンロード</string>
+    <string name="local_model_download_notification_channel_description">ローカルモデルのダウンロードの進行状況</string>
+    <string name="local_model_download_notification_title">モデルをダウンロード中</string>
+    <string name="local_model_download_notification_content">%1$s · %2$d%%</string>
+    <string name="local_model_download_notification_progress">%1$d%%</string>
+    <string name="local_model_badge_tools">ツール</string>
+    <string name="local_model_badge_thinking">思考</string>
+
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">メモリとデータ</string>
     <string name="settings_group_appearance_language">外観と言語</string>

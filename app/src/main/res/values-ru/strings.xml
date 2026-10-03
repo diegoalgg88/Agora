@@ -782,6 +782,33 @@
     <string name="model_id_label">ID модели</string>
     <string name="model_alias_label">Псевдоним</string>
 
+    <!-- Local Model Catalog (download) -->
+    <string name="local_model_catalog_title">Каталог моделей</string>
+    <string name="local_model_catalog_browse">Обзор каталога</string>
+    <string name="local_model_catalog_empty">В каталоге нет моделей</string>
+    <string name="local_model_catalog_empty_desc">Проверьте подключение и попробуйте снова</string>
+    <string name="local_model_catalog_loading">Загрузка каталога…</string>
+    <string name="local_model_catalog_retry">Повторить</string>
+    <string name="local_model_catalog_gated">Требуется вход в huggingface.co</string>
+    <string name="local_model_download">Скачать</string>
+    <string name="local_model_downloading">Скачивание… %1$d%%</string>
+    <string name="local_model_download_queued">В очереди</string>
+    <string name="local_model_download_speed_eta">%1$s/с · осталось %2$s</string>
+    <string name="local_model_download_pause">Приостановить</string>
+    <string name="local_model_download_resume_dl">Возобновить</string>
+    <string name="local_model_download_ready">Готово</string>
+    <string name="local_model_download_failed">Ошибка — нажмите, чтобы повторить</string>
+    <string name="local_model_download_cancel">Отменить загрузку?</string>
+    <string name="local_model_download_cancel_text">Отменить загрузку \'%1$s\'? Частичный файл останется на устройстве, и загрузку можно будет возобновить позже.</string>
+    <string name="local_model_ram_warning">Требуется ~%1$d ГБ ОЗУ</string>
+    <string name="local_model_download_notification_channel">Загрузки моделей</string>
+    <string name="local_model_download_notification_channel_description">Ход загрузки локальных моделей</string>
+    <string name="local_model_download_notification_title">Загрузка модели</string>
+    <string name="local_model_download_notification_content">%1$s · %2$d%%</string>
+    <string name="local_model_download_notification_progress">%1$d%%</string>
+    <string name="local_model_badge_tools">Инструменты</string>
+    <string name="local_model_badge_thinking">Размышление</string>
+
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Память и данные</string>
     <string name="settings_group_appearance_language">Оформление и язык</string>

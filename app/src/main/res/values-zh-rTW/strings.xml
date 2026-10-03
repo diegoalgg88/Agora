@@ -811,6 +811,33 @@
     <string name="local_chat_delete_text">確定要刪除 \'%1$s\' 嗎？這將同時刪除模型檔案。</string>
     <string name="model_id_label">模型 ID</string>
     <string name="model_alias_label">別名</string>
+
+    <!-- Local Model Catalog (download) -->
+    <string name="local_model_catalog_title">模型目錄</string>
+    <string name="local_model_catalog_browse">瀏覽目錄</string>
+    <string name="local_model_catalog_empty">目錄中沒有模型</string>
+    <string name="local_model_catalog_empty_desc">請檢查網路連線後重試</string>
+    <string name="local_model_catalog_loading">正在載入目錄…</string>
+    <string name="local_model_catalog_retry">重試</string>
+    <string name="local_model_catalog_gated">需要登入 huggingface.co</string>
+    <string name="local_model_download">下載</string>
+    <string name="local_model_downloading">下載中… %1$d%%</string>
+    <string name="local_model_download_queued">排隊中</string>
+    <string name="local_model_download_speed_eta">%1$s/秒 · 剩餘 %2$s</string>
+    <string name="local_model_download_pause">暫停</string>
+    <string name="local_model_download_resume_dl">繼續</string>
+    <string name="local_model_download_ready">就緒</string>
+    <string name="local_model_download_failed">失敗 — 輕觸重試</string>
+    <string name="local_model_download_cancel">取消下載？</string>
+    <string name="local_model_download_cancel_text">取消 \'%1$s\' 的下載？部分檔案會保留在裝置上，之後可以繼續下載。</string>
+    <string name="local_model_ram_warning">需要約 %1$d GB 記憶體</string>
+    <string name="local_model_download_notification_channel">模型下載</string>
+    <string name="local_model_download_notification_channel_description">本機模型下載進度</string>
+    <string name="local_model_download_notification_title">正在下載模型</string>
+    <string name="local_model_download_notification_content">%1$s · %2$d%%</string>
+    <string name="local_model_download_notification_progress">%1$d%%</string>
+    <string name="local_model_badge_tools">工具</string>
+    <string name="local_model_badge_thinking">思考</string>
     <string name="local_title">本機</string>
     <string name="not_configured">未設定</string>
     <string name="provider_built_in">內建服務商</string>

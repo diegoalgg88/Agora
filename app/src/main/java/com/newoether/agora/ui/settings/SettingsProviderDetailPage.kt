@@ -18,6 +18,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
@@ -65,6 +66,7 @@ fun SettingsProviderDetailPage(
     providerName: String,
     viewModel: ChatViewModel,
     onBack: () -> Unit,
+    onBrowseCatalog: (() -> Unit)? = null,
 ) {
     val apiKeys by viewModel.settings.apiKeys.collectAsState()
     val activeApiKeyIds by viewModel.settings.activeApiKeyIds.collectAsState()
@@ -433,6 +435,19 @@ fun SettingsProviderDetailPage(
                                     }
                                 }
                             }
+                        }
+                        add {
+                            SettingsItem(
+                                headlineContent = { Text(stringResource(R.string.local_model_catalog_browse), color = MaterialTheme.colorScheme.primary) },
+                                leadingContent = {
+                                    Icon(
+                                        Icons.Default.CloudDownload,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.primary,
+                                    )
+                                },
+                                modifier = Modifier.clickable { onBrowseCatalog?.invoke() },
+                            )
                         }
                     }
                 )

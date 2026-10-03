@@ -41,27 +41,40 @@ fun SettingsProviderPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val localChatModels by viewModel.settings.localChatModels.collectAsState()
 
     var selectedProvider by rememberSaveable { mutableStateOf<String?>(null) }
+    var showCatalog by rememberSaveable { mutableStateOf(false) }
     var showAddCustomDialog by remember { mutableStateOf(false) }
     val scrollState = rememberSaveable(saver = androidx.compose.foundation.ScrollState.Saver) { androidx.compose.foundation.ScrollState(0) }
 
     BackHandler {
-        if (selectedProvider != null) {
-            selectedProvider = null
-        } else {
-            onBack()
+        when {
+            showCatalog -> showCatalog = false
+            selectedProvider != null -> selectedProvider = null
+            else -> onBack()
         }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
         GuardedAnimatedContent(
-            targetState = selectedProvider,
-            forward = selectedProvider != null
+            targetState = when {
+                showCatalog -> "catalog"
+                selectedProvider != null -> selectedProvider
+                else -> null
+            },
+            forward = showCatalog || selectedProvider != null
         ) { provider ->
-            if (provider != null) {
+            if (showCatalog) {
+                SettingsLocalModelCatalogPage(
+                    viewModel = viewModel,
+                    onBack = { showCatalog = false },
+                )
+            } else if (provider != null) {
                 SettingsProviderDetailPage(
                     providerName = provider,
                     viewModel = viewModel,
                     onBack = { selectedProvider = null },
+                    onBrowseCatalog = if (provider == Constants.PROVIDER_LOCAL) {
+                        { showCatalog = true }
+                    } else null,
                 )
             } else {
                 val builtInNames = listOf(Constants.PROVIDER_GOOGLE, Constants.PROVIDER_OPENAI, Constants.PROVIDER_ANTHROPIC, Constants.PROVIDER_DEEPSEEK, Constants.PROVIDER_QWEN, Constants.PROVIDER_GROQ, Constants.PROVIDER_OLLAMA, Constants.PROVIDER_OPEN_ROUTER, Constants.PROVIDER_AI_HORDE)
