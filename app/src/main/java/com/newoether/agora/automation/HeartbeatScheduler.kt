@@ -148,6 +148,7 @@ class HeartbeatScheduler(
                     taskPromptNotifier.post(
                         confirmationId = row.id,
                         sourceType = row.sourceType,
+                        rowTitle = row.title,
                         body = row.bodyText,
                         conversationId = row.conversationId,
                     )
@@ -343,7 +344,7 @@ class HeartbeatScheduler(
         try {
             if (!settingsRepository.taskConfirmationEnabled.value) return
             val actionable = extractActionableHeartbeatText(result.text) ?: return
-            val plainBody = plainTextForConfirmation(actionable)
+            val plainBody = TaskConfirmationStore.plainTextForConfirmation(actionable)
             // Markdown-only remainders ("###") collapse to empty; the store rejects blank bodies.
             if (plainBody.isBlank()) return
             val background = !appForegroundTracker.isInForeground && taskPromptNotifier.canPost()
@@ -354,6 +355,10 @@ class HeartbeatScheduler(
                 if (background) {
                     taskPromptNotifier.postInfo(
                         sourceType = TaskConfirmationSource.HEARTBEAT.name,
+                        // AUTO has no durable row; HEARTBEAT's displayTitleFor localizes its
+                        // own header when the row title is blank — no Context lookup here
+                        // (the scheduler mock would have to stub getString for every test).
+                        title = "",
                         body = plainBody,
                         conversationId = conversationId,
                         modelMessageId = result.modelMessageId,
@@ -380,6 +385,7 @@ class HeartbeatScheduler(
                 taskPromptNotifier.post(
                     confirmationId = staged.id,
                     sourceType = staged.sourceType,
+                    rowTitle = staged.title,
                     body = staged.bodyText,
                     conversationId = staged.conversationId,
                 )
@@ -490,35 +496,5 @@ class HeartbeatScheduler(
             }
         }
         return trimmed
-    }
-
-    /**
-     * Plain-text projection of an actionable heartbeat result for the rich-confirmation
-     * surfaces (notification shade, chat banner, bottom card). None of them render markdown,
-     * so bold/italic markers, heading hashes, backticks, and bullet syntax are stripped ONCE
-     * here — the durable row stores the clean text and every surface inherits the same body.
-     * Content is otherwise untouched: no line-merging, no truncation (surfaces clamp with
-     * maxLines/BigText themselves).
-     */
-    internal fun plainTextForConfirmation(raw: String): String = buildString {
-        for (line in raw.lines()) {
-            var text = line.trimStart()
-            // Emphasis/backticks are invisible syntax, not content. Stripped BEFORE headings:
-            // "**###**" must end up empty, not leave a bare "###" behind.
-            text = text.replace("**", "").replace("__", "")
-                .replace("`", "")
-                .trimStart()
-            // Heading markers: "## Title" → "Title".
-            while (text.startsWith("#")) text = text.substring(1).trimStart()
-            // List markers render as bullets natively; strip the marker keep the item.
-            text = text.removePrefix("- ").removePrefix("* ").removePrefix("+ ")
-                .removePrefix("• ")
-                .trimStart()
-            if (text.isNotEmpty()) {
-                if (isNotEmpty()) append('\n')
-                append(text)
-            }
-        }
-        toString()
     }
 }

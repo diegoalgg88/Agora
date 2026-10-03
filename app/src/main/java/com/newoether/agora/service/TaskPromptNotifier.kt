@@ -76,13 +76,14 @@ class TaskPromptNotifier(
     fun post(
         confirmationId: String,
         sourceType: String,
+        rowTitle: String,
         body: String,
         conversationId: String,
     ) {
         if (!canPost()) return
         ensureChannel()
         val notificationId = notificationIdFor(confirmationId)
-        val title = displayTitleFor(sourceType)
+        val title = displayTitleFor(sourceType, rowTitle)
 
         // "View" — opens the rich bottom-anchored card with Confirm/Dismiss/Snooze.
         val contentIntent = PendingIntent.getActivity(
@@ -158,9 +159,22 @@ class TaskPromptNotifier(
             .onFailure { DebugLog.w(TAG, "Failed to cancel task confirmation", it) }
     }
 
-    /** Localized display title by source — the durable row.title stays neutral by contract. */
-    internal fun displayTitleFor(sourceType: String): String =
-        context.getString(titleResFor(sourceType))
+    /**
+     * Source-aware display title — the single decision point every surface shares.
+     * HEARTBEAT localizes its header (its durable row title is the neutral "Heartbeat"
+     * label); TASK/LOOP surface the durable row title directly — F8 stages the task's own
+     * name there, which identifies the origin better than any generic string.
+     */
+    internal fun displayTitleFor(sourceType: String, rowTitle: String): String = when (
+        TaskConfirmationSource.fromWire(sourceType)
+    ) {
+        TaskConfirmationSource.HEARTBEAT ->
+            context.getString(titleResFor(sourceType))
+        TaskConfirmationSource.TASK,
+        TaskConfirmationSource.LOOP,
+        null ->
+            rowTitle.ifBlank { context.getString(titleResFor(sourceType)) }
+    }
 
     /**
      * AUTO-mode informational post (Universal Installer's AutoNotification analogue): no
@@ -170,6 +184,7 @@ class TaskPromptNotifier(
      */
     fun postInfo(
         sourceType: String,
+        title: String,
         body: String,
         conversationId: String,
         modelMessageId: String?,
@@ -189,7 +204,7 @@ class TaskPromptNotifier(
         )
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
-            .setContentTitle(displayTitleFor(sourceType))
+            .setContentTitle(displayTitleFor(sourceType, title))
             .setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(true)
@@ -218,9 +233,8 @@ class TaskPromptNotifier(
             NOTIFICATION_ID_BASE + (key.hashCode() and HASH_MASK)
 
         /**
-         * Single source of the localized header for every surface (notification, banner, card),
-         * so they can never disagree. TASK/LOOP have no staging call sites yet; the settings
-         * label is the safest neutral localized fallback until a future feature adds them.
+         * Resource fallback per source: HEARTBEAT has a dedicated result header; TASK/LOOP
+         * fall back to the settings label only when their durable row title is blank.
          */
         @StringRes
         internal fun titleResFor(sourceType: String): Int = when (

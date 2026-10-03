@@ -26,6 +26,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -52,6 +53,7 @@ internal fun TaskConfirmationCard(
     // reaching a character threshold, so the expand control follows real visual overflow.
     var overflows by remember(row.id) { mutableStateOf(false) }
     var snoozeMenuOpen by remember(row.id) { mutableStateOf(false) }
+    val context = LocalContext.current
 
     Surface(
         // widthIn BEFORE fillMaxWidth: applied after it, the already-fixed incoming width wins
@@ -77,8 +79,12 @@ internal fun TaskConfirmationCard(
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Text(
-                // Localized display header; the durable row.title stays neutral by contract.
-                text = stringResource(TaskPromptNotifier.titleResFor(row.sourceType)),
+                // Source-aware header: HEARTBEAT localizes; TASK/LOOP show their row title
+                // (the task's own name, staged by F8). Remembered: the notifier is stateless
+                // here, but constructing NotificationManagerCompat per recomposition is waste.
+                text = remember(context) {
+                    TaskPromptNotifier(context).displayTitleFor(row.sourceType, row.title)
+                },
                 style = MaterialTheme.typography.titleMedium,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

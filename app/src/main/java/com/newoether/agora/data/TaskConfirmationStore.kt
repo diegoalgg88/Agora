@@ -139,5 +139,35 @@ class TaskConfirmationStore(
     companion object {
         const val MAX_CONFIRMATIONS = 20
         const val CLEANUP_AGE_MS = 7L * 24 * 60 * 60 * 1000
+
+        /**
+         * Plain-text projection of an actionable automation result for the rich-confirmation
+         * surfaces (notification shade, chat banner, bottom card). None of them render
+         * markdown, so bold/italic markers, heading hashes, backticks, and bullet syntax are
+         * stripped ONCE at staging — the durable row stores the clean text and every surface
+         * inherits the same body. Shared by every staging call site (heartbeat, tasks,
+         * future loops) so the projection has exactly one owner.
+         *
+         * Emphasis runs strip BEFORE heading markers: "**###**" must end up empty, not leave
+         * a bare "###" behind. Content is otherwise untouched: no line-merging, no
+         * truncation (surfaces clamp with maxLines/BigText themselves).
+         */
+        fun plainTextForConfirmation(raw: String): String = buildString {
+            for (line in raw.lines()) {
+                var text = line.trimStart()
+                text = text.replace("**", "").replace("__", "")
+                    .replace("`", "")
+                    .trimStart()
+                while (text.startsWith("#")) text = text.substring(1).trimStart()
+                text = text.removePrefix("- ").removePrefix("* ").removePrefix("+ ")
+                    .removePrefix("• ")
+                    .trimStart()
+                if (text.isNotEmpty()) {
+                    if (isNotEmpty()) append('\n')
+                    append(text)
+                }
+            }
+            toString()
+        }
     }
 }

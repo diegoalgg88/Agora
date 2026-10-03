@@ -37,6 +37,22 @@ import org.junit.Test
  */
 class HeartbeatSchedulerBusyPathTest {
 
+    init {
+        // The staging-isolation path (surfaceTaskConfirmation's catch) logs failures through
+        // DebugLog.e, which hits android.util.Log — not mocked on the JVM. Silence it for the
+        // whole suite (same pattern as ProviderRetryRequestResolutionTest).
+        io.mockk.mockkObject(com.newoether.agora.util.DebugLog)
+        io.mockk.every {
+            com.newoether.agora.util.DebugLog.e(any(), any())
+        } answers { Unit }
+        io.mockk.every {
+            com.newoether.agora.util.DebugLog.e(any(), any(), any())
+        } answers { Unit }
+        io.mockk.every {
+            com.newoether.agora.util.DebugLog.w(any(), any(), any())
+        } answers { Unit }
+    }
+
     private val heartbeatConversationId = "hb-conv"
 
     /** Mock staged row returned by the confirmation store when a stage() happens. */
@@ -256,7 +272,7 @@ class HeartbeatSchedulerBusyPathTest {
             promptNotifier = promptNotifier,
         ).first.runHeartbeatNow()
         coVerify(exactly = 1) { store.stage(any()) }
-        coVerify(exactly = 0) { promptNotifier.post(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { promptNotifier.post(any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -273,7 +289,7 @@ class HeartbeatSchedulerBusyPathTest {
             promptNotifier = promptNotifier,
         ).first.runHeartbeatNow()
         coVerify(exactly = 1) { store.stage(any()) }
-        coVerify(exactly = 1) { promptNotifier.post(any(), any(), any(), any()) }
+        coVerify(exactly = 1) { promptNotifier.post(any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -292,8 +308,8 @@ class HeartbeatSchedulerBusyPathTest {
             promptNotifier = promptNotifier,
         ).first.runHeartbeatNow()
         coVerify(exactly = 0) { store.stage(any()) }
-        coVerify(exactly = 0) { promptNotifier.post(any(), any(), any(), any()) }
-        coVerify(exactly = 1) { promptNotifier.postInfo(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { promptNotifier.post(any(), any(), any(), any(), any()) }
+        coVerify(exactly = 1) { promptNotifier.postInfo(any(), any(), any(), any(), any()) }
     }
 
     @Test
@@ -311,7 +327,7 @@ class HeartbeatSchedulerBusyPathTest {
             promptNotifier = promptNotifier,
         ).first.runHeartbeatNow()
         coVerify(exactly = 0) { store.stage(any()) }
-        coVerify(exactly = 0) { promptNotifier.postInfo(any(), any(), any(), any()) }
+        coVerify(exactly = 0) { promptNotifier.postInfo(any(), any(), any(), any(), any()) }
     }
 
     @Test

@@ -46,6 +46,18 @@ class TaskManager(
         conversationId: String,
         response: String,
     ) -> Unit = { _, _ -> },
+    /**
+     * Rich task confirmations (plan PLAN-20261002-TASK-CONFIRM F8): surfaces a successful
+     * scheduled-task result through the same durable pipeline the heartbeat uses. Defaults are
+     * inert so existing construction sites (and tests) stay unchanged until AppContainer wires
+     * the real ones.
+     */
+    private val surfaceTaskResult: suspend (
+        task: TaskEntity,
+        conversationId: String,
+        modelMessageId: String?,
+        response: String,
+    ) -> Unit = { _, _, _, _ -> },
 ) {
     data class ExecutionSummary(
         val conversation: ChatConversation,
@@ -448,6 +460,21 @@ class TaskManager(
                     DebugLog.e(
                         "TaskManager",
                         "Task execution title update failed for conversation=$conversationId",
+                        e,
+                    )
+                }
+                // Rich confirmations (F8): the user explicitly asked for this task, so its
+                // result is always actionable — no sentinel filter, only the shared plain-text
+                // projection. Isolated like the title update: a confirmation failure must never
+                // flip a completed task run into a failure.
+                try {
+                    surfaceTaskResult(task, conversationId, result.modelMessageId, result.text)
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    DebugLog.e(
+                        "TaskManager",
+                        "Task result confirmation surfacing failed for conversation=$conversationId",
                         e,
                     )
                 }

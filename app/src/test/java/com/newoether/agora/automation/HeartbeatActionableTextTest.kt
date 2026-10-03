@@ -120,7 +120,7 @@ class HeartbeatActionableTextTest {
         val raw = "**Resumen de nuevos elementos**\n\n## SMS\n- +52 123 nueva tarea pendiente"
         org.junit.Assert.assertEquals(
             "Resumen de nuevos elementos\nSMS\n+52 123 nueva tarea pendiente",
-            scheduler.plainTextForConfirmation(raw),
+            com.newoether.agora.data.TaskConfirmationStore.plainTextForConfirmation(raw),
         )
     }
 
@@ -129,7 +129,7 @@ class HeartbeatActionableTextTest {
         val raw = "El `pin_memory_file` falló con __error 500__"
         org.junit.Assert.assertEquals(
             "El pin_memory_file falló con error 500",
-            scheduler.plainTextForConfirmation(raw),
+            com.newoether.agora.data.TaskConfirmationStore.plainTextForConfirmation(raw),
         )
     }
 
@@ -138,7 +138,7 @@ class HeartbeatActionableTextTest {
         val raw = "- primera\n* segunda\n+ tercera\n• cuarta"
         org.junit.Assert.assertEquals(
             "primera\nsegunda\ntercera\ncuarta",
-            scheduler.plainTextForConfirmation(raw),
+            com.newoether.agora.data.TaskConfirmationStore.plainTextForConfirmation(raw),
         )
     }
 
@@ -146,14 +146,14 @@ class HeartbeatActionableTextTest {
     fun plainTextPassesThroughAndBlankLinesCollapse() {
         org.junit.Assert.assertEquals(
             "línea uno\nlínea dos",
-            scheduler.plainTextForConfirmation("línea uno\n\n\n   \nlínea dos"),
+            com.newoether.agora.data.TaskConfirmationStore.plainTextForConfirmation("línea uno\n\n\n   \nlínea dos"),
         )
     }
 
     @Test
     fun emptyAndMarkdownOnlyInputYieldsEmptyOutput() {
-        org.junit.Assert.assertEquals("", scheduler.plainTextForConfirmation(""))
-        org.junit.Assert.assertEquals("", scheduler.plainTextForConfirmation("**###**"))
+        org.junit.Assert.assertEquals("", com.newoether.agora.data.TaskConfirmationStore.plainTextForConfirmation(""))
+        org.junit.Assert.assertEquals("", com.newoether.agora.data.TaskConfirmationStore.plainTextForConfirmation("**###**"))
     }
 
     @Test
@@ -161,7 +161,7 @@ class HeartbeatActionableTextTest {
         // "1. item" starts with a digit, not a marker — content passes through untouched.
         org.junit.Assert.assertEquals(
             "1. instalar el parche",
-            scheduler.plainTextForConfirmation("1. instalar el parche"),
+            com.newoether.agora.data.TaskConfirmationStore.plainTextForConfirmation("1. instalar el parche"),
         )
     }
 }

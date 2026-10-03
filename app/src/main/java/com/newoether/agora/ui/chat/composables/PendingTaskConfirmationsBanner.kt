@@ -133,8 +133,10 @@ private fun TaskConfirmationBannerRow(
                 .padding(16.dp),
         ) {
             Text(
-                // Localized display header; the durable row.title stays neutral by contract.
-                text = stringResource(TaskPromptNotifier.titleResFor(row.sourceType)),
+                // Source-aware header: HEARTBEAT localizes; TASK/LOOP show their row title
+                // (the task's own name, staged by F8).
+                text = com.newoether.agora.service.TaskPromptNotifier(LocalContext.current)
+                    .displayTitleFor(row.sourceType, row.title),
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

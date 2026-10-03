@@ -93,6 +93,28 @@ class AppContainer(
     val skillManager: SkillManager by lazy { SkillManager(appContext) }
     val chatDao: ChatDao by lazy { database.chatDao() }
 
+    /** Local (on-device GGUF) chat-model configuration CRUD — process-scoped so
+     *  the download worker can register completed catalog models without a UI ViewModel. */
+    val modelManager: com.newoether.agora.viewmodel.ModelManager by lazy {
+        com.newoether.agora.viewmodel.ModelManager(settingsRepository, appScope)
+    }
+
+    // ── Local Model catalog + downloads ────────────────────────
+
+    val modelCatalogRepository: com.newoether.agora.data.catalog.ModelCatalogRepository by lazy {
+        com.newoether.agora.data.catalog.ModelCatalogRepository(appContext, appVersionName())
+    }
+
+    val localModelDownloadManager: com.newoether.agora.data.LocalModelDownloadManager by lazy {
+        com.newoether.agora.data.LocalModelDownloadManager(appContext, database.localModelDownloadDao())
+    }
+
+    private fun appVersionName(): String = try {
+        appContext.packageManager.getPackageInfo(appContext.packageName, 0).versionName ?: "0.0.0"
+    } catch (_: Exception) {
+        "0.0.0"
+    }
+
     // ── Repositories ──────────────────────────────────────────
 
     val conversationRepository: ConversationRepository by lazy {
@@ -275,7 +297,76 @@ class AppContainer(
             conversationExecutionCoordinator = conversationExecutionCoordinator,
             automationExecutionGate = automationExecutionGate,
             titleExecutionConversation = taskExecutionEngine::updateTaskExecutionTitle,
+            surfaceTaskResult = { task, conversationId, modelMessageId, response ->
+                surfaceAutomationResult(
+                    source = com.newoether.agora.data.local.TaskConfirmationSource.TASK,
+                    // Durable title = the task's own name: the user wrote it, it identifies the
+                    // origin better than any generic label. HEARTBEAT keeps its localized
+                    // header; TASK shows its name.
+                    title = task.name,
+                    conversationId = conversationId,
+                    modelMessageId = modelMessageId,
+                    response = response,
+                )
+            },
         )
+    }
+
+    /**
+     * Shared F8 surfacing for non-heartbeat automation results (tasks today, loops later):
+     * applies the global toggle/mode and PROMPT-vs-AUTO semantics on top of the durable
+     * staging pipeline. A scheduled task the user explicitly asked for is always actionable —
+     * no sentinel filter, only the shared plain-text projection.
+     */
+    private suspend fun surfaceAutomationResult(
+        source: com.newoether.agora.data.local.TaskConfirmationSource,
+        title: String,
+        conversationId: String,
+        modelMessageId: String?,
+        response: String,
+    ) {
+        if (!settingsRepository.taskConfirmationEnabled.value) return
+        val plainBody =
+            com.newoether.agora.data.TaskConfirmationStore.plainTextForConfirmation(response)
+        // Markdown-only bodies ("###") collapse to empty; the store rejects blank bodies.
+        if (plainBody.isBlank()) return
+        val background =
+            !com.newoether.agora.service.AppForegroundTracker.isInForeground &&
+                taskPromptNotifier.canPost()
+        if (settingsRepository.taskConfirmationMode.value ==
+            com.newoether.agora.data.local.TaskConfirmationMode.AUTO
+        ) {
+            if (background) {
+                taskPromptNotifier.postInfo(
+                    sourceType = source.name,
+                    title = title,
+                    body = plainBody,
+                    conversationId = conversationId,
+                    modelMessageId = modelMessageId,
+                )
+            }
+        } else {
+            // PROMPT stages ALWAYS (the chat banner surfaces the row in the foreground);
+            // only the heads-up post is background-gated — same semantics as the heartbeat.
+            val staged = taskConfirmationStore.stage(
+                com.newoether.agora.data.TaskConfirmationStore.Draft(
+                    source = source,
+                    conversationId = conversationId,
+                    modelMessageId = modelMessageId,
+                    title = title,
+                    bodyText = plainBody,
+                ),
+            )
+            if (background) {
+                taskPromptNotifier.post(
+                    confirmationId = staged.id,
+                    sourceType = staged.sourceType,
+                    rowTitle = staged.title,
+                    body = staged.bodyText,
+                    conversationId = staged.conversationId,
+                )
+            }
+        }
     }
 
     val loopManager: LoopManager by lazy {
@@ -538,5 +629,6 @@ class AppContainer(
             heartbeatToolProvider, smsToolProvider, smsDraftStore, smsStore, smsPoller, smsSender,
             emailDraftStore, emailStore, emailPoller,
             notificationToolProvider, assistantDeviceToolProvider, emailToolProvider,
+            modelManager, localModelDownloadManager, modelCatalogRepository,
         )
 }

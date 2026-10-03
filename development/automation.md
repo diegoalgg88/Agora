@@ -187,6 +187,21 @@ and re-posts only when backgrounded. With the daemon off there is no tick and no
 re-post: the row stays PENDING and resolvable from the banner (snooze is a
 convenience, not a contract).
 
+### TASK result surfacing (F8)
+Scheduled tasks share the heartbeat's confirmation pipeline. After a successful
+`TaskManager` execution (both the WorkManager path and the recovery path), the
+`surfaceTaskResult` hook fires — always actionable (the user explicitly asked for
+the task; no sentinel filter), with the shared plain-text projection, isolated in
+its own try/catch so a confirmation failure can never flip a completed run into a
+failure (same isolation as the title update). The durable row title is the task's
+own name; `TaskPromptNotifier.displayTitleFor(sourceType, rowTitle)` renders
+HEARTBEAT's localized header but surfaces TASK/LOOP row titles directly (the name
+identifies the origin better than any generic string; blank falls back to the
+settings label). The global toggle/mode/style settings apply unchanged — a daily
+weather report reads best in AUTO ("informative only") mode, which the user picks
+once in Settings. `AppContainer.surfaceAutomationResult` owns the PROMPT/AUTO
+branching for non-heartbeat sources so LOOP can reuse it verbatim.
+
 ### Presentation modes and card style (F7, Universal Installer analogue)
 `Settings → Automation → Task confirmations` exposes two presentation modes
 (`taskConfirmationMode`, DataStore, portable): **PROMPT** (default; durable row +
