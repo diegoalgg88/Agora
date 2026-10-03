@@ -801,6 +801,8 @@
     <string name="local_model_download_cancel">Download abbrechen?</string>
     <string name="local_model_download_cancel_text">Download von \'%1$s\' abbrechen? Die Teildatei bleibt auf dem Gerät und der Download kann später fortgesetzt werden.</string>
     <string name="local_model_ram_warning">Benötigt ~%1$d GB RAM</string>
+    <string name="local_model_ram_compact">~%1$d GB RAM</string>
+    <string name="local_model_badge_vision">Vision</string>
     <string name="local_model_download_notification_channel">Modell-Downloads</string>
     <string name="local_model_download_notification_channel_description">Fortschritt lokaler Modell-Downloads</string>
     <string name="local_model_download_notification_title">Modell wird heruntergeladen</string>

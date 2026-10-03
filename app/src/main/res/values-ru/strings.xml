@@ -801,6 +801,8 @@
     <string name="local_model_download_cancel">Отменить загрузку?</string>
     <string name="local_model_download_cancel_text">Отменить загрузку \'%1$s\'? Частичный файл останется на устройстве, и загрузку можно будет возобновить позже.</string>
     <string name="local_model_ram_warning">Требуется ~%1$d ГБ ОЗУ</string>
+    <string name="local_model_ram_compact">~%1$d ГБ ОЗУ</string>
+    <string name="local_model_badge_vision">Зрение</string>
     <string name="local_model_download_notification_channel">Загрузки моделей</string>
     <string name="local_model_download_notification_channel_description">Ход загрузки локальных моделей</string>
     <string name="local_model_download_notification_title">Загрузка модели</string>

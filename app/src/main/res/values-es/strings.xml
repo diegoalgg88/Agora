@@ -801,6 +801,8 @@
     <string name="local_model_download_cancel">¿Cancelar descarga?</string>
     <string name="local_model_download_cancel_text">¿Cancelar la descarga de \'%1$s\'? El archivo parcial permanece en disco y la descarga puede reanudarse después.</string>
     <string name="local_model_ram_warning">Requiere ~%1$d GB de RAM</string>
+    <string name="local_model_ram_compact">~%1$d GB RAM</string>
+    <string name="local_model_badge_vision">Visión</string>
     <string name="local_model_download_notification_channel">Descargas de modelos</string>
     <string name="local_model_download_notification_channel_description">Progreso de las descargas de modelos locales</string>
     <string name="local_model_download_notification_title">Descargando modelo</string>

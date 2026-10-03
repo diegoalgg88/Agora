@@ -946,6 +946,8 @@
     <string name="local_model_download_cancel">取消下载？</string>
     <string name="local_model_download_cancel_text">取消 \'%1$s\' 的下载？部分文件会保留在设备上，之后可以继续下载。</string>
     <string name="local_model_ram_warning">需要约 %1$d GB 内存</string>
+    <string name="local_model_ram_compact">~%1$d GB 内存</string>
+    <string name="local_model_badge_vision">视觉</string>
     <string name="local_model_download_notification_channel">模型下载</string>
     <string name="local_model_download_notification_channel_description">本地模型下载进度</string>
     <string name="local_model_download_notification_title">正在下载模型</string>

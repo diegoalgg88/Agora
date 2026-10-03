@@ -8,6 +8,7 @@ import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material3.*
@@ -49,14 +50,15 @@ fun SettingsLocalModelCatalogPage(
     val workInfos by viewModel.localModelDownloadManager.observeWorkInfos()
         .collectAsState(initial = emptyList())
 
-    fun progressFor(catalogEntryId: String): Pair<Long, Long> {
+    fun progressFor(catalogEntryId: String): Triple<Long, Long, Long> {
         val info = workInfos.firstOrNull { info ->
             info.tags.any { it == LocalModelDownloadWorker.idTag(catalogEntryId) }
-        } ?: return 0L to 0L
-        if (info.state.isFinished) return 0L to 0L
+        } ?: return Triple(0L, 0L, 0L)
+        if (info.state.isFinished) return Triple(0L, 0L, 0L)
         val received = info.progress.getLong(LocalModelDownloadWorker.KEY_RECEIVED_BYTES, 0L)
         val rate = info.progress.getLong(LocalModelDownloadWorker.KEY_DOWNLOAD_RATE, 0L)
-        return received to rate
+        val remaining = info.progress.getLong(LocalModelDownloadWorker.KEY_REMAINING_MS, 0L)
+        return Triple(received, rate, remaining)
     }
 
     suspend fun reloadCatalog(forceRefresh: Boolean = false) {
@@ -121,12 +123,13 @@ fun SettingsLocalModelCatalogPage(
                 SettingsGroup(title = "", items = currentEntries.map { entry ->
                     {
                         val row = rows.firstOrNull { it.catalogEntryId == entry.id }
-                        val (received, rate) = progressFor(entry.id)
+                        val (received, rate, remainingMs) = progressFor(entry.id)
                         CatalogEntryItem(
                             entry = entry,
                             row = row,
                             receivedBytes = received,
                             downloadRate = rate,
+                            remainingMs = remainingMs,
                             onStartDownload = {
                                 scope.launch {
                                     viewModel.localModelDownloadManager.startDownload(
@@ -176,6 +179,7 @@ private fun CatalogEntryItem(
     row: LocalModelDownloadEntity?,
     receivedBytes: Long,
     downloadRate: Long,
+    remainingMs: Long,
     onStartDownload: () -> Unit,
     onCancelDownload: () -> Unit,
 ) {
@@ -190,13 +194,17 @@ private fun CatalogEntryItem(
         headlineContent = { Text(entry.displayName, fontWeight = FontWeight.Medium) },
         supportingContent = {
             Column {
-                Row(
+                @OptIn(ExperimentalLayoutApi::class)
+                FlowRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(top = 1.dp),
                 ) {
                     if (entry.capabilities.vision) {
-                        CatalogBadge(icon = { Icon(Icons.Default.Visibility, null, modifier = Modifier.size(10.dp)) }, label = "")
+                        CatalogBadge(
+                            icon = { Icon(Icons.Default.Visibility, null, modifier = Modifier.size(12.dp)) },
+                            label = stringResource(R.string.local_model_badge_vision),
+                        )
                     }
                     if (entry.capabilities.tools) {
                         CatalogBadge(label = stringResource(R.string.local_model_badge_tools))
@@ -206,21 +214,31 @@ private fun CatalogEntryItem(
                     }
                     CatalogBadge(label = ModelCatalogParser.formatDownloadSize(entry.sizeInBytes))
                     if (entry.minRamGb > 0) {
-                        CatalogBadge(label = stringResource(R.string.local_model_ram_warning, entry.minRamGb))
+                        CatalogBadge(
+                            icon = { Icon(Icons.Default.Memory, null, modifier = Modifier.size(12.dp)) },
+                            label = stringResource(R.string.local_model_ram_compact, entry.minRamGb),
+                        )
                     }
                 }
                 if (status == LocalModelStatus.DOWNLOADING) {
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(6.dp))
                     Text(
                         if (downloadRate > 0) {
                             stringResource(
-                                R.string.local_model_downloading, percent,
-                            ) + " · " + formatRate(downloadRate)
+                                R.string.local_model_download_speed_eta,
+                                formatRate(downloadRate),
+                                formatRemainingTime(remainingMs)
+                            )
                         } else {
                             stringResource(R.string.local_model_downloading, percent)
                         },
                         color = MaterialTheme.colorScheme.primary,
                         style = MaterialTheme.typography.labelMedium,
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    LinearProgressIndicator(
+                        progress = { percent / 100f },
+                        modifier = Modifier.fillMaxWidth().height(4.dp),
                     )
                 } else if (status == LocalModelStatus.FAILED) {
                     Spacer(Modifier.height(4.dp))
@@ -283,5 +301,18 @@ private fun formatRate(bytesPerSecond: Long): String {
     return when {
         kbps >= 1024.0 -> String.format(java.util.Locale.US, "%.1f MB/s", kbps / 1024.0)
         else -> String.format(java.util.Locale.US, "%.0f KB/s", kbps)
+    }
+}
+
+private fun formatRemainingTime(remainingMs: Long): String {
+    if (remainingMs <= 0L) return "—"
+    val totalSeconds = remainingMs / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    return when {
+        hours > 0 -> String.format(java.util.Locale.US, "%dh %02dm", hours, minutes)
+        minutes > 0 -> String.format(java.util.Locale.US, "%dm %02ds", minutes, seconds)
+        else -> String.format(java.util.Locale.US, "%ds", seconds)
     }
 }

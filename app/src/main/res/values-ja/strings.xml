@@ -801,6 +801,8 @@
     <string name="local_model_download_cancel">ダウンロードをキャンセルしますか？</string>
     <string name="local_model_download_cancel_text">\'%1$s\' のダウンロードをキャンセルしますか？部分ファイルは端末に残り、後から再開できます。</string>
     <string name="local_model_ram_warning">約%1$d GB の RAM が必要です</string>
+    <string name="local_model_ram_compact">~%1$dGB RAM</string>
+    <string name="local_model_badge_vision">ビジョン</string>
     <string name="local_model_download_notification_channel">モデルのダウンロード</string>
     <string name="local_model_download_notification_channel_description">ローカルモデルのダウンロードの進行状況</string>
     <string name="local_model_download_notification_title">モデルをダウンロード中</string>

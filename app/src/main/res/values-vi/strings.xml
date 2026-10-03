@@ -804,6 +804,8 @@
     <string name="local_model_download_cancel">Hủy tải xuống?</string>
     <string name="local_model_download_cancel_text">Hủy tải xuống \'%1$s\'? Tệp một phần vẫn còn trên thiết bị và có thể tiếp tục sau.</string>
     <string name="local_model_ram_warning">Cần ~%1$d GB RAM</string>
+    <string name="local_model_ram_compact">~%1$d GB RAM</string>
+    <string name="local_model_badge_vision">Thị giác</string>
     <string name="local_model_download_notification_channel">Tải xuống mô hình</string>
     <string name="local_model_download_notification_channel_description">Tiến độ tải xuống mô hình cục bộ</string>
     <string name="local_model_download_notification_title">Đang tải mô hình xuống</string>
