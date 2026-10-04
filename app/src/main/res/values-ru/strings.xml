@@ -154,8 +154,8 @@
     <string name="called_n_tools">Вызвано инструментов: %1$d</string>
     <string name="failed_to_generate">Не удалось сгенерировать.</string>
     <string name="generation_stopped">Генерация остановлена</string>
-    <string name="import_invalid_gguf_title">Недопустимый файл GGUF</string>
-    <string name="import_invalid_gguf_desc">Выбранный файл не является допустимой моделью GGUF.</string>
+    <string name="import_invalid_gguf_title">Недопустимый файл модели</string>
+    <string name="import_invalid_gguf_desc">Выбранный файл не является допустимой моделью GGUF или LiteRT-LM.</string>
     <string name="ok">ОК</string>
     <string name="citation_sources">Источники</string>
     <string name="citation_source_accessibility">Источник %1$d: %2$s</string>
@@ -768,7 +768,7 @@
     <string name="provider_no_local_models_desc">Импортируйте модель GGUF, чтобы начать</string>
     <string name="provider_keys_summary">API-ключей: %1$d</string>
     <string name="provider_connection">Подключение</string>
-    <string name="import_model_chat">Импортировать модель GGUF</string>
+    <string name="import_model_chat">Импортировать локальную модель (GGUF / .litertlm)</string>
     <string name="add_local_chat_model">Добавить локальную модель</string>
     <string name="local_ctx_size">Размер контекста</string>
     <string name="local_temperature">Температура</string>
@@ -1017,12 +1017,12 @@
     <string name="onboarding_skip_for_now">Пропустить пока</string>
     <string name="onboarding_api_key_hint">Введите API-ключ…</string>
     <string name="onboarding_ollama_hint">http://localhost:11434</string>
-    <string name="onboarding_import_gguf">Импортировать модель GGUF</string>
+    <string name="onboarding_import_gguf">Импортировать локальную модель (GGUF / .litertlm)</string>
     <string name="onboarding_importing">Импорт…</string>
     <string name="onboarding_no_provider">Провайдер не выбран.</string>
     <string name="onboarding_no_models">Модели не загружены.</string>
-    <string name="onboarding_invalid_gguf_title">Недопустимый файл GGUF</string>
-    <string name="onboarding_invalid_gguf_desc">Выбранный файл, похоже, не является допустимой моделью GGUF.</string>
+    <string name="onboarding_invalid_gguf_title">Недопустимый файл модели</string>
+    <string name="onboarding_invalid_gguf_desc">Выбранный файл не является допустимой моделью GGUF или LiteRT-LM.</string>
     <string name="onboarding_hide_key">Скрыть ключ</string>
     <string name="onboarding_show_key">Показать ключ</string>
     <!-- ── Auto Backup ── -->

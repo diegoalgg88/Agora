@@ -157,8 +157,8 @@
     <string name="called_n_tools">Đã gọi %1$d công cụ</string>
     <string name="failed_to_generate">Tạo thất bại.</string>
     <string name="generation_stopped">Đã dừng tạo</string>
-    <string name="import_invalid_gguf_title">Tệp GGUF không hợp lệ</string>
-    <string name="import_invalid_gguf_desc">Tệp đã chọn không phải là mô hình GGUF hợp lệ.</string>
+    <string name="import_invalid_gguf_title">Tệp mô hình không hợp lệ</string>
+    <string name="import_invalid_gguf_desc">Tệp đã chọn không phải là mô hình GGUF hoặc LiteRT-LM hợp lệ.</string>
     <string name="ok">OK</string>
     <string name="citation_sources">Nguồn</string>
     <string name="citation_source_accessibility">Nguồn %1$d: %2$s</string>
@@ -771,7 +771,7 @@
     <string name="provider_no_local_models_desc">Nhập mô hình GGUF để bắt đầu</string>
     <string name="provider_keys_summary">%1$d khóa API</string>
     <string name="provider_connection">Kết nối</string>
-    <string name="import_model_chat">Nhập mô hình GGUF</string>
+    <string name="import_model_chat">Nhập mô hình cục bộ (GGUF / .litertlm)</string>
     <string name="add_local_chat_model">Thêm mô hình cục bộ</string>
     <string name="local_ctx_size">Kích thước ngữ cảnh</string>
     <string name="local_temperature">Nhiệt độ (Temperature)</string>
@@ -1022,12 +1022,12 @@
     <string name="onboarding_skip_for_now">Bỏ qua lúc này</string>
     <string name="onboarding_api_key_hint">Nhập khóa API của bạn…</string>
     <string name="onboarding_ollama_hint">http://localhost:11434</string>
-    <string name="onboarding_import_gguf">Nhập mô hình GGUF</string>
+    <string name="onboarding_import_gguf">Nhập mô hình cục bộ (GGUF / .litertlm)</string>
     <string name="onboarding_importing">Đang nhập…</string>
     <string name="onboarding_no_provider">Chưa chọn nhà cung cấp.</string>
     <string name="onboarding_no_models">Chưa tải mô hình nào.</string>
-    <string name="onboarding_invalid_gguf_title">Tệp GGUF không hợp lệ</string>
-    <string name="onboarding_invalid_gguf_desc">Tệp được chọn dường như không phải là mô hình GGUF hợp lệ.</string>
+    <string name="onboarding_invalid_gguf_title">Tệp mô hình không hợp lệ</string>
+    <string name="onboarding_invalid_gguf_desc">Tệp đã chọn không phải là mô hình GGUF hoặc LiteRT-LM hợp lệ.</string>
     <string name="onboarding_hide_key">Ẩn khóa</string>
     <string name="onboarding_show_key">Hiển thị khóa</string>
 

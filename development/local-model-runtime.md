@@ -71,6 +71,13 @@ Agora's branching/regeneration invalidates any cached conversation prefix, so an
 conversation state would be corrupt. The cost of this rule — a full prefill per request — is the
 price of correctness, identical in spirit to the GGUF multimodal cache-invalidation rule.
 
+The Auto backend may retry once on CPU when a GPU-resident engine cannot open a conversation
+(delegate graph compilation failing per-bundle after engine init succeeded). The retry is a
+fresh sequential admission through the same FIFO after the first returns — never nested inside
+the first block, because the permit is a non-reentrant `Semaphore(1)` and a nested admission
+would deadlock every local model behind it. An explicitly requested CPU or GPU backend never
+switches silently: its failures are reported as-is.
+
 The native Chat context uses hardware-derived thread counts for both single-token decode
 (`n_threads`) and batch prefill (`n_threads_batch`): computed once at context construction by
 counting performance cores (those whose `cpuinfo_max_freq` is >= 2 GHz, clamped to [1, 6]),
@@ -214,9 +221,10 @@ no explicit override. A conversation or New Chat stores a nullable override: `nu
 current Provider default, while an explicit `true` or `false` continues to win if the default later
 changes. The request effect remains limited to ordinary embedded Local Chat as specified by
 [message-generation.md](message-generation.md); it does not change model residency, native context
-identity, Compact/title prompts, Ollama, or remote Providers. Its tool/system-prompt stripping is
-tied to the GGUF native-context constraint: `.litertlm` records are excluded — a bundle defines its
-own context and stays on the ordinary pipeline even when the toggle is on.
+identity, Compact/title prompts, Ollama, or remote Providers. It applies identically to both engine
+families: GGUF records and `.litertlm` records both face small native contexts against the full
+default prompt (a 4096-token bundle overflows on the default assembled prompt — verified on
+device), so the stripping covers both.
 
 ### LiteRT-LM record contract
 

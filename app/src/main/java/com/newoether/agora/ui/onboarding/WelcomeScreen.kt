@@ -231,19 +231,25 @@ fun WelcomeScreen(
                                 dest.delete()
                                 return@withContext null
                             }
-                            val magic = ByteArray(4)
+                            val magic = ByteArray(8)
                             val bytesRead = dest.inputStream().use { it.read(magic) }
-                            val ggufMagic = bytesRead == magic.size &&
+                            val ggufMagic = bytesRead >= 4 &&
                                 magic[0] == 'G'.code.toByte() &&
                                 magic[1] == 'G'.code.toByte() &&
                                 magic[2] == 'U'.code.toByte() &&
                                 magic[3] == 'F'.code.toByte()
-                            // .litertlm bundles are ZIP containers ("PK").
-                            val zipMagic = bytesRead == magic.size &&
-                                magic[0] == 'P'.code.toByte() &&
-                                magic[1] == 'K'.code.toByte()
+                            // .litertlm bundles start with the ASCII header "LITERTLM".
+                            val litertlmMagic = bytesRead >= 8 &&
+                                magic[0] == 'L'.code.toByte() &&
+                                magic[1] == 'I'.code.toByte() &&
+                                magic[2] == 'T'.code.toByte() &&
+                                magic[3] == 'E'.code.toByte() &&
+                                magic[4] == 'R'.code.toByte() &&
+                                magic[5] == 'T'.code.toByte() &&
+                                magic[6] == 'L'.code.toByte() &&
+                                magic[7] == 'M'.code.toByte()
                             val format = when {
-                                isLitertlm && zipMagic -> LocalChatModelConfig.FORMAT_LITERTLM
+                                isLitertlm && litertlmMagic -> LocalChatModelConfig.FORMAT_LITERTLM
                                 !isLitertlm && ggufMagic -> LocalChatModelConfig.FORMAT_GGUF
                                 else -> null
                             }

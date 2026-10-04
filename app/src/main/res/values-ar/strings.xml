@@ -154,8 +154,8 @@
     <string name="called_n_tools">استدعى %1$d أداة</string>
     <string name="failed_to_generate">فشل التوليد.</string>
     <string name="generation_stopped">تم إيقاف التوليد</string>
-    <string name="import_invalid_gguf_title">ملف GGUF غير صالح</string>
-    <string name="import_invalid_gguf_desc">الملف المحدد ليس نموذج GGUF صالحًا.</string>
+    <string name="import_invalid_gguf_title">ملف نموذج غير صالح</string>
+    <string name="import_invalid_gguf_desc">الملف المحدد ليس نموذج GGUF أو LiteRT-LM صالحًا.</string>
     <string name="ok">موافق</string>
     <string name="citation_sources">المصادر</string>
     <string name="citation_source_accessibility">المصدر %1$d: %2$s</string>
@@ -768,7 +768,7 @@
     <string name="provider_no_local_models_desc">استورد نموذج GGUF للبدء</string>
     <string name="provider_keys_summary">%1$d مفتاح API</string>
     <string name="provider_connection">الاتصال</string>
-    <string name="import_model_chat">استيراد نموذج GGUF</string>
+    <string name="import_model_chat">استيراد نموذج محلي (GGUF / .litertlm)</string>
     <string name="add_local_chat_model">إضافة نموذج محلي</string>
     <string name="local_ctx_size">حجم السياق</string>
     <string name="local_temperature">درجة الحرارة</string>
@@ -1017,12 +1017,12 @@
     <string name="onboarding_skip_for_now">تخطٍّ الآن</string>
     <string name="onboarding_api_key_hint">أدخل مفتاح API الخاص بك…</string>
     <string name="onboarding_ollama_hint">http://localhost:11434</string>
-    <string name="onboarding_import_gguf">استيراد نموذج GGUF</string>
+    <string name="onboarding_import_gguf">استيراد نموذج محلي (GGUF / .litertlm)</string>
     <string name="onboarding_importing">جارٍ الاستيراد…</string>
     <string name="onboarding_no_provider">لم يتم اختيار مزوّد.</string>
     <string name="onboarding_no_models">لم يتم تحميل نماذج.</string>
-    <string name="onboarding_invalid_gguf_title">ملف GGUF غير صالح</string>
-    <string name="onboarding_invalid_gguf_desc">لا يبدو الملف المحدد نموذج GGUF صالحًا.</string>
+    <string name="onboarding_invalid_gguf_title">ملف نموذج غير صالح</string>
+    <string name="onboarding_invalid_gguf_desc">الملف المحدد ليس نموذج GGUF أو LiteRT-LM صالحًا.</string>
     <string name="onboarding_hide_key">إخفاء المفتاح</string>
     <string name="onboarding_show_key">إظهار المفتاح</string>
     <!-- ── Auto Backup ── -->

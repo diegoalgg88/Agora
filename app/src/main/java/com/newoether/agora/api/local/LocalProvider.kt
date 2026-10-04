@@ -2,6 +2,7 @@ package com.newoether.agora.api.local
 
 import com.newoether.agora.api.*
 import com.newoether.agora.api.litert.LiteRtBackend
+import com.newoether.agora.api.litert.LiteRtChatEngine
 import com.newoether.agora.api.litert.LiteRtGenerationRequest
 import com.newoether.agora.api.util.buildToolCallId
 
@@ -333,61 +334,132 @@ class LocalProvider(
         val localContextWindow = minOf(config.maxContextWindow, modelConfig.nCtx).coerceAtLeast(1)
         val resolvedRequest = config.copy(maxContextWindow = localContextWindow).resolveRequest(messages)
 
+        // Auto starts on GPU; if the GPU path cannot even open a conversation (delegate graph
+        // compilation fails per-bundle, after engine init succeeds), retry once on CPU through
+        // the normal identity switch — unload the GPU resident, load a CPU engine. The retry
+        // runs AFTER the first admission returns: the FIFO permit is a non-reentrant
+        // Semaphore(1), so a runLiteRtChat nested inside the first block would deadlock every
+        // local model behind it.
+        var retryOnCpu = false
         val executed = LocalModelRuntime.runLiteRtChat(
             modelPath = modelConfig.localFilePath,
             backend = backend,
             visionCapable = modelConfig.visionCapable,
         ) { engine ->
-            val mapped = LiteRtRequestMapper.map(
-                resolvedMessages = resolvedRequest.messages,
-                systemPrompt = resolvedRequest.systemPrompt,
-                modelConfig = modelConfig,
-                config = config,
-            )
-            val conversation = engine.createConversation(mapped.conversationConfig)
-            if (conversation == null) {
-                emit(StreamEvent.Error(GenerationError.LocalModel(
-                    context.getString(R.string.litertlm_load_failed, engine.activeBackendName)
-                )))
-                return@runLiteRtChat
+            when (streamLiteRtConversation(engine, resolvedRequest, modelConfig, config)) {
+                LiteRtOutcome.Streamed -> Unit
+                LiteRtOutcome.Failed ->
+                    reportLiteRtLoadFailure(engine.activeBackendName)
+                LiteRtOutcome.RetryOnCpu -> {
+                    if (backend != LiteRtBackend.Auto) {
+                        // The user explicitly chose GPU; a silent CPU switch would contradict
+                        // the registered backend. Report the GPU failure as-is.
+                        reportLiteRtLoadFailure(engine.activeBackendName)
+                    } else {
+                        retryOnCpu = true
+                    }
+                }
+            }
+        }
+        if (!executed) {
+            val failedBackend = when (modelConfig.backend) {
+                LocalChatModelConfig.BACKEND_CPU -> "CPU"
+                LocalChatModelConfig.BACKEND_GPU -> "GPU"
+                else -> "Auto"
+            }
+            emit(StreamEvent.Error(GenerationError.LocalModel(
+                context.getString(R.string.litertlm_load_failed, failedBackend)
+            )))
+            return
+        }
+        if (retryOnCpu) {
+            DebugLog.w(TAG, "LiteRT-LM GPU conversation failed; retrying on CPU")
+            val cpuExecuted = LocalModelRuntime.runLiteRtChat(
+                modelPath = modelConfig.localFilePath,
+                backend = LiteRtBackend.Cpu,
+                visionCapable = modelConfig.visionCapable,
+            ) { cpuEngine ->
+                when (streamLiteRtConversation(cpuEngine, resolvedRequest, modelConfig, config)) {
+                    LiteRtOutcome.Streamed -> Unit
+                    else -> reportLiteRtLoadFailure(cpuEngine.activeBackendName)
+                }
+            }
+            if (!cpuExecuted) reportLiteRtLoadFailure("CPU")
+        }
+    }
+
+    /** Outcome of one LiteRT-LM conversation attempt on a resident engine. */
+    private enum class LiteRtOutcome { Streamed, Failed, RetryOnCpu }
+
+    /** Reports a model-load/conversation failure using the localized backend message. */
+    private suspend fun FlowCollector<StreamEvent>.reportLiteRtLoadFailure(
+        backendName: String,
+    ) {
+        emit(StreamEvent.Error(GenerationError.LocalModel(
+            context.getString(R.string.litertlm_load_failed, backendName)
+        )))
+    }
+
+    /**
+     * Opens a conversation on the resident engine and streams it to the collector. Returns the
+     * outcome so the caller can decide whether the Auto/GPU path deserves a single CPU retry;
+     * streaming failures inside an already-open conversation are terminal and reported inline.
+     */
+    private suspend fun FlowCollector<StreamEvent>.streamLiteRtConversation(
+        engine: LiteRtChatEngine,
+        resolvedRequest: ProviderRequestInput,
+        modelConfig: LocalChatModelConfig,
+        config: ProviderConfig,
+    ): LiteRtOutcome {
+        val mapped = LiteRtRequestMapper.map(
+            resolvedMessages = resolvedRequest.messages,
+            systemPrompt = resolvedRequest.systemPrompt,
+            modelConfig = modelConfig,
+            config = config,
+        )
+        val conversation = engine.createConversation(mapped.conversationConfig)
+            ?: return if (engine.activeBackendName == "GPU") {
+                LiteRtOutcome.RetryOnCpu
+            } else {
+                LiteRtOutcome.Failed
             }
 
-            var inputTokenCount = 0
-            var terminalError: GenerationError? = null
-            try {
-                val tokenFlow = conversation.generate(
-                    LiteRtGenerationRequest(
-                        sendMessage = mapped.sendMessage,
-                        repetitionPenaltyConfig = mapped.repetitionPenaltyConfig,
-                        maxOutputToken = mapped.maxOutputToken,
-                        thinkingConfig = mapped.thinkingConfig,
-                    )
+        var inputTokenCount = 0
+        var terminalError: GenerationError? = null
+        try {
+            val tokenFlow = conversation.generate(
+                LiteRtGenerationRequest(
+                    sendMessage = mapped.sendMessage,
+                    repetitionPenaltyConfig = mapped.repetitionPenaltyConfig,
+                    maxOutputToken = mapped.maxOutputToken,
+                    thinkingConfig = mapped.thinkingConfig,
                 )
-                // Register while still holding the process-wide runtime task. The handle is
-                // removed before the next FIFO waiter may begin native work.
-                val streamScope = HttpClient.boundStreamScope()
-                val nativeCancel = GenerationCancelHandle { conversation.cancel() }
-                streamScope?.register(nativeCancel)
-                try {
-                    tokenFlow.collect { event ->
-                        when (event) {
-                            is LlamaGenerationEvent.Text -> {
-                                if (event.value.isNotEmpty()) emit(StreamEvent.TextChunk(event.value))
+            )
+            // Register while still holding the process-wide runtime task. The handle is
+            // removed before the next FIFO waiter may begin native work.
+            val streamScope = HttpClient.boundStreamScope()
+            val nativeCancel = GenerationCancelHandle { conversation.cancel() }
+            streamScope?.register(nativeCancel)
+            try {
+                tokenFlow.collect { event ->
+                    when (event) {
+                        is LlamaGenerationEvent.Text -> {
+                            if (event.value.isNotEmpty()) emit(StreamEvent.TextChunk(event.value))
+                        }
+                        is LlamaGenerationEvent.Thought -> {
+                            if (event.value.isNotEmpty()) emit(StreamEvent.ThoughtChunk(event.value))
+                        }
+                        is LlamaGenerationEvent.ToolCallUpdate -> Unit
+                        is LlamaGenerationEvent.ToolCallsCompleted -> {
+                            val calls = event.calls.map { call ->
+                                val arguments = call.arguments.ifBlank { "{}" }
+                                StreamEvent.ToolCallRequest(
+                                    id = buildToolCallId("${call.name}:${call.index}", arguments),
+                                    name = call.name,
+                                    arguments = arguments,
+                                    streamKey = "local_tool_${call.index}",
+                                )
                             }
-                            is LlamaGenerationEvent.Thought -> {
-                                if (event.value.isNotEmpty()) emit(StreamEvent.ThoughtChunk(event.value))
-                            }
-                            is LlamaGenerationEvent.ToolCallUpdate -> Unit
-                            is LlamaGenerationEvent.ToolCallsCompleted -> {
-                                val calls = event.calls.map { call ->
-                                    val arguments = call.arguments.ifBlank { "{}" }
-                                    StreamEvent.ToolCallRequest(
-                                        id = buildToolCallId("${call.name}:${call.index}", arguments),
-                                        name = call.name,
-                                        arguments = arguments,
-                                        streamKey = "local_tool_${call.index}",
-                                    )
-                                }
                                 if (calls.isNotEmpty()) emit(StreamEvent.ToolCallsRequest(calls))
                             }
                             is LlamaGenerationEvent.Completed -> {
@@ -424,7 +496,7 @@ class LocalProvider(
             } catch (e: Exception) {
                 DebugLog.e(TAG, "LiteRT-LM generation failed", e)
                 emit(StreamEvent.Error(GenerationError.LocalModel("Generation failed: ${e.message}")))
-                return@runLiteRtChat
+                return LiteRtOutcome.Failed
             } finally {
                 conversation.close()
             }
@@ -435,17 +507,7 @@ class LocalProvider(
                 )
             )
             terminalError?.let { emit(StreamEvent.Error(it)) }
-        }
-        if (!executed) {
-            val failedBackend = when (modelConfig.backend) {
-                LocalChatModelConfig.BACKEND_CPU -> "CPU"
-                LocalChatModelConfig.BACKEND_GPU -> "GPU"
-                else -> "Auto"
-            }
-            emit(StreamEvent.Error(GenerationError.LocalModel(
-                context.getString(R.string.litertlm_load_failed, failedBackend)
-            )))
-        }
+            return LiteRtOutcome.Streamed
     }
 
     private fun formatGenerationError(

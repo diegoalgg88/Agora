@@ -154,8 +154,8 @@
     <string name="called_n_tools">도구 %1$d개를 호출함</string>
     <string name="failed_to_generate">생성에 실패했습니다.</string>
     <string name="generation_stopped">생성이 중지되었습니다</string>
-    <string name="import_invalid_gguf_title">잘못된 GGUF 파일</string>
-    <string name="import_invalid_gguf_desc">선택한 파일은 유효한 GGUF 모델이 아닙니다.</string>
+    <string name="import_invalid_gguf_title">잘못된 모델 파일</string>
+    <string name="import_invalid_gguf_desc">선택한 파일이 유효한 GGUF 또는 LiteRT-LM 모델이 아닙니다.</string>
     <string name="ok">확인</string>
     <string name="citation_sources">출처</string>
     <string name="citation_source_accessibility">출처 %1$d: %2$s</string>
@@ -768,7 +768,7 @@
     <string name="provider_no_local_models_desc">시작하려면 GGUF 모델을 가져오세요</string>
     <string name="provider_keys_summary">%1$d개의 API 키</string>
     <string name="provider_connection">연결</string>
-    <string name="import_model_chat">GGUF 모델 가져오기</string>
+    <string name="import_model_chat">로컬 모델 가져오기 (GGUF / .litertlm)</string>
     <string name="add_local_chat_model">로컬 모델 추가</string>
     <string name="local_ctx_size">컨텍스트 크기</string>
     <string name="local_temperature">온도</string>
@@ -1017,12 +1017,12 @@
     <string name="onboarding_skip_for_now">지금은 건너뛰기</string>
     <string name="onboarding_api_key_hint">API 키를 입력하세요…</string>
     <string name="onboarding_ollama_hint">http://localhost:11434</string>
-    <string name="onboarding_import_gguf">GGUF 모델 가져오기</string>
+    <string name="onboarding_import_gguf">로컬 모델 가져오기 (GGUF / .litertlm)</string>
     <string name="onboarding_importing">가져오는 중…</string>
     <string name="onboarding_no_provider">선택된 제공자가 없습니다.</string>
     <string name="onboarding_no_models">로드된 모델이 없습니다.</string>
-    <string name="onboarding_invalid_gguf_title">잘못된 GGUF 파일</string>
-    <string name="onboarding_invalid_gguf_desc">선택한 파일은 유효한 GGUF 모델이 아닌 것 같습니다.</string>
+    <string name="onboarding_invalid_gguf_title">잘못된 모델 파일</string>
+    <string name="onboarding_invalid_gguf_desc">선택한 파일이 유효한 GGUF 또는 LiteRT-LM 모델이 아닙니다.</string>
     <string name="onboarding_hide_key">키 숨기기</string>
     <string name="onboarding_show_key">키 표시</string>
     <!-- ── Auto Backup ── -->

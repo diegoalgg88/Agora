@@ -593,17 +593,25 @@ class LocalLlamaOwnershipSourceContractTest {
         val provider = mainSource("com/newoether/agora/api/local/LocalProvider.kt")
         val runtime = mainSource("com/newoether/agora/api/LocalModelRuntime.kt")
 
-        // The provider is the only admission caller for both engine families.
+        // The provider is the only admission caller for both engine families: one ordinary
+        // admission plus the Auto-backend CPU retry, which is a sequential re-admission.
         assertEquals(
             1,
             Regex.escape("LocalModelRuntime.runChat(").toRegex()
                 .findAll(provider).count(),
         )
         assertEquals(
-            1,
+            2,
             Regex.escape("LocalModelRuntime.runLiteRtChat(").toRegex()
                 .findAll(provider).count(),
         )
+        // The CPU retry must never be nested inside the first FIFO block: the permit is a
+        // non-reentrant Semaphore(1), so a nested admission deadlocks every local model.
+        val gpuRetryBranch = provider
+            .substringAfter("LiteRtOutcome.RetryOnCpu ->")
+            .substringBefore("if (!executed)")
+        assertFalse(gpuRetryBranch.contains("LocalModelRuntime.runLiteRtChat("))
+        assertTrue(gpuRetryBranch.contains("retryOnCpu = true"))
 
         // runLiteRtChat: unload-before-load, fail-closed without a resident, same FIFO permit.
         val litertRun = runtime.substringAfter("suspend fun runLiteRtChat(")
@@ -707,11 +715,11 @@ class LocalLlamaOwnershipSourceContractTest {
             "minOf(config.maxContextWindow, modelConfig.nCtx).coerceAtLeast(1)"
         ))
 
-        // Low-context-mode stripping stays GGUF-only.
-        assertTrue(requestBuilder.contains("FORMAT_LITERTLM"))
-        assertTrue(requestBuilder.contains(
-            "settings.localChatModels.value.none {"
-        ))
+        // Low-context-mode stripping applies to every embedded Local model — the toggle exists
+        // precisely for small native contexts, and .litertlm bundles can be as small as any
+        // GGUF (verified on device: a 4096-token bundle overflows on the default prompt).
+        assertFalse(requestBuilder.contains("FORMAT_LITERTLM"))
+        assertFalse(requestBuilder.contains("settings.localChatModels.value.none {"))
 
         // Dispatch is a single format branch; the GGUF path is unchanged.
         assertTrue(provider.contains(

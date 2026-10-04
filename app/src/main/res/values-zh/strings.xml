@@ -178,8 +178,8 @@
     <string name="welcome_to_agora">欢迎使用 Agora。</string>
     <string name="failed_to_generate">生成失败。</string>
     <string name="generation_stopped">生成已停止</string>
-    <string name="import_invalid_gguf_title">无效的 GGUF 文件</string>
-    <string name="import_invalid_gguf_desc">所选文件不是有效的 GGUF 模型文件。</string>
+    <string name="import_invalid_gguf_title">无效的模型文件</string>
+    <string name="import_invalid_gguf_desc">所选文件不是有效的 GGUF 或 LiteRT-LM 模型。</string>
     <string name="ok">确定</string>
     <string name="citation_sources">来源</string>
     <string name="citation_source_accessibility">来源 %1$d：%2$s</string>
@@ -916,7 +916,7 @@
     <!-- Local Chat Provider -->
     <string name="local_chat_models">本地聊天模型</string>
     <string name="local_chat_models_count">已导入 %1$d 个模型</string>
-    <string name="import_model_chat">导入 GGUF 模型</string>
+    <string name="import_model_chat">导入本地模型（GGUF / .litertlm）</string>
     <string name="add_local_chat_model">添加本地模型</string>
     <string name="local_ctx_size">上下文大小</string>
     <string name="local_temperature">温度</string>
@@ -1179,12 +1179,12 @@
     <string name="onboarding_skip_for_now">以后再说</string>
     <string name="onboarding_api_key_hint">输入 API 密钥…</string>
     <string name="onboarding_ollama_hint">http://localhost:11434</string>
-    <string name="onboarding_import_gguf">导入 GGUF 模型</string>
+    <string name="onboarding_import_gguf">导入本地模型（GGUF / .litertlm）</string>
     <string name="onboarding_importing">导入中…</string>
     <string name="onboarding_no_provider">未选择提供商。</string>
     <string name="onboarding_no_models">暂无可用模型。</string>
-    <string name="onboarding_invalid_gguf_title">无效的 GGUF 文件</string>
-    <string name="onboarding_invalid_gguf_desc">所选文件不是有效的 GGUF 模型。</string>
+    <string name="onboarding_invalid_gguf_title">无效的模型文件</string>
+    <string name="onboarding_invalid_gguf_desc">所选文件不是有效的 GGUF 或 LiteRT-LM 模型。</string>
     <string name="onboarding_hide_key">隐藏密钥</string>
     <string name="onboarding_show_key">显示密钥</string>
     <!-- ── Auto Backup ── -->

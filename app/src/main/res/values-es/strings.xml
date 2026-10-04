@@ -154,8 +154,8 @@
     <string name="called_n_tools">Llamó a %1$d herramientas</string>
     <string name="failed_to_generate">Error al generar.</string>
     <string name="generation_stopped">Generación detenida</string>
-    <string name="import_invalid_gguf_title">Archivo GGUF no válido</string>
-    <string name="import_invalid_gguf_desc">El archivo seleccionado no es un modelo GGUF válido.</string>
+    <string name="import_invalid_gguf_title">Archivo de modelo no válido</string>
+    <string name="import_invalid_gguf_desc">El archivo seleccionado no es un modelo GGUF o LiteRT-LM válido.</string>
     <string name="ok">Aceptar</string>
     <string name="citation_sources">Fuentes</string>
     <string name="citation_source_accessibility">Fuente %1$d: %2$s</string>
@@ -768,7 +768,7 @@
     <string name="provider_no_local_models_desc">Importa un modelo GGUF para empezar</string>
     <string name="provider_keys_summary">%1$d clave(s) de API</string>
     <string name="provider_connection">Conexión</string>
-    <string name="import_model_chat">Importar modelo GGUF</string>
+    <string name="import_model_chat">Importar modelo local (GGUF / .litertlm)</string>
     <string name="add_local_chat_model">Añadir modelo local</string>
     <string name="local_ctx_size">Tamaño del contexto</string>
     <string name="local_temperature">Temperatura</string>
@@ -1017,12 +1017,12 @@
     <string name="onboarding_skip_for_now">Omitir por ahora</string>
     <string name="onboarding_api_key_hint">Introduce tu clave de API…</string>
     <string name="onboarding_ollama_hint">http://localhost:11434</string>
-    <string name="onboarding_import_gguf">Importar modelo GGUF</string>
+    <string name="onboarding_import_gguf">Importar modelo local (GGUF / .litertlm)</string>
     <string name="onboarding_importing">Importando…</string>
     <string name="onboarding_no_provider">Ningún proveedor seleccionado.</string>
     <string name="onboarding_no_models">No se han cargado modelos.</string>
-    <string name="onboarding_invalid_gguf_title">Archivo GGUF no válido</string>
-    <string name="onboarding_invalid_gguf_desc">El archivo seleccionado no parece ser un modelo GGUF válido.</string>
+    <string name="onboarding_invalid_gguf_title">Archivo de modelo no válido</string>
+    <string name="onboarding_invalid_gguf_desc">El archivo seleccionado no es un modelo GGUF o LiteRT-LM válido.</string>
     <string name="onboarding_hide_key">Ocultar clave</string>
     <string name="onboarding_show_key">Mostrar clave</string>
     <!-- ── Auto Backup ── -->
