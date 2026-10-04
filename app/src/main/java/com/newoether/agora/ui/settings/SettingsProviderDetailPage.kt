@@ -661,8 +661,10 @@ fun SettingsProviderDetailPage(
 
     // Edit model dialog
     showEditModelDialog?.let { model ->
+        val isEditLitertlm = model.format == LocalChatModelConfig.FORMAT_LITERTLM
         var editModelId by remember { mutableStateOf(model.modelId) }; var editAlias by remember { mutableStateOf(model.alias) }; var editMmprojPath by remember { mutableStateOf(model.mmprojPath) }
         var editNCtx by remember { mutableStateOf(model.nCtx.toString()) }; var editTemp by remember { mutableStateOf(model.temperature.toString()) }; var editTopP by remember { mutableStateOf(model.topP.toString()) }; var editMaxTokens by remember { mutableStateOf(model.maxTokens.toString()) }
+        var editBackend by remember { mutableStateOf(model.backend) }; var editTopK by remember { mutableStateOf(model.topK.toString()) }; var editVision by remember { mutableStateOf(model.visionCapable) }
         var editIdError by remember { mutableStateOf<String?>(null) }; var editFormError by remember { mutableStateOf<String?>(null) }
         val idRegex = remember { Regex("^[a-z0-9._-]+\$") }
         LaunchedEffect(mmprojPickedUri) {
@@ -685,7 +687,35 @@ fun SettingsProviderDetailPage(
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(value = editAlias, onValueChange = { editAlias = it }, label = { Text(stringResource(R.string.model_alias_label)) }, shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(value = editNCtx, onValueChange = { editNCtx = it }, label = { Text(stringResource(R.string.local_ctx_size)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
+                if (isEditLitertlm) {
+                    Text(stringResource(R.string.litertlm_format_badge), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        listOf(
+                            LocalChatModelConfig.BACKEND_AUTO to R.string.litertlm_backend_auto,
+                            LocalChatModelConfig.BACKEND_CPU to R.string.litertlm_backend_cpu,
+                            LocalChatModelConfig.BACKEND_GPU to R.string.litertlm_backend_gpu,
+                        ).forEach { (value, labelRes) ->
+                            FilterChip(
+                                selected = editBackend == value,
+                                onClick = { editBackend = value },
+                                label = { Text(stringResource(labelRes), style = MaterialTheme.typography.labelMedium) },
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                        }
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = editVision, onCheckedChange = { editVision = it })
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(stringResource(R.string.litertlm_vision_capable), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(value = editTopK, onValueChange = { editTopK = it }, label = { Text(stringResource(R.string.litertlm_top_k)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                OutlinedTextField(value = editNCtx, onValueChange = { editNCtx = it }, label = { Text(stringResource(R.string.local_ctx_size)) }, supportingText = if (isEditLitertlm) {{ Text(stringResource(R.string.litertlm_context_hint), style = MaterialTheme.typography.bodySmall) }} else null, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
+                if (!isEditLitertlm) {
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     val hasMmproj = editMmprojPath.isNotBlank()
@@ -700,6 +730,7 @@ fun SettingsProviderDetailPage(
                             if (removedPath != model.mmprojPath) deleteFilesAsync(removedPath)
                         }) { Text(stringResource(R.string.remove), color = MaterialTheme.colorScheme.error) }
                     }
+                }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(value = editTemp, onValueChange = { editTemp = it }, label = { Text(stringResource(R.string.local_temperature)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
@@ -718,8 +749,17 @@ fun SettingsProviderDetailPage(
                 val t = editTemp.toFloatOrNull()?.takeIf { it in 0f..2f } ?: run { editFormError = "Temperature must be 0–2"; return@TextButton }
                 val p = editTopP.toFloatOrNull()?.takeIf { it in 0f..1f } ?: run { editFormError = "Top P must be 0–1"; return@TextButton }
                 val m = editMaxTokens.toIntOrNull()?.takeIf { it > 0 } ?: run { editFormError = "Max tokens must be positive"; return@TextButton }
+                val k = if (isEditLitertlm) {
+                    editTopK.toIntOrNull()?.takeIf { it > 0 } ?: run { editFormError = "Top K must be positive"; return@TextButton }
+                } else null
                 if (m > n) { editFormError = "Max tokens must not exceed context size"; return@TextButton }
-                viewModel.modelManager.updateLocalChatModel(model.id, id, editAlias.ifBlank { id }, n, t, p, m, mmprojPath = editMmprojPath.trim())
+                viewModel.modelManager.updateLocalChatModel(
+                    model.id, id, editAlias.ifBlank { id }, n, t, p, m,
+                    mmprojPath = if (isEditLitertlm) "" else editMmprojPath.trim(),
+                    backend = if (isEditLitertlm) editBackend else null,
+                    topK = k,
+                    visionCapable = if (isEditLitertlm) editVision else null,
+                )
                 showEditModelDialog = null
             }) { Text(stringResource(R.string.save)) } },
             dismissButton = { TextButton(onClick = {

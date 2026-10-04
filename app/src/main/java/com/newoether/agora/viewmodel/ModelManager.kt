@@ -58,7 +58,9 @@ class ModelManager(
 
     fun updateLocalChatModel(
         uuid: String, newModelId: String, newAlias: String, nCtx: Int, temperature: Float, topP: Float, maxTokens: Int,
-        mmprojPath: String = ""
+        mmprojPath: String = "",
+        // LiteRT-LM fields; null preserves the registered value (GGUF callers omit them).
+        backend: String? = null, topK: Int? = null, visionCapable: Boolean? = null,
     ) {
         scope.launch(Dispatchers.IO) {
             if (isLocalModelIdTaken(newModelId, excludeId = uuid)) return@launch
@@ -67,7 +69,12 @@ class ModelManager(
                 java.io.File(oldModel.mmprojPath).delete()
             }
             val models = settings.localChatModels.value.map {
-                if (it.id == uuid) it.copy(modelId = newModelId, alias = newAlias, nCtx = nCtx, temperature = temperature, topP = topP, maxTokens = maxTokens, mmprojPath = mmprojPath)
+                if (it.id == uuid) it.copy(
+                    modelId = newModelId, alias = newAlias, nCtx = nCtx, temperature = temperature, topP = topP, maxTokens = maxTokens, mmprojPath = mmprojPath,
+                    backend = backend ?: it.backend,
+                    topK = topK ?: it.topK,
+                    visionCapable = visionCapable ?: it.visionCapable,
+                )
                 else it
             }
             settings.saveLocalChatModels(models)
