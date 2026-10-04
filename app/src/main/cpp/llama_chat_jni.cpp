@@ -8,6 +8,7 @@
 #include <cstring>
 #include <cstdint>
 #include <cstdio>
+#include <unistd.h>
 #include <android/log.h>
 #include "llama.h"
 #include "chat.h"
@@ -28,6 +29,21 @@
 static constexpr int32_t CALLBACK_TOKEN_BATCH = 4;
 static constexpr size_t CALLBACK_BYTE_BATCH = 64;
 static constexpr int32_t PENALTY_LAST_N = 64;
+
+// llama.cpp's own default is a fixed 4 threads (GGML_DEFAULT_N_THREADS), which underuses the
+// big cores on modern phones and can even land decode on the little cluster. Both n_threads
+// (single-token decode) and n_threads_batch (prompt prefill) are hardware-derived instead:
+// half the online processor count — an approximation of the big-core share on typical ARM
+// big.LITTLE topologies — clamped to [1, 6] so one local generation never starves the
+// foreground UI, falling back to 4 when sysconf is unavailable.
+static int32_t derive_thread_count() {
+    long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
+    if (cpu_count <= 0) return 4;
+    int32_t threads = static_cast<int32_t>(cpu_count) / 2;
+    if (threads < 1) threads = 1;
+    if (threads > 6) threads = 6;
+    return threads;
+}
 
 struct ChatHandle {
     llama_model * model   = nullptr;
@@ -731,6 +747,12 @@ Java_com_newoether_agora_api_LlamaChatEngine_nativeChatLoadModel(
 
     llama_context_params ctx_params = llama_context_default_params();
     ctx_params.n_ctx   = n_ctx;
+    // Hardware-derived parallelism for both single-token decode and batch prefill; see
+    // derive_thread_count(). Stays constant for the context's lifetime, so resident
+    // identity (path + n_ctx) is unchanged.
+    const int32_t derived_threads = derive_thread_count();
+    ctx_params.n_threads      = derived_threads;
+    ctx_params.n_threads_batch = derived_threads;
     // n_batch bounds the LOGITS/EMBEDDINGS buffers llama.cpp allocates up front, so tying it to
     // n_ctx made memory grow with the square of the context — the OOM on large-context local
     // models (#53). 512 is llama.cpp's own default and prefill is chunked to match; on-device
@@ -758,9 +780,9 @@ Java_com_newoether_agora_api_LlamaChatEngine_nativeChatLoadModel(
     const auto total_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
         load_finished - load_started
     ).count();
-    LOGD("Chat load: model_ms=%lld, context_ms=%lld, total_ms=%lld, n_ctx=%d, n_ctx_train=%d",
+    LOGD("Chat load: model_ms=%lld, context_ms=%lld, total_ms=%lld, n_ctx=%d, n_ctx_train=%d, n_threads=%d",
          (long long)model_ms, (long long)context_ms, (long long)total_ms,
-         n_ctx, llama_model_n_ctx_train(handle->model));
+         n_ctx, llama_model_n_ctx_train(handle->model), derived_threads);
 
     return reinterpret_cast<jlong>(handle);
 }

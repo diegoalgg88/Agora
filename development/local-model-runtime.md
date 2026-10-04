@@ -48,6 +48,12 @@ Chat and Embedding are different identities even when their canonical model path
 sampling values such as temperature, top P, frequency/presence penalties, and maximum output tokens
 do not construct the native context and therefore do not change identity.
 
+The native Chat context uses hardware-derived thread counts for both single-token decode
+(`n_threads`) and batch prefill (`n_threads_batch`): computed once from the device's online
+processor count at context construction, clamped to [1, 6], falling back to 4 when the count is
+unreadable. The derived value is constant for the context's lifetime, requires no caller input,
+and therefore does not participate in resident identity.
+
 New Local Chat model records created through Settings or onboarding default to `nCtx=16384` and
 `maxTokens=1024`. Existing records are not migrated: the serialized `LocalChatModelConfig` fallback
 for a missing legacy `nCtx` remains 2048, and an explicitly stored context size remains unchanged.
