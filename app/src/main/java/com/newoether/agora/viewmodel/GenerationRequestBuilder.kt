@@ -7,6 +7,7 @@ import com.newoether.agora.api.ProviderRequestResolver
 import com.newoether.agora.api.util.ContextTokenEstimator
 import com.newoether.agora.api.util.prepareMessages
 import com.newoether.agora.data.ConversationSettings
+import com.newoether.agora.data.LocalChatModelConfig
 import com.newoether.agora.data.MemoryManager
 import com.newoether.agora.data.SkillManager
 import com.newoether.agora.data.PredefinedVariables
@@ -392,7 +393,13 @@ class GenerationRequestBuilder(
         val lowContextModeEnabled =
             applyLowContextMode &&
                 providerName == Constants.PROVIDER_LOCAL &&
-                effectiveSettings.lowContextModeEnabled == true
+                effectiveSettings.lowContextModeEnabled == true &&
+                // Low Context Mode's stripping is tied to the GGUF native context; .litertlm
+                // bundles define their own context and stay on the ordinary pipeline.
+                settings.localChatModels.value.none {
+                    it.modelId == ModelId.parse(providerRegistry.canonicalModelId(modelId)).modelName &&
+                        it.format == LocalChatModelConfig.FORMAT_LITERTLM
+                }
         val imageGenModel = settings.imageGenModel.value
         val imageGenBackend = settings.imageGenBackend.value
         val transcriptionModel = settings.imageTranscriptionModel.value

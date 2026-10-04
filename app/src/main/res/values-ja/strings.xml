@@ -810,6 +810,18 @@
     <string name="local_model_download_notification_progress">%1$d%%</string>
     <string name="local_model_badge_tools">ツール</string>
     <string name="local_model_badge_thinking">思考</string>
+    <!-- Local Model - LiteRT-LM (.litertlm) -->
+    <string name="litertlm_backend_label">バックエンド</string>
+    <string name="litertlm_backend_auto">自動（GPU、失敗時はCPUへフォールバック）</string>
+    <string name="litertlm_backend_cpu">CPU</string>
+    <string name="litertlm_backend_gpu">GPU</string>
+    <string name="litertlm_context_hint">モデルバンドルは独自のコンテキストを定義します。この値はAgoraが送信する会話履歴の量を制限するだけです。</string>
+    <string name="litertlm_gpu_memory_warning">約3 GBを超えるバンドルはGPUメモリを使い果たし、プロセスが異常終了する可能性があります。大きなモデルにはCPUバックエンドを検討してください。</string>
+    <string name="litertlm_vision_capable">ビジョン対応</string>
+    <string name="litertlm_vision_capable_desc">バンドル自体にマルチモーダルの重みが含まれています（例：Gemma 3n）</string>
+    <string name="litertlm_top_k">Top K</string>
+    <string name="litertlm_load_failed">LiteRT-LMモデルの初期化に失敗しました（%1$sバックエンド）</string>
+    <string name="litertlm_format_badge">LiteRT-LM</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">メモリとデータ</string>

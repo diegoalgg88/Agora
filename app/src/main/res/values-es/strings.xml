@@ -810,6 +810,18 @@
     <string name="local_model_download_notification_progress">%1$d%%</string>
     <string name="local_model_badge_tools">Herramientas</string>
     <string name="local_model_badge_thinking">Razonamiento</string>
+    <!-- Local Model - LiteRT-LM (.litertlm) -->
+    <string name="litertlm_backend_label">Motor</string>
+    <string name="litertlm_backend_auto">Automático (GPU, recurre a CPU)</string>
+    <string name="litertlm_backend_cpu">CPU</string>
+    <string name="litertlm_backend_gpu">GPU</string>
+    <string name="litertlm_context_hint">El paquete del modelo define su propio contexto. Este valor solo limita cuánto historial de conversación envía Agora.</string>
+    <string name="litertlm_gpu_memory_warning">Los paquetes de más de ~3 GB pueden agotar la memoria de GPU y cerrar el proceso. Considera el motor CPU para modelos grandes.</string>
+    <string name="litertlm_vision_capable">Admite visión</string>
+    <string name="litertlm_vision_capable_desc">El paquete contiene pesos multimodales (p. ej. Gemma 3n)</string>
+    <string name="litertlm_top_k">Top K</string>
+    <string name="litertlm_load_failed">No se pudo inicializar el modelo LiteRT-LM (motor %1$s)</string>
+    <string name="litertlm_format_badge">LiteRT-LM</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Memoria y datos</string>

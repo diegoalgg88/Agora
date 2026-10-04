@@ -343,6 +343,7 @@ private class RequestBuilderFixture(
         every { settings.webSearchEnabled } returns MutableStateFlow(true)
         every { settings.shellEnabled } returns MutableStateFlow(true)
         every { settings.localLowContextModeEnabled } returns MutableStateFlow(false)
+        every { settings.localChatModels } returns MutableStateFlow(emptyList())
         every { settings.contextCompactModel } returns MutableStateFlow(null)
         every { settings.contextCompactPrompt } returns MutableStateFlow(COMPACT_PROMPT)
         every { settings.contextCompactEnabled } returns MutableStateFlow(true)

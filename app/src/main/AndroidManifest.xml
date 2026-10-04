@@ -44,6 +44,13 @@
         android:supportsRtl="true"
         android:enableOnBackInvokedCallback="true"
         android:theme="@style/Theme.Agora.Starting">
+
+        <!-- LiteRT-LM GPU backend: Android 12+ hides vendor native libraries from apps unless
+             requested here. required="false" keeps the app installable on devices without
+             OpenCL; the engine then falls back to CPU. -->
+        <uses-native-library android:name="libOpenCL.so" android:required="false" />
+        <uses-native-library android:name="libvndksupport.so" android:required="false" />
+
         <activity
             android:name=".MainActivity"
             android:exported="true"

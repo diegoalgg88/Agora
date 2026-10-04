@@ -810,6 +810,18 @@
     <string name="local_model_download_notification_progress">%1$d%%</string>
     <string name="local_model_badge_tools">Ferramentas</string>
     <string name="local_model_badge_thinking">Raciocínio</string>
+    <!-- Local Model - LiteRT-LM (.litertlm) -->
+    <string name="litertlm_backend_label">Backend</string>
+    <string name="litertlm_backend_auto">Automático (GPU, com fallback para CPU)</string>
+    <string name="litertlm_backend_cpu">CPU</string>
+    <string name="litertlm_backend_gpu">GPU</string>
+    <string name="litertlm_context_hint">O pacote do modelo define seu próprio contexto. Este valor limita apenas quanto histórico de conversa o Agora envia.</string>
+    <string name="litertlm_gpu_memory_warning">Pacotes maiores que ~3 GB podem esgotar a memória da GPU e encerrar o processo. Considere o backend de CPU para modelos grandes.</string>
+    <string name="litertlm_vision_capable">Suporta visão</string>
+    <string name="litertlm_vision_capable_desc">O pacote contém pesos multimodais (ex.: Gemma 3n)</string>
+    <string name="litertlm_top_k">Top K</string>
+    <string name="litertlm_load_failed">Falha ao inicializar o modelo LiteRT-LM (backend %1$s)</string>
+    <string name="litertlm_format_badge">LiteRT-LM</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Memória e dados</string>

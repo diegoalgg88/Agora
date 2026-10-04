@@ -1,5 +1,7 @@
 package com.newoether.agora.api
 
+import com.newoether.agora.api.litert.LiteRtBackend
+import com.newoether.agora.api.litert.LiteRtChatEngine
 import com.newoether.agora.data.DEFAULT_LOCAL_MODEL_IDLE_RETENTION_MINUTES
 import com.newoether.agora.data.normalizeLocalModelIdleRetentionMinutes
 import com.newoether.agora.util.DebugLog
@@ -23,6 +25,17 @@ internal sealed interface LocalModelIdentity {
 
     data class Embedding(
         override val canonicalPath: String,
+    ) : LocalModelIdentity
+
+    /**
+     * Embedded LiteRT-LM engine for .litertlm bundles. The requested backend is part of the
+     * identity because it can only be applied when the engine is constructed: switching
+     * backend means a full unload-before-load replacement, not resident substate mutation.
+     */
+    data class LiteRtChat(
+        override val canonicalPath: String,
+        val backend: LiteRtBackend,
+        val visionCapable: Boolean,
     ) : LocalModelIdentity
 }
 
@@ -88,6 +101,11 @@ internal object LocalModelRuntime {
         data class Embedding(
             override val identity: LocalModelIdentity.Embedding,
         ) : Resident
+
+        data class LiteRt(
+            override val identity: LocalModelIdentity.LiteRtChat,
+            val engine: LiteRtChatEngine,
+        ) : Resident
     }
 
     private val lifecycleLock = Any()
@@ -104,6 +122,9 @@ internal object LocalModelRuntime {
 
     @Volatile
     private var nativeBackendDirectory: String? = null
+
+    @Volatile
+    private var liteRtCacheDirectory: String? = null
 
     @Volatile
     private var activeChatEngine: LlamaChatEngine? = null
@@ -124,6 +145,27 @@ internal object LocalModelRuntime {
                 return
             }
             nativeBackendDirectory = canonicalDirectory
+        }
+    }
+
+    /**
+     * Binds the process cache directory used by LiteRT-LM engines for delegate cache files
+     * (speeds up the second load of the same bundle). Mirrors [initialize]: binding once per
+     * process, a different directory afterwards is an invariant violation. LiteRT-LM needs
+     * no CPU-backend directory init of its own — its Engine self-initializes from the bundle.
+     */
+    internal fun initializeLiteRt(cacheDir: String) {
+        require(cacheDir.isNotBlank()) { "LiteRT-LM cache directory must not be blank" }
+        val canonicalDirectory = canonicalize(cacheDir)
+        synchronized(lifecycleLock) {
+            val currentDirectory = liteRtCacheDirectory
+            if (currentDirectory != null) {
+                check(currentDirectory == canonicalDirectory) {
+                    "LiteRT-LM cache directory already initialized from a different directory"
+                }
+                return
+            }
+            liteRtCacheDirectory = canonicalDirectory
         }
     }
 
@@ -169,6 +211,44 @@ internal object LocalModelRuntime {
             resident = Resident.Embedding(identity)
         }
         block()
+    }
+
+    /**
+     * Admits one complete LiteRT-LM Chat request through the same process FIFO permit as
+     * llama.cpp work. Identity is the canonical bundle path plus the requested backend and
+     * vision capability: a same-identity request reuses the resident engine, anything else
+     * unloads the current resident (either engine family) before loading the new one. The
+     * engine stays resident afterwards; conversations are created per request inside [block].
+     */
+    suspend fun runLiteRtChat(
+        modelPath: String,
+        backend: LiteRtBackend,
+        visionCapable: Boolean,
+        block: suspend (LiteRtChatEngine) -> Unit,
+    ): Boolean = tasks.run {
+        val cacheDir = liteRtCacheDirectory ?: return@run false
+        val identity = LocalModelIdentity.LiteRtChat(canonicalize(modelPath), backend, visionCapable)
+        val current = resident
+        val engine = if (current is Resident.LiteRt && current.identity == identity) {
+            current.engine
+        } else {
+            unloadResident()
+            val loaded = LiteRtChatEngine(
+                modelPath = identity.canonicalPath,
+                backend = backend,
+                cacheDir = cacheDir,
+                visionCapable = visionCapable,
+            )
+            if (!loaded.load()) {
+                loaded.close()
+                return@run false
+            }
+            resident = Resident.LiteRt(identity, loaded)
+            loaded
+        }
+
+        block(engine)
+        true
     }
 
     fun cancelActiveChat() {
@@ -236,6 +316,10 @@ internal object LocalModelRuntime {
             is Resident.Embedding -> {
                 LlamaEngine.unloadResident()
                 "Embedding"
+            }
+            is Resident.LiteRt -> {
+                current.engine.close()
+                "LiteRt"
             }
         }
         resident = null

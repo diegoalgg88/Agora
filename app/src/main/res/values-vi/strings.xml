@@ -813,6 +813,18 @@
     <string name="local_model_download_notification_progress">%1$d%%</string>
     <string name="local_model_badge_tools">Công cụ</string>
     <string name="local_model_badge_thinking">Suy luận</string>
+    <!-- Local Model - LiteRT-LM (.litertlm) -->
+    <string name="litertlm_backend_label">Backend</string>
+    <string name="litertlm_backend_auto">Tự động (GPU, tự chuyển sang CPU)</string>
+    <string name="litertlm_backend_cpu">CPU</string>
+    <string name="litertlm_backend_gpu">GPU</string>
+    <string name="litertlm_context_hint">Gói mô hình tự định nghĩa ngữ cảnh của nó. Giá trị này chỉ giới hạn lượng lịch sử hội thoại mà Agora gửi.</string>
+    <string name="litertlm_gpu_memory_warning">Gói lớn hơn ~3 GB có thể cạn bộ nhớ GPU và làm quá trình bị dừng. Hãy cân nhắc backend CPU cho các mô hình lớn.</string>
+    <string name="litertlm_vision_capable">Hỗ trợ thị giác</string>
+    <string name="litertlm_vision_capable_desc">Gói chứa trọng số đa phương thức (vd. Gemma 3n)</string>
+    <string name="litertlm_top_k">Top K</string>
+    <string name="litertlm_load_failed">Không thể khởi tạo mô hình LiteRT-LM (backend %1$s)</string>
+    <string name="litertlm_format_badge">LiteRT-LM</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Bộ nhớ &amp; Dữ liệu</string>

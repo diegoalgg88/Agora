@@ -1,26 +1,33 @@
 # Local Model Runtime Contract
 
-Status: authoritative embedded llama.cpp lifecycle contract, 2026-08-28.
+Status: authoritative embedded inference lifecycle contract, 2026-10-04 (amended to cover LiteRT-LM).
 
 This document owns process-wide admission, native model residency, identity changes, cancellation,
-and idle offload for Agora's embedded llama.cpp Chat and Embedding paths. Conversation/Run lifecycle
+and idle offload for Agora's embedded local-model paths: the llama.cpp Chat and Embedding paths and
+the LiteRT-LM engine for `.litertlm` bundles. Conversation/Run lifecycle
 remains owned by [message-generation.md](message-generation.md), while portability of the device-local
 retention setting remains owned by [import-export.md](import-export.md).
 
 ## 1. Canonical owners
 
-- `LocalModelRuntime` is the one process-wide owner of embedded llama.cpp admission and the one
-  resident native model/context.
+- `LocalModelRuntime` is the one process-wide owner of embedded local-model admission and the one
+  resident native model/context, across both engine families (llama.cpp and LiteRT-LM).
 - `LocalModelTaskQueue` is the one FIFO admission boundary shared by Local Chat, Local title
-  generation, and Local Embedding work.
+  generation, Local Embedding work, and LiteRT-LM Chat work.
 - `LlamaChatEngine` owns a resident Chat native handle and its replaceable multimodal projector
   substate. `LlamaEngine` owns a resident Embedding native handle only while the runtime identifies
   that resident as Embedding.
-- `AppContainer` binds the one app-lifetime idle-retention settings flow to the runtime and supplies
-  Android's process native-library directory for backend initialization.
+- `LiteRtChatEngine` owns a resident LiteRT-LM SDK Engine for `.litertlm` bundles. Its
+  conversations are created fresh per request and never survive a request.
+- `AppContainer` binds the one app-lifetime idle-retention settings flow to the runtime, supplies
+  Android's process native-library directory for llama.cpp backend initialization, and binds the
+  process cache directory for LiteRT-LM engine cache files via `initializeLiteRt`.
 
-No caller may load, unload, reset, replace, or generate with an embedded model outside this owner.
-Remote Providers, including a PC-hosted Qwen endpoint, do not enter this queue.
+No caller may load, unload, reset, replace, or generate with an embedded model outside this owner,
+in either engine family. Remote Providers, including a PC-hosted Qwen endpoint, do not enter this
+queue. There is never concurrent native execution across engines, and never two resident engines:
+a GGUF request and a `.litertlm` request alternate through the same permit with full
+unload-before-load switching.
 
 ### Android CPU backend initialization
 
@@ -42,17 +49,34 @@ Local Embedding returns no result without making application startup fail.
 Exactly one of these identities may be resident:
 
 - `Chat(canonicalModelPath, nCtx)`;
-- `Embedding(canonicalModelPath)` using the fixed native Embedding context parameters.
+- `Embedding(canonicalModelPath)` using the fixed native Embedding context parameters;
+- `LiteRtChat(canonicalModelPath, backend, visionCapable)` for the embedded LiteRT-LM engine.
 
 Chat and Embedding are different identities even when their canonical model paths match. Chat
 sampling values such as temperature, top P, frequency/presence penalties, and maximum output tokens
-do not construct the native context and therefore do not change identity.
+do not construct the native context and therefore do not change identity. The same holds for
+LiteRT-LM: sampler values, thinking configuration, and tools are per-conversation values and do not
+change the engine identity. The requested backend and vision capability DO participate in the
+LiteRT-LM identity, because both can only be applied while constructing the SDK Engine: switching
+backend or vision capability is a full unload-before-load replacement, never resident substate
+mutation.
+
+### LiteRT-LM engine residency and per-request conversations
+
+The resident part of the LiteRT-LM identity is the SDK Engine (weights plus compiled delegate).
+Conversations are created fresh for every request inside the runtime's FIFO block and closed before
+the block ends. Reusing a conversation across requests is prohibited: the SDK's
+`cancelProcess()` does not roll back internal conversation state (upstream b/450903294), and
+Agora's branching/regeneration invalidates any cached conversation prefix, so any surviving
+conversation state would be corrupt. The cost of this rule — a full prefill per request — is the
+price of correctness, identical in spirit to the GGUF multimodal cache-invalidation rule.
 
 The native Chat context uses hardware-derived thread counts for both single-token decode
-(`n_threads`) and batch prefill (`n_threads_batch`): computed once from the device's online
-processor count at context construction, clamped to [1, 6], falling back to 4 when the count is
-unreadable. The derived value is constant for the context's lifetime, requires no caller input,
-and therefore does not participate in resident identity.
+(`n_threads`) and batch prefill (`n_threads_batch`): computed once at context construction by
+counting performance cores (those whose `cpuinfo_max_freq` is >= 2 GHz, clamped to [1, 6]),
+falling back to half the online processor count when the sysfs topology is unreadable, then to 4.
+The derived value is constant for the context's lifetime, requires no caller input, and
+therefore does not participate in resident identity.
 
 New Local Chat model records created through Settings or onboarding default to `nCtx=16384` and
 `maxTokens=1024`. Existing records are not migrated: the serialized `LocalChatModelConfig` fallback
@@ -96,6 +120,13 @@ Chat prompt rendering uses the explicit template embedded in the GGUF through ll
 runtime must not substitute ChatML, a model-family prompt, or another generic fallback. The parsed
 template bundle is Chat resident substate and is released before its model.
 
+For LiteRT-LM, the chat template is owned by the `.litertlm` bundle itself: the SDK renders the
+prompt through the bundle's embedded template and Agora never renders, overrides, or substitutes a
+template on that path. A bundle without a usable template fails at conversation use, fail-closed
+exactly like the GGUF path. Thinking arrives through the SDK's separate channel and maps to the
+shared thought-event stream; the shared incremental thinking parser remains a safety net for
+reasoning delimiters a bundle emits as ordinary text.
+
 Each request passes its effective `thinkingEnabled` value into the model template. This value may
 change the rendered prompt but does not construct the model/context or change resident identity.
 Native template parsing remains authoritative for typed tool-call events. It must not bypass the
@@ -132,8 +163,10 @@ prompt content.
 
 Every submitted Local task is counted as queued-or-active before it waits for the process permit.
 The permit is fair FIFO: one complete Local request owns it from identity selection/load through all
-native work, callbacks, and request cleanup. There is no concurrent Chat/Chat, Chat/Embedding, or
-Embedding/Embedding native execution.
+native work, callbacks, and request cleanup. There is no concurrent Chat/Chat, Chat/Embedding,
+Embedding/Embedding, GGUF/LiteRT-LM, or LiteRT-LM/LiteRT-LM native execution: both engine families
+share the single permit, and switching engine family always unloads the current resident before
+loading the requested one.
 
 An active task is never preempted by a newer task or a different requested model. A cancelled waiter
 is removed from admission and cannot disturb the relative order of remaining waiters. Task failure or
@@ -141,7 +174,9 @@ cancellation still releases its queue ownership and participates in the same fin
 
 Stop targets only the currently active Chat engine through its thread-safe native cancellation path.
 It does not cancel Embedding work, unload a model directly, cancel waiting Local tasks, or acquire the
-permit held by the active native generation.
+permit held by the active native generation. For the active LiteRT-LM conversation, Stop reaches the
+request-scoped cancel handle the Provider registered in the stream scope; the conversation dies with
+its request, so Stop never corrupts resident engine state.
 
 ## 5. Idle offload lifecycle
 
@@ -179,7 +214,19 @@ no explicit override. A conversation or New Chat stores a nullable override: `nu
 current Provider default, while an explicit `true` or `false` continues to win if the default later
 changes. The request effect remains limited to ordinary embedded Local Chat as specified by
 [message-generation.md](message-generation.md); it does not change model residency, native context
-identity, Compact/title prompts, Ollama, or remote Providers.
+identity, Compact/title prompts, Ollama, or remote Providers. Its tool/system-prompt stripping is
+tied to the GGUF native-context constraint: `.litertlm` records are excluded — a bundle defines its
+own context and stays on the ordinary pipeline even when the toggle is on.
+
+### LiteRT-LM record contract
+
+`.litertlm` records live in the same `LocalChatModelConfig` DataStore list as GGUF records,
+discriminated by `format` (`"gguf"` default for legacy rows | `"litertlm"`). LiteRT-LM-only fields
+(`backend` `auto|cpu|gpu`, `topK`, `visionCapable`) carry defaults that keep legacy rows decoding as
+GGUF. For `.litertlm` records, `nCtx` is only Agora's history-truncation budget
+(`LITERTLM_DEFAULT_NCTX = 4096` for new records); it is never forwarded to the SDK's
+`EngineConfig.maxNumTokens`, which keeps the bundle's own preset. `mmprojPath` is always empty for
+`.litertlm` records: vision weights live inside the bundle.
 
 ## 7. Native streaming and telemetry
 
@@ -196,10 +243,15 @@ message content, model paths, image paths, or other private payloads.
 ## 8. Prohibited behavior
 
 Never introduce a second Local lock, model cache, lifecycle manager, offload timer, Provider-local
-fallback, per-caller unload callback, or identity definition. Never unload directly from a timer
-without reacquiring the canonical permit and revalidating the idle epoch. Do not restore idle
-deadlines across processes, interrupt active native work to honor a deadline, or export this setting.
-Never invent a fallback chat template or bypass the official model-owned Jinja path.
+fallback, per-caller unload callback, or identity definition — for either engine family. Never
+unload directly from a timer without reacquiring the canonical permit and revalidating the idle
+epoch. Do not restore idle deadlines across processes, interrupt active native work to honor a
+deadline, or export this setting. Never invent a fallback chat template or bypass the official
+model-owned Jinja path (GGUF) or the bundle-owned template (LiteRT-LM). Never keep a LiteRT-LM
+Conversation alive across requests or reuse one after `cancelProcess()`. Never construct a LiteRT-LM
+`Engine` outside the runtime's FIFO block, and never use the SDK's Flow streaming variant (its
+collector cancellation leaks the native stream, upstream #2718) — streaming goes through the
+callback overload wrapped in Agora's own `callbackFlow`.
 
 ## 9. Required verification
 
@@ -224,3 +276,19 @@ Settings tests must cover the exact presets/default/normalization, DataStore rea
 AppContainer binding, Local Advanced placement and slider commit behavior, locale key/placeholder
 parity, portable-export absence, and Settings Replace preservation. The project full build remains
 required; build success alone does not prove real-device memory release or model reload latency.
+
+LiteRT-LM verification must cover cross-engine unload-before-load (GGUF <-> .litertlm alternation
+leaves at most one resident), engine reuse on same identity, conversation-per-request lifecycle
+(a Stop or exception never poisons the resident engine), backend-change identity replacement, the
+record roundtrip (legacy rows decode as GGUF), and the low-context-mode exclusion for `.litertlm`.
+These require a device with a valid bundle: build success alone proves nothing about GPU delegate
+behavior or memory.
+
+### Deferred follow-ups (not in v1)
+
+- Catalog listing/downloading of litert-community `.litertlm` bundles (the hosted catalog schema is
+  GGUF-only today; the download worker registers as GGUF).
+- Speculative decoding / MTP: the SDK exposes it through a process-global `ExperimentalFlags` value
+  that cannot be isolated per engine; enabling it must wait for a per-engine API.
+- NPU backend and the SDK's audio executor; `EmbeddingEngine` of the SDK (Agora embeddings remain
+  llama.cpp-only).

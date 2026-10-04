@@ -955,6 +955,18 @@
     <string name="local_model_download_notification_progress">%1$d%%</string>
     <string name="local_model_badge_tools">工具</string>
     <string name="local_model_badge_thinking">思考</string>
+    <!-- Local Model - LiteRT-LM (.litertlm) -->
+    <string name="litertlm_backend_label">后端</string>
+    <string name="litertlm_backend_auto">自动（GPU，失败时回退到 CPU）</string>
+    <string name="litertlm_backend_cpu">CPU</string>
+    <string name="litertlm_backend_gpu">GPU</string>
+    <string name="litertlm_context_hint">模型包定义自己的上下文。此值仅限制 Agora 发送的对话历史量。</string>
+    <string name="litertlm_gpu_memory_warning">超过 ~3 GB 的包可能耗尽 GPU 内存并导致进程崩溃。大型模型请考虑使用 CPU 后端。</string>
+    <string name="litertlm_vision_capable">支持视觉</string>
+    <string name="litertlm_vision_capable_desc">模型包自带多模态权重（如 Gemma 3n）</string>
+    <string name="litertlm_top_k">Top K</string>
+    <string name="litertlm_load_failed">LiteRT-LM 模型初始化失败（%1$s 后端）</string>
+    <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="local_title">本地</string>
     <string name="not_configured">未配置</string>
     <string name="provider_built_in">内置提供商</string>

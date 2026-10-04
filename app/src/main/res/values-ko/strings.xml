@@ -810,6 +810,18 @@
     <string name="local_model_download_notification_progress">%1$d%%</string>
     <string name="local_model_badge_tools">도구</string>
     <string name="local_model_badge_thinking">추론</string>
+    <!-- Local Model - LiteRT-LM (.litertlm) -->
+    <string name="litertlm_backend_label">백엔드</string>
+    <string name="litertlm_backend_auto">자동 (GPU, 실패 시 CPU로 전환)</string>
+    <string name="litertlm_backend_cpu">CPU</string>
+    <string name="litertlm_backend_gpu">GPU</string>
+    <string name="litertlm_context_hint">모델 번들은 자체 컨텍스트를 정의합니다. 이 값은 Agora가 전송하는 대화 기록의 양만 제한합니다.</string>
+    <string name="litertlm_gpu_memory_warning">약 3 GB를 초과하는 번들은 GPU 메모리를 소진하여 프로세스가 중단될 수 있습니다. 큰 모델에는 CPU 백엔드를 사용하세요.</string>
+    <string name="litertlm_vision_capable">비전 지원</string>
+    <string name="litertlm_vision_capable_desc">번들 자체에 멀티모달 가중치가 포함되어 있습니다 (예: Gemma 3n)</string>
+    <string name="litertlm_top_k">Top K</string>
+    <string name="litertlm_load_failed">LiteRT-LM 모델 초기화 실패 (%1$s 백엔드)</string>
+    <string name="litertlm_format_badge">LiteRT-LM</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">메모리 및 데이터</string>

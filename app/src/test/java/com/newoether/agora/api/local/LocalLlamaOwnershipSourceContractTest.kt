@@ -559,18 +559,24 @@ class LocalLlamaOwnershipSourceContractTest {
     fun `local context and settings cannot promise an impossible output`() {
         val provider = mainSource("com/newoether/agora/api/local/LocalProvider.kt")
         val settings = mainSource("com/newoether/agora/ui/settings/SettingsProviderDetailPage.kt")
+        val addDialog = mainSource("com/newoether/agora/ui/settings/AddLocalModelDialog.kt")
         val onboarding = mainSource("com/newoether/agora/ui/onboarding/WelcomeScreen.kt")
         val native = mainCppSource("llama_chat_jni.cpp")
         val legacyDefaults = LocalChatModelConfig(modelId = "model", alias = "Model")
 
         assertEquals(2048, legacyDefaults.nCtx)
         assertEquals(4096, legacyDefaults.maxTokens)
-        assertTrue(settings.contains("var nCtx by remember { mutableStateOf(\"16384\") }"))
-        assertTrue(settings.contains("mutableStateOf(\"1024\")"))
-        assertTrue(onboarding.contains("nCtx = 16384"))
+        assertTrue(addDialog.contains(
+            "mutableStateOf(if (isLitertlm) LocalChatModelConfig.LITERTLM_DEFAULT_NCTX.toString() else \"16384\")"
+        ))
+        assertTrue(addDialog.contains("mutableStateOf(\"1024\")"))
+        assertTrue(onboarding.contains("nCtx = if (format == LocalChatModelConfig.FORMAT_LITERTLM)"))
+        assertTrue(onboarding.contains("16384"))
         assertTrue(onboarding.contains("maxTokens = 1024"))
-        assertEquals(2, "Max tokens must not exceed context size".toRegex()
+        assertEquals(1, "Max tokens must not exceed context size".toRegex()
             .findAll(settings).count())
+        assertEquals(1, "Max tokens must not exceed context size".toRegex()
+            .findAll(addDialog).count())
         assertTrue(provider.contains(
             "minOf(config.maxContextWindow, modelConfig.nCtx).coerceAtLeast(1)"
         ))
@@ -580,6 +586,137 @@ class LocalLlamaOwnershipSourceContractTest {
             assertTrue(function.contains("generation_limit = std::min(max_tokens, remaining_context)"))
             assertTrue(function.contains("context_limited ? \"context_full\" : \"max_tokens\""))
         }
+    }
+
+    @Test
+    fun `litertlm admission shares the one runtime fifo and unloads before loading`() {
+        val provider = mainSource("com/newoether/agora/api/local/LocalProvider.kt")
+        val runtime = mainSource("com/newoether/agora/api/LocalModelRuntime.kt")
+
+        // The provider is the only admission caller for both engine families.
+        assertEquals(
+            1,
+            Regex.escape("LocalModelRuntime.runChat(").toRegex()
+                .findAll(provider).count(),
+        )
+        assertEquals(
+            1,
+            Regex.escape("LocalModelRuntime.runLiteRtChat(").toRegex()
+                .findAll(provider).count(),
+        )
+
+        // runLiteRtChat: unload-before-load, fail-closed without a resident, same FIFO permit.
+        val litertRun = runtime.substringAfter("suspend fun runLiteRtChat(")
+        val identitySwitch = litertRun.indexOf("unloadResident()")
+        val engineLoad = litertRun.indexOf("LiteRtChatEngine(")
+        val loadFailure = litertRun.indexOf("if (!loaded.load())", engineLoad)
+        val residentInstall = litertRun.indexOf("resident = Resident.LiteRt", loadFailure)
+        assertTrue(identitySwitch >= 0 && engineLoad > identitySwitch)
+        assertTrue(loadFailure > engineLoad && residentInstall > loadFailure)
+        assertTrue(litertRun.substring(loadFailure, residentInstall).contains("return@run false"))
+        assertTrue(litertRun.contains("tasks.run {"))
+
+        // The identity carries the backend and vision capability; same identity reuses the engine.
+        assertTrue(runtime.contains("data class LiteRtChat("))
+        assertTrue(litertRun.contains("current is Resident.LiteRt && current.identity == identity"))
+        assertTrue(litertRun.contains("current.engine"))
+
+        // unloadResident covers all three residents.
+        val unload = runtime.substringAfter("private fun unloadResident()")
+            .substringBefore("private fun canonicalize")
+        assertTrue(unload.contains("is Resident.Chat ->"))
+        assertTrue(unload.contains("is Resident.Embedding ->"))
+        assertTrue(unload.contains("is Resident.LiteRt ->"))
+    }
+
+    @Test
+    fun `litertlm engine and conversation wrappers stay ownership source`() {
+        val engine = mainSource("com/newoether/agora/api/litert/LiteRtChatEngine.kt")
+        val conversation = mainSource("com/newoether/agora/api/litert/LiteRtConversation.kt")
+        val provider = mainSource("com/newoether/agora/api/local/LocalProvider.kt")
+        val mainSources = File(locateSourceRoot("java"), "com/newoether/agora")
+
+        // Wrappers never touch the runtime (admission stays in the provider/runtime pair).
+        assertFalse(engine.contains("LocalModelRuntime"))
+        assertFalse(conversation.contains("LocalModelRuntime"))
+
+        // The SDK Engine is constructed only inside the runtime wrapper.
+        val engineConstructors = mainSources.walkTopDown()
+            .filter { it.isFile && it.extension == "kt" }
+            .filter { it.readText().contains("Engine(EngineConfig") || it.readText().contains("Engine(config)") }
+            .map { it.relativeTo(mainSources).path.replace('\\', '/') }
+            .toList()
+        assertEquals(listOf("api/litert/LiteRtChatEngine.kt"), engineConstructors)
+
+        // Streaming goes through the SDK callback overload, never its Flow variant.
+        assertTrue(conversation.contains("sendMessageAsync("))
+        assertTrue(conversation.contains("object : MessageCallback"))
+        assertFalse(conversation.contains(".sendMessageAsync(request.sendMessage)"))
+        assertTrue(conversation.contains("awaitClose {"))
+        assertTrue(conversation.contains("runCatching { conversation.cancelProcess() }"))
+
+        // Conversations are per-request: the provider closes them before the FIFO block ends.
+        assertTrue(provider.contains("engine.createConversation(mapped.conversationConfig)"))
+        assertTrue(provider.contains("conversation.close()"))
+
+        // The provider never references SDK engine types directly — only through wrappers.
+        assertFalse(provider.contains("com.google.ai.edge.litertlm.Engine"))
+        assertFalse(provider.contains("com.google.ai.edge.litertlm.Conversation"))
+    }
+
+    @Test
+    fun `litertlm tools are declared but never auto-executed by the sdk`() {
+        val mapper = mainSource("com/newoether/agora/api/local/LiteRtRequestMapper.kt")
+        val provider = mainSource("com/newoether/agora/api/local/LocalProvider.kt")
+
+        assertTrue(mapper.contains("automaticToolCalling = false"))
+        assertTrue(mapper.contains("AgoraOpenApiTool"))
+        assertTrue(mapper.contains("Agora executes tools outside the LiteRT-LM SDK"))
+        // Tool results feed back as ordinary continuation messages, never via SDK execution.
+        assertTrue(mapper.contains("Message.tool(Contents.of(*responses.toTypedArray()))"))
+        assertTrue(provider.contains("StreamEvent.ToolCallsRequest(calls)"))
+        // Tool-carrying assistant history maps to typed ToolCall objects.
+        assertTrue(mapper.contains("ToolCall("))
+    }
+
+    @Test
+    fun `litertlm records keep legacy gguf decoding and bundle-owned context`() {
+        val config = mainSource("com/newoether/agora/data/LocalChatModelConfig.kt")
+        val mapper = mainSource("com/newoether/agora/api/local/LiteRtRequestMapper.kt")
+        val provider = mainSource("com/newoether/agora/api/local/LocalProvider.kt")
+        val requestBuilder = mainSource(
+            "com/newoether/agora/viewmodel/GenerationRequestBuilder.kt",
+        )
+        val legacyJson = """
+            [{"id":"legacy","modelId":"old-model","alias":"Old","localFilePath":"/x.gguf"}]
+        """.trimIndent()
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val decoded = json.decodeFromString<List<LocalChatModelConfig>>(legacyJson)
+
+        assertEquals(1, decoded.size)
+        assertEquals(LocalChatModelConfig.FORMAT_GGUF, decoded.single().format)
+        assertEquals(LocalChatModelConfig.BACKEND_AUTO, decoded.single().backend)
+        assertEquals(40, decoded.single().topK)
+        assertEquals(false, decoded.single().visionCapable)
+        assertEquals(4096, LocalChatModelConfig.LITERTLM_DEFAULT_NCTX)
+
+        // nCtx for litertlm is Agora's truncation budget only — never forwarded to the SDK.
+        assertTrue(config.contains("const val LITERTLM_DEFAULT_NCTX = 4096"))
+        assertFalse(mapper.contains("maxNumTokens"))
+        assertTrue(provider.contains(
+            "minOf(config.maxContextWindow, modelConfig.nCtx).coerceAtLeast(1)"
+        ))
+
+        // Low-context-mode stripping stays GGUF-only.
+        assertTrue(requestBuilder.contains("FORMAT_LITERTLM"))
+        assertTrue(requestBuilder.contains(
+            "settings.localChatModels.value.none {"
+        ))
+
+        // Dispatch is a single format branch; the GGUF path is unchanged.
+        assertTrue(provider.contains(
+            "if (modelConfig.format == LocalChatModelConfig.FORMAT_LITERTLM)"
+        ))
     }
 
     private fun functionSection(source: String, functionName: String): String = source

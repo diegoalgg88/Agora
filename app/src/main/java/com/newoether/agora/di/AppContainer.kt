@@ -73,6 +73,7 @@ class AppContainer(
 
     init {
         LocalModelRuntime.initialize(application.applicationInfo.nativeLibraryDir)
+        LocalModelRuntime.initializeLiteRt(appContext.cacheDir.path)
     }
 
     /** App-lifetime scope that backs the shared settings StateFlows.

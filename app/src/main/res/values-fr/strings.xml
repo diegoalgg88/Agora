@@ -810,6 +810,18 @@
     <string name="local_model_download_notification_progress">%1$d%%</string>
     <string name="local_model_badge_tools">Outils</string>
     <string name="local_model_badge_thinking">Raisonnement</string>
+    <!-- Local Model - LiteRT-LM (.litertlm) -->
+    <string name="litertlm_backend_label">Backend</string>
+    <string name="litertlm_backend_auto">Auto (GPU, repli sur CPU)</string>
+    <string name="litertlm_backend_cpu">CPU</string>
+    <string name="litertlm_backend_gpu">GPU</string>
+    <string name="litertlm_context_hint">Le bundle du modèle définit son propre contexte. Cette valeur limite seulement la quantité d\'historique de conversation envoyée par Agora.</string>
+    <string name="litertlm_gpu_memory_warning">Les bundles de plus de ~3 Go peuvent épuiser la mémoire GPU et faire planter le processus. Envisagez le backend CPU pour les grands modèles.</string>
+    <string name="litertlm_vision_capable">Prend en charge la vision</string>
+    <string name="litertlm_vision_capable_desc">Le bundle contient des poids multimodaux (ex. Gemma 3n)</string>
+    <string name="litertlm_top_k">Top K</string>
+    <string name="litertlm_load_failed">Échec de l\'initialisation du modèle LiteRT-LM (backend %1$s)</string>
+    <string name="litertlm_format_badge">LiteRT-LM</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Mémoire et données</string>

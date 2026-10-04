@@ -1,11 +1,14 @@
 package com.newoether.agora.api.local
 
 import com.newoether.agora.api.*
+import com.newoether.agora.api.litert.LiteRtBackend
+import com.newoether.agora.api.litert.LiteRtGenerationRequest
 import com.newoether.agora.api.util.buildToolCallId
 
 import android.content.Context
 import com.newoether.agora.R
 import com.newoether.agora.util.DebugLog
+import com.newoether.agora.data.LocalChatModelConfig
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.Participant
@@ -13,6 +16,7 @@ import com.newoether.agora.model.TokenUsage
 import com.newoether.agora.util.Constants
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
@@ -23,6 +27,7 @@ import com.newoether.agora.viewmodel.GenerationCancelHandle
 import kotlin.coroutines.coroutineContext
 
 private const val CONTEXT_EXCEEDED_PREFIX = "LOCAL_CONTEXT_EXCEEDED:"
+internal const val LITERTLM_CANCELLED_PREFIX = "LiteRT-LM generation cancelled"
 
 internal fun localGenerationFailure(
     event: LlamaGenerationEvent.Failed,
@@ -69,6 +74,11 @@ class LocalProvider(
         val modelConfig = chatModels.find { it.modelId == config.modelId }
         if (modelConfig == null) {
             emit(StreamEvent.Error(GenerationError.LocalModel("Local model not found: ${config.modelId}")))
+            return@flow
+        }
+
+        if (modelConfig.format == LocalChatModelConfig.FORMAT_LITERTLM) {
+            emitAllWithLiteRt(modelConfig, messages, config)
             return@flow
         }
 
@@ -303,6 +313,140 @@ class LocalProvider(
             )))
         }
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * LiteRT-LM engine path for .litertlm records. Same admission FIFO and single-resident
+     * rules as the GGUF path; the SDK engine stays resident while conversations are created
+     * fresh per request (its cancel path does not roll back conversation state, so nothing
+     * conversation-scoped may survive a request).
+     */
+    private suspend fun FlowCollector<StreamEvent>.emitAllWithLiteRt(
+        modelConfig: LocalChatModelConfig,
+        messages: List<ChatMessage>,
+        config: ProviderConfig,
+    ) {
+        val backend = when (modelConfig.backend) {
+            LocalChatModelConfig.BACKEND_CPU -> LiteRtBackend.Cpu
+            LocalChatModelConfig.BACKEND_GPU -> LiteRtBackend.Gpu
+            else -> LiteRtBackend.Auto
+        }
+        val localContextWindow = minOf(config.maxContextWindow, modelConfig.nCtx).coerceAtLeast(1)
+        val resolvedRequest = config.copy(maxContextWindow = localContextWindow).resolveRequest(messages)
+
+        val executed = LocalModelRuntime.runLiteRtChat(
+            modelPath = modelConfig.localFilePath,
+            backend = backend,
+            visionCapable = modelConfig.visionCapable,
+        ) { engine ->
+            val mapped = LiteRtRequestMapper.map(
+                resolvedMessages = resolvedRequest.messages,
+                systemPrompt = resolvedRequest.systemPrompt,
+                modelConfig = modelConfig,
+                config = config,
+            )
+            val conversation = engine.createConversation(mapped.conversationConfig)
+            if (conversation == null) {
+                emit(StreamEvent.Error(GenerationError.LocalModel(
+                    context.getString(R.string.litertlm_load_failed, engine.activeBackendName)
+                )))
+                return@runLiteRtChat
+            }
+
+            var inputTokenCount = 0
+            var terminalError: GenerationError? = null
+            try {
+                val tokenFlow = conversation.generate(
+                    LiteRtGenerationRequest(
+                        sendMessage = mapped.sendMessage,
+                        repetitionPenaltyConfig = mapped.repetitionPenaltyConfig,
+                        maxOutputToken = mapped.maxOutputToken,
+                        thinkingConfig = mapped.thinkingConfig,
+                    )
+                )
+                // Register while still holding the process-wide runtime task. The handle is
+                // removed before the next FIFO waiter may begin native work.
+                val streamScope = HttpClient.boundStreamScope()
+                val nativeCancel = GenerationCancelHandle { conversation.cancel() }
+                streamScope?.register(nativeCancel)
+                try {
+                    tokenFlow.collect { event ->
+                        when (event) {
+                            is LlamaGenerationEvent.Text -> {
+                                if (event.value.isNotEmpty()) emit(StreamEvent.TextChunk(event.value))
+                            }
+                            is LlamaGenerationEvent.Thought -> {
+                                if (event.value.isNotEmpty()) emit(StreamEvent.ThoughtChunk(event.value))
+                            }
+                            is LlamaGenerationEvent.ToolCallUpdate -> Unit
+                            is LlamaGenerationEvent.ToolCallsCompleted -> {
+                                val calls = event.calls.map { call ->
+                                    val arguments = call.arguments.ifBlank { "{}" }
+                                    StreamEvent.ToolCallRequest(
+                                        id = buildToolCallId("${call.name}:${call.index}", arguments),
+                                        name = call.name,
+                                        arguments = arguments,
+                                        streamKey = "local_tool_${call.index}",
+                                    )
+                                }
+                                if (calls.isNotEmpty()) emit(StreamEvent.ToolCallsRequest(calls))
+                            }
+                            is LlamaGenerationEvent.Completed -> {
+                                inputTokenCount = event.inputTokenCount
+                                terminalError = when (event.reason) {
+                                    LlamaGenerationStopReason.EOG -> null
+                                    LlamaGenerationStopReason.MAX_TOKENS ->
+                                        GenerationError.OutputTruncated(name, "max_tokens")
+                                    LlamaGenerationStopReason.CONTEXT_FULL -> GenerationError.LocalModel(
+                                        message = "LiteRT-LM context window was exhausted before generation completed.",
+                                    )
+                                    LlamaGenerationStopReason.CANCELLED -> GenerationError.Cancelled
+                                }
+                            }
+                            is LlamaGenerationEvent.Failed -> {
+                                inputTokenCount = event.inputTokenCount
+                                terminalError = if (event.message.startsWith(LITERTLM_CANCELLED_PREFIX)) {
+                                    GenerationError.Cancelled
+                                } else {
+                                    GenerationError.LocalModel("Generation failed: ${event.message}")
+                                }
+                            }
+                        }
+                    }
+                } finally {
+                    streamScope?.unregister(nativeCancel)
+                }
+                if (terminalError === GenerationError.Cancelled) {
+                    throw kotlinx.coroutines.CancellationException("LiteRT-LM generation cancelled")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                conversation.cancel()
+                throw e
+            } catch (e: Exception) {
+                DebugLog.e(TAG, "LiteRT-LM generation failed", e)
+                emit(StreamEvent.Error(GenerationError.LocalModel("Generation failed: ${e.message}")))
+                return@runLiteRtChat
+            } finally {
+                conversation.close()
+            }
+
+            emit(
+                StreamEvent.UsageUpdate(
+                    TokenUsage(totalTokenCount = inputTokenCount.coerceAtLeast(0))
+                )
+            )
+            terminalError?.let { emit(StreamEvent.Error(it)) }
+        }
+        if (!executed) {
+            val failedBackend = when (modelConfig.backend) {
+                LocalChatModelConfig.BACKEND_CPU -> "CPU"
+                LocalChatModelConfig.BACKEND_GPU -> "GPU"
+                else -> "Auto"
+            }
+            emit(StreamEvent.Error(GenerationError.LocalModel(
+                context.getString(R.string.litertlm_load_failed, failedBackend)
+            )))
+        }
+    }
 
     private fun formatGenerationError(
         error: Exception,

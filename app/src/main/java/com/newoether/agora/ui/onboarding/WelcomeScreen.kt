@@ -187,7 +187,7 @@ fun WelcomeScreen(
         }
     }
 
-    // ── GGUF import ──
+    // ── Local model import (GGUF or .litertlm) ──
     var showGgufError by remember { mutableStateOf(false) }
     var isImportingGGUF by remember { mutableStateOf(false) }
     val ggufPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -195,15 +195,25 @@ fun WelcomeScreen(
             isImportingGGUF = true
             scope.launch {
                 try {
+                    data class ImportedModel(val modelId: String, val aliasName: String, val path: String, val format: String)
                     val imported = withContext(Dispatchers.IO) {
-                        val dest = File(context.filesDir, "chat_model_${UUID.randomUUID()}.gguf")
+                        val displayName = com.newoether.agora.util.FileValidator.resolveFileName(context, uri)
+                        val extension = displayName?.substringAfterLast('.', "")?.lowercase()
+                        val isLitertlm = extension == "litertlm"
+                        val dest = File(
+                            context.filesDir,
+                            "chat_model_${UUID.randomUUID()}." +
+                                if (isLitertlm) "litertlm" else "gguf",
+                        )
                         try {
                             val aliasName =
                                 com.newoether.agora.util.FileValidator.resolveFileName(context, uri)
                                     ?.let {
                                         if (
                                             it.substringAfterLast('.', "")
-                                                .equals("gguf", ignoreCase = true)
+                                                .equals("gguf", ignoreCase = true) ||
+                                            it.substringAfterLast('.', "")
+                                                .equals("litertlm", ignoreCase = true)
                                         ) {
                                             it.substringBeforeLast('.')
                                         } else {
@@ -223,13 +233,22 @@ fun WelcomeScreen(
                             }
                             val magic = ByteArray(4)
                             val bytesRead = dest.inputStream().use { it.read(magic) }
-                            val valid = bytesRead == magic.size &&
+                            val ggufMagic = bytesRead == magic.size &&
                                 magic[0] == 'G'.code.toByte() &&
                                 magic[1] == 'G'.code.toByte() &&
                                 magic[2] == 'U'.code.toByte() &&
                                 magic[3] == 'F'.code.toByte()
-                            if (valid) {
-                                Triple(dest.nameWithoutExtension, aliasName, dest.absolutePath)
+                            // .litertlm bundles are ZIP containers ("PK").
+                            val zipMagic = bytesRead == magic.size &&
+                                magic[0] == 'P'.code.toByte() &&
+                                magic[1] == 'K'.code.toByte()
+                            val format = when {
+                                isLitertlm && zipMagic -> LocalChatModelConfig.FORMAT_LITERTLM
+                                !isLitertlm && ggufMagic -> LocalChatModelConfig.FORMAT_GGUF
+                                else -> null
+                            }
+                            if (format != null) {
+                                ImportedModel(dest.nameWithoutExtension, aliasName, dest.absolutePath, format)
                             } else {
                                 dest.delete()
                                 null
@@ -242,15 +261,20 @@ fun WelcomeScreen(
                     if (imported == null) {
                         showGgufError = true
                     } else {
-                        val (modelId, aliasName, path) = imported
+                        val (modelId, aliasName, path, format) = imported
                         localChatModels.forEach { viewModel.modelManager.deleteLocalChatModel(it.id) }
                         viewModel.modelManager.addLocalChatModel(
                             LocalChatModelConfig(
                                 modelId = modelId,
                                 alias = aliasName,
                                 localFilePath = path,
-                                nCtx = 16384,
+                                nCtx = if (format == LocalChatModelConfig.FORMAT_LITERTLM) {
+                                    LocalChatModelConfig.LITERTLM_DEFAULT_NCTX
+                                } else {
+                                    16384
+                                },
                                 maxTokens = 1024,
+                                format = format,
                             )
                         )
                     }

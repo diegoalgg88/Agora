@@ -810,6 +810,18 @@
     <string name="local_model_download_notification_progress">%1$d%%</string>
     <string name="local_model_badge_tools">Инструменты</string>
     <string name="local_model_badge_thinking">Размышление</string>
+    <!-- Local Model - LiteRT-LM (.litertlm) -->
+    <string name="litertlm_backend_label">Бэкенд</string>
+    <string name="litertlm_backend_auto">Авто (GPU, при сбое — CPU)</string>
+    <string name="litertlm_backend_cpu">CPU</string>
+    <string name="litertlm_backend_gpu">GPU</string>
+    <string name="litertlm_context_hint">Пакет модели определяет свой собственный контекст. Это значение лишь ограничивает объём истории переписки, который отправляет Agora.</string>
+    <string name="litertlm_gpu_memory_warning">Пакеты больше ~3 ГБ могут исчерпать память GPU и завершить процесс. Для больших моделей используйте CPU-бэкенд.</string>
+    <string name="litertlm_vision_capable">Поддерживает зрение</string>
+    <string name="litertlm_vision_capable_desc">Пакет содержит мультимодальные веса (напр., Gemma 3n)</string>
+    <string name="litertlm_top_k">Top K</string>
+    <string name="litertlm_load_failed">Не удалось инициализировать модель LiteRT-LM (бэкенд %1$s)</string>
+    <string name="litertlm_format_badge">LiteRT-LM</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Память и данные</string>
