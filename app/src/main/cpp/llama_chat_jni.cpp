@@ -33,10 +33,27 @@ static constexpr int32_t PENALTY_LAST_N = 64;
 // llama.cpp's own default is a fixed 4 threads (GGML_DEFAULT_N_THREADS), which underuses the
 // big cores on modern phones and can even land decode on the little cluster. Both n_threads
 // (single-token decode) and n_threads_batch (prompt prefill) are hardware-derived instead:
-// half the online processor count — an approximation of the big-core share on typical ARM
-// big.LITTLE topologies — clamped to [1, 6] so one local generation never starves the
-// foreground UI, falling back to 4 when sysconf is unavailable.
+// count the performance cores directly by reading each CPU's cpuinfo_max_freq (>= 2 GHz on
+// every ARM big.LITTLE/prime-big-little shipping today; e.g. SM8450 has 4 big at 2.5 GHz +
+// 3 mid + 1 little at 1.79 GHz, where half-the-cores heuristics under- or over-count).
+// Clamped to [1, 6] so one local generation never starves the foreground UI; falls back to
+// half the online processor count when the sysfs topology is unreadable, then to 4.
 static int32_t derive_thread_count() {
+    int32_t perf_cores = 0;
+    for (int cpu = 0; cpu < 16; ++cpu) {
+        char path[64];
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/cpuinfo_max_freq", cpu);
+        FILE *f = fopen(path, "r");
+        if (!f) continue;
+        long freq = 0;
+        const bool parsed = fscanf(f, "%ld", &freq) == 1;
+        fclose(f);
+        if (parsed && freq >= 2000000) ++perf_cores;  // kHz units: 2 GHz = 2,000,000
+    }
+    if (perf_cores > 0) {
+        if (perf_cores > 6) perf_cores = 6;
+        return perf_cores;
+    }
     long cpu_count = sysconf(_SC_NPROCESSORS_ONLN);
     if (cpu_count <= 0) return 4;
     int32_t threads = static_cast<int32_t>(cpu_count) / 2;
