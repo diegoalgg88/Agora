@@ -49,6 +49,14 @@ internal class LiteRtConversation(
 
     private val closed = AtomicBoolean(false)
 
+    /**
+     * Counted down when the native stream reports its terminal callback. The SDK leaves a
+     * pending JNI exception if its internal streaming coroutine is torn down while an upcall
+     * is still in flight (hard process abort on the next JNI use), so conversation release
+     * must wait for the native side to unwind first.
+     */
+    private val terminal = java.util.concurrent.CountDownLatch(1)
+
     fun generate(request: LiteRtGenerationRequest): Flow<LlamaGenerationEvent> = callbackFlow {
         val terminalSignalled = AtomicBoolean(false)
         val pendingToolCalls = mutableListOf<com.google.ai.edge.litertlm.ToolCall>()
@@ -95,6 +103,7 @@ internal class LiteRtConversation(
                         outputTokenCount = 0,
                     )
                 )
+                terminal.countDown()
                 close()
             }
 
@@ -113,6 +122,7 @@ internal class LiteRtConversation(
                         outputTokenCount = 0,
                     )
                 )
+                terminal.countDown()
                 close()
             }
         }
@@ -144,6 +154,10 @@ internal class LiteRtConversation(
 
     override fun close() {
         if (!closed.compareAndSet(false, true)) return
+        // The SDK's native stream must unwind before the conversation object is deleted:
+        // deleting it while an upcall is in flight leaves a pending JNI exception on the
+        // thread and the next JNI use aborts the process (hard variant of upstream #2718).
+        terminal.await(10, java.util.concurrent.TimeUnit.SECONDS)
         runCatching { conversation.close() }
     }
 }
