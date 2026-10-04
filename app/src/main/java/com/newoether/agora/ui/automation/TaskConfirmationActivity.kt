@@ -4,12 +4,15 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
@@ -53,9 +56,15 @@ class TaskConfirmationActivity : ComponentActivity() {
                 // content; only the anchor (and the centered max width) changes. The nav-bar
                 // inset matters: targetSdk 36 is edge-to-edge, so a bottom card would
                 // otherwise sit under the gesture/navigation bar.
+                // Tap on the scrim closes the card (row stays PENDING, like Back). The card's
+                // Surface consumes its own pointer input, so taps on it never reach this.
                 Box(
                     modifier = Modifier
                         .fillMaxSize()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { finish() }
                         .navigationBarsPadding()
                         .imePadding(),
                     contentAlignment = if (centered) Alignment.Center else Alignment.BottomCenter,
@@ -138,8 +147,13 @@ class TaskConfirmationActivity : ComponentActivity() {
         lifecycleScope.launch {
             val container = app.awaitContainer() ?: return@launch
             if (container.taskConfirmationStore.snooze(row.id, minutes)) {
-                // The notification goes away now; the snooze due-gate re-posts it when due.
+                // The notification goes away now; a one-shot alarm (daemon-independent) re-posts
+                // it when due. Arm AFTER cancel: cancel only touches the notification.
                 container.taskPromptNotifier.cancel(row.id)
+                container.taskPromptNotifier.scheduleReminder(
+                    row.id,
+                    System.currentTimeMillis() + minutes * 60_000L,
+                )
             }
             finish()
         }
@@ -152,6 +166,9 @@ class TaskConfirmationActivity : ComponentActivity() {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             },
         )
+        // The row stays PENDING (the chat banner keeps it resolvable) but this translucent card
+        // must not linger behind the conversation and reappear from Recents.
+        finish()
     }
 
     companion object {

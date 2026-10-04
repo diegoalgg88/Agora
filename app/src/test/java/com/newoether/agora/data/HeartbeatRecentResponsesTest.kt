@@ -109,8 +109,9 @@ class HeartbeatRecentResponsesTest {
 
         val engine = mockk<TaskExecutionEngine>()
         val promptSlot = slot<String>()
+        // eq(true) pins the contract: the heartbeat suppresses the generic terminal notification.
         coEvery {
-            engine.runOnce(any(), capture(promptSlot), any(), any(), any(), any(), any(), any(), any())
+            engine.runOnce(any(), capture(promptSlot), any(), any(), any(), any(), any(), any(), any(), eq(true))
         } returns TaskExecutionEngine.Result.Success("msg-1", "HEARTBEAT_OK")
 
         val appContainer = mockk<AppContainer>(relaxed = true)

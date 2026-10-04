@@ -20,6 +20,7 @@ internal data class GenerationCompletionEffectsCallbacks(
     val onStreamClear: () -> Unit,
     val onLoadingChange: (Boolean) -> Unit,
     val hasQueuedSends: () -> Boolean,
+    val suppressTerminalNotification: Boolean = false,
 )
 
 internal fun GenerationCallbacks.completionEffectsCallbacks(
@@ -29,6 +30,7 @@ internal fun GenerationCallbacks.completionEffectsCallbacks(
     onStreamClear = onStreamClear,
     onLoadingChange = onLoadingChange,
     hasQueuedSends = hasQueuedSends,
+    suppressTerminalNotification = suppressTerminalNotification,
 )
 
 /** Executes post-finalization presentation/resource effects without owning Run-state authority. */
@@ -65,6 +67,7 @@ internal class GenerationCompletionEffectsExecutor(
         }
         if (
             request.terminalPersisted &&
+            !callbacks.suppressTerminalNotification &&
             request.notificationText.isNotBlank() &&
             shouldPostGenerationTerminalNotification(
                 messageStatus = request.status,

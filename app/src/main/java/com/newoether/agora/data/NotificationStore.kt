@@ -50,6 +50,26 @@ class NotificationStore(
         }
 
     /**
+     * Atomic read-modify-write of the pending queue. DataStore serializes `edit {}` blocks, so
+     * concurrent writers (one coroutine per posted notification, plus the heartbeat's
+     * consume-on-success removal) can no longer overwrite each other. The previous
+     * `pendingQueue.first()` + `updatePendingQueue()` pairs were check-then-act: two
+     * notifications arriving together (a Samsung summary + child, a burst) or an add landing
+     * during a removal silently lost a key, leaving the Room row orphaned and never delivered
+     * to the heartbeat.
+     */
+    private suspend fun mutatePendingQueue(transform: (List<String>) -> List<String>) {
+        settingsRepository.settingsManager.dataStore.edit { prefs ->
+            val current = try {
+                json.decodeFromString<List<String>>(prefs[PENDING_KEY] ?: "[]")
+            } catch (e: Exception) {
+                emptyList()
+            }
+            prefs[PENDING_KEY] = json.encodeToString(transform(current))
+        }
+    }
+
+    /**
      * Updates the pending queue in DataStore.
      */
     suspend fun updatePendingQueue(keys: List<String>) {
@@ -91,15 +111,11 @@ class NotificationStore(
         chatDao.insertNotifications(entities)
 
         // Update pending queue - add new keys (cap at 100, FIFO)
-        val currentPending = pendingQueue.first().toMutableList()
-        val newKeys = records.map { it.id }.filterNot { currentPending.contains(it) }
-        currentPending.addAll(newKeys)
-        val cappedPending = if (currentPending.size > 100) {
-            currentPending.takeLast(100)
-        } else {
-            currentPending
+        val incomingKeys = records.map { it.id }
+        mutatePendingQueue { current ->
+            val known = current.toHashSet()
+            (current + incomingKeys.filter { known.add(it) }).takeLast(100)
         }
-        updatePendingQueue(cappedPending)
 
         // Update sync state
         val state = syncState.first().copy(
@@ -152,8 +168,8 @@ class NotificationStore(
      */
     suspend fun removePending(keys: List<String>) {
         if (keys.isEmpty()) return
-        val current = pendingQueue.first()
-        updatePendingQueue(current.filterNot { it in keys })
+        val toRemove = keys.toHashSet()
+        mutatePendingQueue { current -> current.filterNot { it in toRemove } }
     }
 
     /**

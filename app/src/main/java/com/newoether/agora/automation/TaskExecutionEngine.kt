@@ -371,6 +371,7 @@ class TaskExecutionEngine(
         requestKind: String = "task",
         images: List<String> = emptyList(),
         attachmentMeta: String? = null,
+        suppressTerminalNotification: Boolean = false,
     ): Result = automationExecutionGate.withExecution {
         executionCoordinator.withAutomationConversationLock(conversationId) {
             settings.awaitInitialLoad()
@@ -386,6 +387,7 @@ class TaskExecutionEngine(
                     requestKind = requestKind,
                     images = images,
                     attachmentMeta = attachmentMeta,
+                    suppressTerminalNotification = suppressTerminalNotification,
                 )
             }
         }
@@ -429,6 +431,7 @@ class TaskExecutionEngine(
         requestKind: String,
         images: List<String> = emptyList(),
         attachmentMeta: String? = null,
+        suppressTerminalNotification: Boolean = false,
     ): Result {
         require(requestKind.isNotBlank())
         settings.awaitInitialLoad()
@@ -682,6 +685,7 @@ class TaskExecutionEngine(
                 providerInstances = generationSnapshot.providerInstances,
                 generationJob = currentCoroutineContext()[Job],
                 callbacks = baseCallbacks.copy(
+                    suppressTerminalNotification = suppressTerminalNotification,
                     onStreamUpdate = { message ->
                         lastStreamed = message
                         baseCallbacks.onStreamUpdate(message)

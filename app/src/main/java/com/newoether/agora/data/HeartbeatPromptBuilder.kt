@@ -71,24 +71,57 @@ class HeartbeatPromptBuilder(
         val previousSection = buildPreviousHeartbeatSection(recentResponses)
         if (previousSection.isNotBlank()) sections.add(previousSection)
 
+        // Section 8: decision rule, LAST so it is the freshest instruction. The base prompt (the
+        // default or the user's) only talks about memories/tasks/follow-ups, so a model reading
+        // "nothing needs attention → HEARTBEAT_OK" followed by a list of incoming items had no
+        // rule saying a overdue-payment SMS counts as "needs attention", and weaker models
+        // answered HEARTBEAT_OK — which also consumes the snapshot, so the item was lost.
+        if (smsSection.isNotBlank() || notificationsSection.isNotBlank() || emailSection.isNotBlank()) {
+            sections.add(buildResponseRuleSection())
+        }
+
         return sections.joinToString("\n\n")
     }
 
+    private fun buildResponseRuleSection(): String {
+        val ok = HeartbeatManager.HEARTBEAT_OK_SENTINEL
+        return "## Response Rule\n" +
+            "The incoming items above are real messages and notifications from the user's phone. " +
+            "If ANY of them is time-sensitive or needs the user's action (payments or bills due or " +
+            "overdue, service suspension notices, security or account alerts, deadlines, " +
+            "appointments, messages awaiting a reply), do NOT answer $ok: reply with a short alert " +
+            "naming the item and what is needed. Answer exactly $ok only when nothing above needs " +
+            "the user's attention."
+    }
+
     private suspend fun buildTasksSection(): String {
-        val tasks = taskManager.tasks.value
-        if (tasks.isEmpty()) return ""
+        val now = System.currentTimeMillis()
+        val activeTasks = taskManager.tasks.value.filter { it.enabled }
+        val dueTasks = activeTasks.filter { it.nextRunAt <= now }
+        // Scheduled tasks run on their own (WorkManager/alarms), so at heartbeat time they are
+        // almost never "due": listing only due ones left the section as a bare header and made the
+        // model believe nothing was automated. Show what is scheduled, and when.
+        val upcomingTasks = activeTasks.filter { it.nextRunAt > now }.sortedBy { it.nextRunAt }
 
-        val activeTasks = tasks.filter { it.enabled }
-        val dueTasks = activeTasks.filter { it.nextRunAt <= System.currentTimeMillis() }
-
-        // For loops, we need to query LoopManager differently
+        // Loops are queried independently: a user with loops but no tasks used to get no section
+        // at all because the empty-task check returned before they were read.
         val loops = getActiveLoops()
+
+        // Never emit a header with nothing under it.
+        if (dueTasks.isEmpty() && upcomingTasks.isEmpty() && loops.isEmpty()) return ""
 
         val lines = mutableListOf("## Pending Tasks & Loops")
         if (dueTasks.isNotEmpty()) {
             lines.add("### Due Tasks:")
             for (task in dueTasks.take(10)) {
                 lines.add("- ${task.name}: ${task.prompt.take(100)}...")
+            }
+        }
+        if (upcomingTasks.isNotEmpty()) {
+            lines.add("### Scheduled Tasks (not due yet):")
+            lines.add("These run automatically on their schedule; do not run or reschedule them yourself.")
+            for (task in upcomingTasks.take(10)) {
+                lines.add("- ${task.name}: next run ${formatRunTime(task.nextRunAt)}")
             }
         }
         if (loops.isNotEmpty()) {
@@ -99,6 +132,11 @@ class HeartbeatPromptBuilder(
         }
         return lines.joinToString("\n")
     }
+
+    private fun formatRunTime(epochMs: Long): String =
+        java.time.Instant.ofEpochMilli(epochMs)
+            .atZone(java.time.ZoneId.systemDefault())
+            .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"))
 
     private suspend fun getActiveLoops(): List<com.newoether.agora.data.local.LoopEntity> {
         return taskRepository.getActiveLoops()

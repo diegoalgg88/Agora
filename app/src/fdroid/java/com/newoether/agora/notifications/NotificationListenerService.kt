@@ -121,22 +121,42 @@ class AgoraNotificationListenerService : NotificationListenerService() {
         DebugLog.d(TAG, "Captured notification: $record")
 
         val store = resolveNotificationStore()
-        if (store == null || settingsRepository == null) {
+        val settings = settingsRepository
+        if (store == null || settings == null) {
             // Cold-start window: the process container isn't published yet. Fail closed
             // without crashing the listener (the OS would keep rebinding it in a loop).
             DebugLog.w(TAG, "Container not ready; skipping notification from ${sbn.packageName}")
             return
         }
 
-        // Apply whitelist filtering
-        val allowedApps = settingsRepository?.notificationsAllowedApps?.value ?: emptySet()
-        if (!allowedApps.contains(packageName)) {
-            DebugLog.d(TAG, "Skipping non-whitelisted notification from ${sbn.packageName}")
-            return
-        }
-
         scope.launch {
-            store.addNotifications(listOf(record))
+            // Settings flows are hot StateFlows whose `.value` is the INITIAL default (empty
+            // allow-list, toggle off) until DataStore emits its first snapshot. The OS binds this
+            // service on a cold process start, so reading `.value` synchronously here dropped
+            // every notification that arrived before settings finished loading — i.e. exactly
+            // the ones that wake the process, like an SMS or a payment reminder. Await first.
+            settings.awaitInitialLoad()
+
+            // The master toggle used to have no runtime effect: turning it OFF kept capturing.
+            if (!settings.notificationsEnabled.value) {
+                DebugLog.d(TAG, "Notification capture disabled; skipping ${sbn.packageName}")
+                return@launch
+            }
+
+            // Apply whitelist filtering
+            if (!settings.notificationsAllowedApps.value.contains(packageName)) {
+                DebugLog.d(TAG, "Skipping non-whitelisted notification from ${sbn.packageName}")
+                return@launch
+            }
+
+            try {
+                store.addNotifications(listOf(record))
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // This scope has no exception handler: an escaping failure would crash the app.
+                DebugLog.e(TAG, "Failed to store notification from $packageName", e)
+            }
         }
     }
 

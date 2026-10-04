@@ -2,6 +2,7 @@ package com.newoether.agora.ui.settings
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -16,6 +17,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.NotificationsActive
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -60,29 +62,29 @@ fun TaskConfirmationSettingsItem(
 
     Column(modifier = modifier.fillMaxWidth()) {
         // ── Enable toggle ────────────────────────────────────────
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = stringResource(R.string.task_confirmation_settings_title),
-                    style = MaterialTheme.typography.bodyLarge,
+        // Same SettingsItem anatomy as every sibling row (leading icon, shared typography and
+        // paddings, whole row clickable). The hand-rolled Row had no icon and a different text
+        // inset, so this row looked foreign between its neighbours.
+        SettingsItem(
+            headlineContent = { Text(stringResource(R.string.task_confirmation_settings_title)) },
+            supportingContent = { Text(stringResource(R.string.task_confirmation_settings_desc)) },
+            leadingContent = {
+                Icon(
+                    Icons.Default.NotificationsActive,
+                    null,
+                    tint = MaterialTheme.colorScheme.primary,
                 )
-                Text(
-                    text = stringResource(R.string.task_confirmation_settings_desc),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+            },
+            trailingContent = {
+                Switch(
+                    checked = enabled,
+                    onCheckedChange = { settingsRepository.setTaskConfirmationEnabled(it) },
                 )
-            }
-            Spacer(modifier = Modifier.padding(horizontal = 4.dp))
-            Switch(
-                checked = enabled,
-                onCheckedChange = { settingsRepository.setTaskConfirmationEnabled(it) },
-            )
-        }
+            },
+            modifier = Modifier.clickable {
+                settingsRepository.setTaskConfirmationEnabled(!enabled)
+            },
+        )
 
         if (enabled) {
             // ── Phone-frame preview: the surface where it will actually land ──

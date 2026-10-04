@@ -4,6 +4,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import com.newoether.agora.AgoraApplication
+import com.newoether.agora.service.AppForegroundTracker
 import com.newoether.agora.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,6 +32,27 @@ class TaskConfirmationReceiver : BroadcastReceiver() {
                 when (action) {
                     ACTION_CONFIRM -> container.taskConfirmationStore.acknowledge(confirmationId)
                     ACTION_DISMISS -> container.taskConfirmationStore.dismiss(confirmationId)
+                    ACTION_SNOOZE -> {
+                        // Cancel first, arm after: the snooze notification disappears now and
+                        // the alarm (daemon-independent) brings it back at the deadline.
+                        val armed = container.taskConfirmationStore
+                            .snooze(confirmationId, DEFAULT_SNOOZE_MINUTES)
+                        container.taskPromptNotifier.cancel(confirmationId)
+                        if (armed) {
+                            container.taskPromptNotifier.scheduleReminder(
+                                confirmationId,
+                                System.currentTimeMillis() + DEFAULT_SNOOZE_MINUTES * 60_000L,
+                            )
+                        }
+                        return@launch
+                    }
+                    ACTION_REMIND -> {
+                        container.taskPromptNotifier.postDueReminders(
+                            container.taskConfirmationStore,
+                            AppForegroundTracker.isInForeground,
+                        )
+                        return@launch
+                    }
                     else -> {
                         DebugLog.w(TAG, "Unknown action $action ignored")
                         return@launch
@@ -51,6 +73,11 @@ class TaskConfirmationReceiver : BroadcastReceiver() {
         private const val TAG = "TaskConfirmationReceiver"
         const val ACTION_CONFIRM = "com.newoether.agora.automation.TASK_CONFIRMATION_CONFIRM"
         const val ACTION_DISMISS = "com.newoether.agora.automation.TASK_CONFIRMATION_DISMISS"
+        const val ACTION_SNOOZE = "com.newoether.agora.automation.TASK_CONFIRMATION_SNOOZE"
+        const val ACTION_REMIND = "com.newoether.agora.automation.TASK_CONFIRMATION_REMIND"
+
+        /** Notification Snooze has no picker; it uses the shortest card option. */
+        const val DEFAULT_SNOOZE_MINUTES = 10
         const val EXTRA_CONFIRMATION_ID = "confirmation_id"
     }
 }

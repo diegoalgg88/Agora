@@ -87,8 +87,10 @@ class HeartbeatSchedulerBusyPathTest {
 
         val notifier = mockk<HeartbeatNotifier>(relaxed = true)
         val engine = mockk<TaskExecutionEngine>()
+        // eq(true) pins the contract: the heartbeat owns its notification policy and always
+        // suppresses the generic "Response ready" terminal notification (see automation.md §5).
         coEvery {
-            engine.runOnce(any(), any(), any(), any(), any(), any(), any(), any(), any())
+            engine.runOnce(any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(true))
         } returns engineResult
 
         val confirmationStore = mockk<TaskConfirmationStore>(relaxed = true)
@@ -293,6 +295,29 @@ class HeartbeatSchedulerBusyPathTest {
     }
 
     @Test
+    fun alreadyResolvedDedupRowIsNeverReposted() = runTest {
+        // stage() is idempotent and hands back the existing row of a re-staged generation. If
+        // that row was already resolved, posting it would resurrect a prompt with dead actions.
+        val store = stageCapturingStore()
+        coEvery { store.stage(any()) } answers {
+            stagedRow("resolved").copy(
+                status = com.newoether.agora.data.local.TaskConfirmationStatus.ACKNOWLEDGED.name,
+            )
+        }
+        val promptNotifier = mockk<com.newoether.agora.service.TaskPromptNotifier>(relaxed = true)
+        every { promptNotifier.canPost() } returns true
+        schedulerWith(
+            engineResult = TaskExecutionEngine.Result.Success("msg-dup", "algo importante"),
+            inForeground = false,
+            confirmationToggleOn = true,
+            store = store,
+            promptNotifier = promptNotifier,
+        ).first.runHeartbeatNow()
+        coVerify(exactly = 1) { store.stage(any()) }
+        coVerify(exactly = 0) { promptNotifier.post(any(), any(), any(), any(), any()) }
+    }
+
+    @Test
     fun autoModePostsInfoWithoutStaging() = runTest {
         // AUTO (Universal Installer's AutoNotification analogue): informational only.
         // Nothing may be staged (no durable row, no banner) and the post is postInfo.
@@ -410,8 +435,9 @@ class HeartbeatSchedulerBusyPathTest {
         val manager = mockk<HeartbeatManager>(relaxed = true)
         val notifier = mockk<HeartbeatNotifier>(relaxed = true)
         val engine = mockk<TaskExecutionEngine>()
+        // Same contract pin as the scheduler() harness above.
         coEvery {
-            engine.runOnce(any(), any(), any(), any(), any(), any(), any(), any(), any())
+            engine.runOnce(any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(true))
         } returns engineResult
 
         val conversationRepository = mockk<ConversationRepository>(relaxed = true)

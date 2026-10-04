@@ -155,10 +155,12 @@
     <string name="task_confirmation_result_title">ハートビートの結果</string>
     <string name="daemon_active_status">自動化が実行中</string>
     <string name="task_confirmation_mode_prompt">確認を求める</string>
-    <string name="task_confirmation_mode_prompt_desc">確認・破棄・後で通知の操作がある永続的な確認に加え、チャット内のバナー。</string>
+    <string name="task_confirmation_mode_prompt_desc">確認・破棄・後で通知のいずれかを選べる永続的な確認に加え、チャット内のバナー。</string>
     <string name="task_confirmation_mode_auto">通知のみ</string>
     <string name="task_confirmation_mode_auto_desc">自動で消えるシンプルな通知。何も保存せず、何も尋ねません。</string>
     <string name="task_confirmation_card_style_section">確認カード</string>
     <string name="task_confirmation_card_style_bottom">下</string>
     <string name="task_confirmation_card_style_centered">中央</string>
+    <string name="task_confirmation_info_channel_name">タスクの結果</string>
+    <string name="task_confirmation_info_channel_desc">自動化されたタスクとハートビートの結果に関する情報通知です。</string>
 </resources>

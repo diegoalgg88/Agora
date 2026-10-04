@@ -24,10 +24,12 @@
     <string name="task_confirmation_result_title">心跳结果</string>
     <string name="daemon_active_status">自动化运行中</string>
     <string name="task_confirmation_mode_prompt">请求确认</string>
-    <string name="task_confirmation_mode_prompt_desc">持久的确认，包含确认、忽略和稍后提醒操作，并在聊天中显示横幅。</string>
+    <string name="task_confirmation_mode_prompt_desc">持久的确认，可选择确认、忽略或稍后提醒，并在聊天中显示横幅。</string>
     <string name="task_confirmation_mode_auto">仅通知</string>
     <string name="task_confirmation_mode_auto_desc">自动消失的简单通知；不保存任何内容，也不询问任何操作。</string>
     <string name="task_confirmation_card_style_section">确认卡片</string>
     <string name="task_confirmation_card_style_bottom">底部</string>
     <string name="task_confirmation_card_style_centered">居中</string>
+    <string name="task_confirmation_info_channel_name">任务结果</string>
+    <string name="task_confirmation_info_channel_desc">关于自动化任务和心跳结果的信息通知。</string>
 </resources>

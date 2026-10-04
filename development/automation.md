@@ -64,6 +64,12 @@ email.md) → notifications are push-driven, never polled.
 | `Failure` | advanced (avoids hammering a failing provider every 60s) | failure row (reason, capped) | only if app backgrounded | NOT consumed — items survive to the next heartbeat |
 | `Busy` | **not advanced** | **no row** | **never** | untouched — the 60s loop retries naturally; "Recent runs" never fills with busy noise |
 
+"Push notification: no" for Success covers the generic "Response ready" terminal
+notification too: the heartbeat run passes `suppressTerminalNotification = true`
+(`GenerationCallbacks` -> `GenerationCompletionEffectsExecutor`), which suppresses ONLY
+that notification (unread marking and every other terminal effect are unchanged).
+Before this, every clean check posted "Agora responded: HEARTBEAT_OK" while backgrounded.
+
 **Consume-on-success only** is the invariant: exactly the snapshot the AI saw is
 removed, and only on success. Items arriving during the call were never in the
 snapshot and survive.
@@ -87,7 +93,11 @@ instructions or the default `DEFAULT_HEARTBEAT_PROMPT` — which forbids the mod
 from rescheduling heartbeat), tasks & loops (due enabled tasks cap 10, active
 loops cap 5), memory promotion candidates, new SMS (cap 20), new notifications
 (cap 20, newest first), new emails (cap 20, newest first), previous results
-(cap 3). Pending lists arrive as parameters; the scheduler owns the
+(cap 3), and — only when SMS/notifications/emails are present — a final `## Response Rule`
+(never answer HEARTBEAT_OK when an incoming item is time-sensitive or needs action; the
+consume-on-success invariant means a wrong HEARTBEAT_OK loses the item). Tasks & loops also
+lists scheduled-but-not-due tasks (cap 10, with next run time) and is never emitted as a bare
+header; loops are read even when there are no tasks. Pending lists arrive as parameters; the scheduler owns the
 snapshot/remove lifecycle. Pinned by `HeartbeatPromptBuilderTest`.
 
 ## 8. Manual run ("Run now")
@@ -145,7 +155,7 @@ because `TaskExecutionEngine.Result.Success` exposes only `(modelMessageId, text
 the internal `runId` never leaves the engine, and `modelMessageId` is unique per
 generation. Rows are ephemeral: cap 20 PENDING rows (oldest evicted in the same staging
 transaction; resolved rows are dedup tombstones outside the cap so they can never evict
-an unresolved row), 7-day cleanup riding the heartbeat tick's retention sweep.
+an unresolved row), 7-day cleanup run inside every staging transaction (so it does not depend on the heartbeat/daemon being on) and again on the heartbeat tick's retention sweep.
 
 ### Actionable definition (the filter lives in the scheduler)
 A success result stages a confirmation only when, after `trim()`, it is non-empty
@@ -164,7 +174,7 @@ failure is logged and never skips the watermark advance or the run log (otherwis
 
 ### Surfaces and consume-on-resolve
 Notification (`service/TaskPromptNotifier`, channel `task_confirmation_v1`,
-IMPORTANCE_HIGH; actions Confirm + Open conversation; DeleteIntent == Dismiss;
+IMPORTANCE_HIGH; actions Confirm + Snooze (fixed 10 min) + Open conversation; DeleteIntent == Dismiss;
 IDs on base 51000+ (20-bit hash space) derived from the confirmation ID so re-posts
 replace, never stack; the localized header comes from the single
 `TaskPromptNotifier.titleResFor` shared by notification, banner and card), the bottom-anchored translucent card (`ui/automation/TaskConfirmationActivity`,
@@ -183,9 +193,8 @@ survives for the banner — no orphan result.
 transaction; rows resolved by another surface between SELECT and UPDATE are
 dropped (the clear UPDATE carries the PENDING predicate and reports 0). The
 scheduler's tick calls it every 60 s — even when the heartbeat itself is not due —
-and re-posts only when backgrounded. With the daemon off there is no tick and no
-re-post: the row stays PENDING and resolvable from the banner (snooze is a
-convenience, not a contract).
+and re-posts only when backgrounded. With the daemon off there is no tick, but the snooze still comes back: the row stays PENDING, the banner re-shows it at its deadline, and the notification is re-posted by a one-shot inexact alarm (`TaskPromptNotifier.scheduleReminder`, fired into `TaskConfirmationReceiver.ACTION_REMIND`, re-armed by `BootReceiver`; the tick is only a backstop and both go through `postDueReminders`) (snooze is a
+convenience, not a contract). While snoozed, the banner hides the row and un-hides it on its own clock (`PendingTaskConfirmationsBanner`), not on the daemon tick; staging also never re-posts a re-staged row that is no longer PENDING.
 
 ### TASK result surfacing (F8)
 Scheduled tasks share the heartbeat's confirmation pipeline. After a successful
@@ -193,14 +202,14 @@ Scheduled tasks share the heartbeat's confirmation pipeline. After a successful
 `surfaceTaskResult` hook fires — always actionable (the user explicitly asked for
 the task; no sentinel filter), with the shared plain-text projection, isolated in
 its own try/catch so a confirmation failure can never flip a completed run into a
-failure (same isolation as the title update). The durable row title is the task's
+failure (same isolation as the title update; both paths share `surfaceResultIsolated`, and the recovery path is idempotent through the dedup key). The durable row title is the task's
 own name; `TaskPromptNotifier.displayTitleFor(sourceType, rowTitle)` renders
 HEARTBEAT's localized header but surfaces TASK/LOOP row titles directly (the name
 identifies the origin better than any generic string; blank falls back to the
 settings label). The global toggle/mode/style settings apply unchanged — a daily
 weather report reads best in AUTO ("informative only") mode, which the user picks
-once in Settings. `AppContainer.surfaceAutomationResult` owns the PROMPT/AUTO
-branching for non-heartbeat sources so LOOP can reuse it verbatim.
+once in Settings. `stageAndNotifyTaskConfirmation` (`automation/TaskConfirmationSurfacing.kt`, shared with the heartbeat) owns the PROMPT/AUTO
+branching for non-heartbeat sources. LOOP policy: a loop fires every few minutes, so only the FINAL cycle's successful result is surfaced (`LoopManager.surfaceFinalLoopResult`, gated on `claimed.active == false`, i.e. exactly once per run; a user Stop or a failed cycle surfaces nothing), titled with the loop conversation's own title. Per-cycle surfacing is deliberately not offered: it floods the banner and the shade.
 
 ### Presentation modes and card style (F7, Universal Installer analogue)
 `Settings → Automation → Task confirmations` exposes two presentation modes
@@ -209,7 +218,7 @@ banner + actionable notification, all §11 semantics above) and **AUTO** — the
 Universal Installer `AutoNotification` analogue: an informational auto-dismiss
 notification ONLY. AUTO stages NOTHING: no durable row, no banner, no actions, no
 delete intent — a result nobody is asked to confirm must not occupy durable state
-(`TaskPromptNotifier.postInfo`, ID derived from source+conversation+message so
+(`TaskPromptNotifier.postInfo` on its own DEFAULT-importance channel `task_confirmation_info_v1`, so informational posts neither heads-up nor share mute settings with prompts; ID derived from source+conversation+message so
 consecutive results replace each other). The HEARTBEAT_OK actionability filter and
 the foreground suppression apply to both modes. Card anchor
 (`taskConfirmationCardStyle`, portable): BOTTOM (sheet) or CENTERED (dialog) — same

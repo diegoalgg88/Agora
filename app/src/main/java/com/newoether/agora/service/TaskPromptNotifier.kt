@@ -1,6 +1,7 @@
 package com.newoether.agora.service
 
 import android.Manifest
+import android.app.AlarmManager
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -12,9 +13,11 @@ import androidx.annotation.StringRes
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
 import com.newoether.agora.MainActivity
 import com.newoether.agora.R
 import com.newoether.agora.automation.TaskConfirmationReceiver
+import com.newoether.agora.data.TaskConfirmationStore
 import com.newoether.agora.data.local.TaskConfirmationSource
 import com.newoether.agora.ui.automation.TaskConfirmationActivity
 import com.newoether.agora.util.DebugLog
@@ -51,18 +54,35 @@ class TaskPromptNotifier(
         return manager.areNotificationsEnabled()
     }
 
-    private fun ensureChannel() {
+    /**
+     * Prompts (actionable) live on a HIGH channel; informational AUTO posts get their own
+     * DEFAULT channel so a result nobody is asked to answer does not heads-up like a prompt
+     * and the user can mute it independently.
+     */
+    private fun ensureChannel(info: Boolean = false) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val system = context.getSystemService(NotificationManager::class.java) ?: return
-        if (system.getNotificationChannel(CHANNEL_ID) != null) return
-        val channel = NotificationChannel(
-            CHANNEL_ID,
-            context.getString(R.string.task_confirmation_channel_name),
-            NotificationManager.IMPORTANCE_HIGH,
-        ).apply {
-            description = context.getString(R.string.task_confirmation_channel_desc)
-            enableVibration(true)
-            setShowBadge(true)
+        val id = if (info) INFO_CHANNEL_ID else CHANNEL_ID
+        if (system.getNotificationChannel(id) != null) return
+        val channel = if (info) {
+            NotificationChannel(
+                id,
+                context.getString(R.string.task_confirmation_info_channel_name),
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = context.getString(R.string.task_confirmation_info_channel_desc)
+                setShowBadge(true)
+            }
+        } else {
+            NotificationChannel(
+                id,
+                context.getString(R.string.task_confirmation_channel_name),
+                NotificationManager.IMPORTANCE_HIGH,
+            ).apply {
+                description = context.getString(R.string.task_confirmation_channel_desc)
+                enableVibration(true)
+                setShowBadge(true)
+            }
         }
         system.createNotificationChannel(channel)
     }
@@ -106,6 +126,16 @@ class TaskPromptNotifier(
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val snoozeIntent = PendingIntent.getBroadcast(
+            context,
+            requestCode(confirmationId, REQUEST_SNOOZE),
+            Intent(context, TaskConfirmationReceiver::class.java).apply {
+                action = TaskConfirmationReceiver.ACTION_SNOOZE
+                putExtra(TaskConfirmationReceiver.EXTRA_CONFIRMATION_ID, confirmationId)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+
         // Swipe-away == Dismiss: a prompt nobody answered must not linger as a dead row.
         val deleteIntent = PendingIntent.getBroadcast(
             context,
@@ -142,6 +172,7 @@ class TaskPromptNotifier(
             .setContentIntent(contentIntent)
             .setDeleteIntent(deleteIntent)
             .addAction(0, context.getString(R.string.task_confirmation_action_confirm), confirmIntent)
+            .addAction(0, context.getString(R.string.task_confirmation_action_snooze), snoozeIntent)
             .addAction(
                 0,
                 context.getString(R.string.task_confirmation_action_open_conversation),
@@ -190,7 +221,7 @@ class TaskPromptNotifier(
         modelMessageId: String?,
     ) {
         if (!canPost()) return
-        ensureChannel()
+        ensureChannel(info = true)
         val stableKey = "$sourceType:${conversationId}:${modelMessageId ?: body.hashCode()}"
         val notificationId = notificationIdFor(stableKey)
         val openConversationIntent = PendingIntent.getActivity(
@@ -202,7 +233,7 @@ class TaskPromptNotifier(
             },
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(context, INFO_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(displayTitleFor(sourceType, title))
             .setContentText(body)
@@ -218,6 +249,53 @@ class TaskPromptNotifier(
     }
 
     /**
+     * Arms a daemon-independent one-shot alarm that re-posts a snoozed confirmation. The
+     * heartbeat tick used to be the only re-post path, so with the daemon off a snooze never
+     * came back. Inexact on purpose: a reminder does not warrant the exact-alarm permission.
+     * The alarm is never cancelled on resolution; a stale firing finds no due row and no-ops.
+     */
+    fun scheduleReminder(confirmationId: String, triggerAtMs: Long) {
+        val trigger = triggerAtMs.coerceAtLeast(System.currentTimeMillis() + MIN_REMINDER_DELAY_MS)
+        runCatching {
+            val alarms = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            alarms.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                trigger,
+                PendingIntent.getBroadcast(
+                    context,
+                    0,
+                    Intent(context, TaskConfirmationReceiver::class.java).apply {
+                        action = TaskConfirmationReceiver.ACTION_REMIND
+                        // Distinct data URI => distinct PendingIntent per confirmation.
+                        data = "agora://task-confirmation/remind/$confirmationId".toUri()
+                        putExtra(TaskConfirmationReceiver.EXTRA_CONFIRMATION_ID, confirmationId)
+                    },
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+        }.onFailure { DebugLog.w(TAG, "Failed to arm snooze reminder", it) }
+    }
+
+    /**
+     * Fetch-and-clear of due snoozes plus the heads-up re-post. Shared by the heartbeat tick and
+     * the reminder alarm so both obey one rule: the row is always released (the banner shows it
+     * again), and the notification is only re-posted when backgrounded and allowed.
+     */
+    suspend fun postDueReminders(store: TaskConfirmationStore, appInForeground: Boolean) {
+        val due = store.consumeDueReminders(System.currentTimeMillis())
+        if (due.isEmpty() || appInForeground || !canPost()) return
+        for (row in due) {
+            post(
+                confirmationId = row.id,
+                sourceType = row.sourceType,
+                rowTitle = row.title,
+                body = row.bodyText,
+                conversationId = row.conversationId,
+            )
+        }
+    }
+
+    /**
      * Stable per (confirmationId, purpose) request codes so PendingIntents for different
      * confirmations never collide and re-posts update in place.
      */
@@ -227,6 +305,8 @@ class TaskPromptNotifier(
     companion object {
         private const val TAG = "TaskPromptNotifier"
         const val CHANNEL_ID = "task_confirmation_v1"
+        const val INFO_CHANNEL_ID = "task_confirmation_info_v1"
+        private const val MIN_REMINDER_DELAY_MS = 1_000L
 
         /** Stable notification ID for a confirmation ID (or an AUTO-mode content key). */
         internal fun notificationIdFor(key: String): Int =
@@ -252,6 +332,7 @@ class TaskPromptNotifier(
         private const val REQUEST_CONTENT = 0x51
         private const val REQUEST_CONFIRM = 0x52
         private const val REQUEST_DISMISS = 0x53
+        private const val REQUEST_SNOOZE = 0x55
         private const val REQUEST_OPEN_CONVERSATION = 0x54
     }
 }

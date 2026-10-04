@@ -33,6 +33,18 @@ class LoopManager(
     private val clock: () -> Long = System::currentTimeMillis,
     executionCoordinator: ConversationExecutionCoordinator? = null,
     private val executionGate: AutomationExecutionGate = AutomationExecutionGate(),
+    /**
+     * Rich confirmations for Loops. Policy: a loop fires every few minutes, so surfacing every
+     * cycle would flood the banner and the shade. Only the FINAL cycle's successful result is
+     * surfaced (one confirmation per loop run). Inert by default so existing construction sites
+     * and tests are unchanged until AppContainer wires the real one.
+     */
+    private val surfaceFinalLoopResult: suspend (
+        conversationId: String,
+        conversationTitle: String,
+        modelMessageId: String,
+        response: String,
+    ) -> Unit = { _, _, _, _ -> },
 ) {
     /** Production convenience constructor; the primary constructor stays fully JVM-testable. */
     constructor(
@@ -295,6 +307,24 @@ class LoopManager(
             throw e
         } finally {
             _runningConversationIds.update { it - conversationId }
+        }
+
+        // `claimed.active == false` only for the cycle that claimed the last slot (a user Stop
+        // bumps the persisted revision, never this snapshot), so this is exactly once per run.
+        // Isolated: a confirmation failure must never turn a completed cycle into a failure.
+        if (generationResult is TaskExecutionEngine.Result.Success && !claimed.active) {
+            try {
+                surfaceFinalLoopResult(
+                    conversationId,
+                    conversation.title,
+                    generationResult.modelMessageId,
+                    generationResult.text,
+                )
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                DebugLog.e("LoopManager", "Loop result confirmation surfacing failed", e)
+            }
         }
 
         val updated = stateMutex.withLock {

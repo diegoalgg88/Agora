@@ -196,6 +196,14 @@ internal data class GenerationCallbacks(
     val hasQueuedSends: () -> Boolean = { false },
     /** Null for headless automation, which retains its existing foreground/background policy. */
     val isConversationVisible: (() -> Boolean)? = null,
+    /**
+     * Headless callers that own their own user-facing notification policy (the heartbeat: its
+     * contract says Success never pushes, Failure pushes via HeartbeatNotifier, actionable
+     * results via rich confirmations) opt out of the generic "Response ready" terminal
+     * notification. Only the notification is suppressed: unread marking, persistence and every
+     * other terminal effect are unchanged.
+     */
+    val suppressTerminalNotification: Boolean = false,
     /** A validated Provider outcome is necessary but not sufficient: runtime identity must accept
      * the exact batch before any tool can execute. Defaults preserve the isolated headless test
      * adapter until Task ownership migrates fully in Phase 7. */

@@ -180,10 +180,12 @@
     <string name="task_confirmation_result_title">Heartbeat result</string>
     <string name="daemon_active_status">Automation active</string>
     <string name="task_confirmation_mode_prompt">Ask for confirmation</string>
-    <string name="task_confirmation_mode_prompt_desc">Durable confirmation with Confirm, Dismiss, and Snooze actions, plus a chat banner.</string>
+    <string name="task_confirmation_mode_prompt_desc">Durable confirmation you can confirm, dismiss, or snooze, plus a chat banner.</string>
     <string name="task_confirmation_mode_auto">Informative only</string>
     <string name="task_confirmation_mode_auto_desc">A simple auto-dismiss notification; nothing is stored or asked.</string>
     <string name="task_confirmation_card_style_section">Confirmation card</string>
     <string name="task_confirmation_card_style_bottom">Bottom</string>
     <string name="task_confirmation_card_style_centered">Centered</string>
+    <string name="task_confirmation_info_channel_name">Task results</string>
+    <string name="task_confirmation_info_channel_desc">Informational notifications for automated task and heartbeat results.</string>
 </resources>

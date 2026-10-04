@@ -138,22 +138,15 @@ class HeartbeatScheduler(
         // this tick would re-post the same row every 60s until resolved. Rows resolved by
         // another surface (notification action, banner, card) between SELECT and UPDATE
         // are dropped by the status='PENDING' predicate.
+        // The reminder alarm armed at snooze time (TaskPromptNotifier.scheduleReminder) is the
+        // primary re-post path and works with the daemon off; this tick is the backstop for a
+        // lost alarm. Both share postDueReminders, and the atomic fetch-and-clear guarantees a
+        // row is re-posted by exactly one of them.
         runCatching {
-            val due = taskConfirmationStore.consumeDueReminders(System.currentTimeMillis())
-            if (due.isNotEmpty() &&
-                !appForegroundTracker.isInForeground &&
-                taskPromptNotifier.canPost()
-            ) {
-                for (row in due) {
-                    taskPromptNotifier.post(
-                        confirmationId = row.id,
-                        sourceType = row.sourceType,
-                        rowTitle = row.title,
-                        body = row.bodyText,
-                        conversationId = row.conversationId,
-                    )
-                }
-            }
+            taskPromptNotifier.postDueReminders(
+                taskConfirmationStore,
+                appForegroundTracker.isInForeground,
+            )
         }.onFailure { error ->
             com.newoether.agora.util.DebugLog.e("HeartbeatScheduler", "Snooze due-gate failed", error)
         }
@@ -268,6 +261,9 @@ class HeartbeatScheduler(
             userText = snapshot.prompt,
             modelId = modelOverride,
             requestKind = "heartbeat",
+            // Heartbeat owns its notification policy (see section 5 of the contract): the
+            // generic "Response ready: HEARTBEAT_OK" push must never fire for a clean check.
+            suppressTerminalNotification = true,
         )
 
         // Busy = the conversation lease was taken (e.g. user actively chatting in the heartbeat
@@ -304,7 +300,7 @@ class HeartbeatScheduler(
         }
 
         // Surfacing runs after consume-on-success and the retention sweep (see the helper).
-        if (success && result is TaskExecutionEngine.Result.Success) {
+        if (success) {
             surfaceTaskConfirmation(heartbeatConversationId, result)
         }
 
@@ -347,49 +343,26 @@ class HeartbeatScheduler(
             val plainBody = TaskConfirmationStore.plainTextForConfirmation(actionable)
             // Markdown-only remainders ("###") collapse to empty; the store rejects blank bodies.
             if (plainBody.isBlank()) return
-            val background = !appForegroundTracker.isInForeground && taskPromptNotifier.canPost()
-            if (settingsRepository.taskConfirmationMode.value == TaskConfirmationMode.AUTO) {
-                // AUTO (Universal Installer's AutoNotification analogue): informational only —
-                // NO staging, NO banner, NO actions. A result nobody is asked to confirm must
-                // not occupy durable state.
-                if (background) {
-                    taskPromptNotifier.postInfo(
-                        sourceType = TaskConfirmationSource.HEARTBEAT.name,
-                        // AUTO has no durable row; HEARTBEAT's displayTitleFor localizes its
-                        // own header when the row title is blank — no Context lookup here
-                        // (the scheduler mock would have to stub getString for every test).
-                        title = "",
-                        body = plainBody,
-                        conversationId = conversationId,
-                        modelMessageId = result.modelMessageId,
-                    )
-                }
-                return
-            }
-            val staged = taskConfirmationStore.stage(
-                TaskConfirmationStore.Draft(
-                    source = TaskConfirmationSource.HEARTBEAT,
-                    conversationId = conversationId,
-                    // modelMessageId (not runId): Result.Success only exposes
-                    // (modelMessageId, text); modelMessageId is unique per generation.
-                    modelMessageId = result.modelMessageId,
-                    // Neutral durable title: UI surfaces localize their own headers.
-                    title = "Heartbeat",
-                    // Stripped once so every surface inherits the same clean durable body.
-                    bodyText = plainBody,
-                ),
+            // PROMPT/AUTO branching lives in one place shared with tasks. Heartbeat specifics:
+            // modelMessageId (not runId) is the dedup identity — Result.Success only exposes
+            // (modelMessageId, text) and it is unique per generation; the durable title is the
+            // neutral "Heartbeat" (surfaces localize their own header), and AUTO passes a blank
+            // title so displayTitleFor localizes it without a Context lookup here.
+            stageAndNotifyTaskConfirmation(
+                settings = settingsRepository,
+                store = taskConfirmationStore,
+                notifier = taskPromptNotifier,
+                appInForeground = appForegroundTracker.isInForeground,
+                source = TaskConfirmationSource.HEARTBEAT,
+                title = if (settingsRepository.taskConfirmationMode.value == TaskConfirmationMode.AUTO) {
+                    ""
+                } else {
+                    "Heartbeat"
+                },
+                conversationId = conversationId,
+                modelMessageId = result.modelMessageId,
+                plainBody = plainBody,
             )
-            // Post only in background: in the foreground the chat banner surfaces the row
-            // without a heads-up interrupting the user.
-            if (background) {
-                taskPromptNotifier.post(
-                    confirmationId = staged.id,
-                    sourceType = staged.sourceType,
-                    rowTitle = staged.title,
-                    body = staged.bodyText,
-                    conversationId = staged.conversationId,
-                )
-            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

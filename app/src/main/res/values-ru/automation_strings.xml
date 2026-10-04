@@ -155,10 +155,12 @@
     <string name="task_confirmation_result_title">Результат heartbeat</string>
     <string name="daemon_active_status">Автоматизация активна</string>
     <string name="task_confirmation_mode_prompt">Запросить подтверждение</string>
-    <string name="task_confirmation_mode_prompt_desc">Постоянное подтверждение с действиями Подтвердить, Отклонить и Отложить, плюс баннер в чате.</string>
+    <string name="task_confirmation_mode_prompt_desc">Постоянное подтверждение, которое можно подтвердить, отклонить или отложить, плюс баннер в чате.</string>
     <string name="task_confirmation_mode_auto">Только уведомление</string>
     <string name="task_confirmation_mode_auto_desc">Простое уведомление, которое исчезает само; ничего не сохраняется и не запрашивается.</string>
     <string name="task_confirmation_card_style_section">Карточка подтверждения</string>
     <string name="task_confirmation_card_style_bottom">Снизу</string>
     <string name="task_confirmation_card_style_centered">По центру</string>
+    <string name="task_confirmation_info_channel_name">Результаты задач</string>
+    <string name="task_confirmation_info_channel_desc">Информационные уведомления о результатах автоматизированных задач и heartbeat.</string>
 </resources>

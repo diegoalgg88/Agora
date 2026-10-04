@@ -155,10 +155,12 @@
     <string name="task_confirmation_result_title">نتيجة النبضة</string>
     <string name="daemon_active_status">الأتمتة نشطة</string>
     <string name="task_confirmation_mode_prompt">طلب التأكيد</string>
-    <string name="task_confirmation_mode_prompt_desc">تأكيد دائم مع أزرار التأكيد والتجاهل والتأجيل، بالإضافة إلى شريط في المحادثة.</string>
+    <string name="task_confirmation_mode_prompt_desc">تأكيد دائم يمكنك تأكيده أو تجاهله أو تأجيله، بالإضافة إلى شريط في المحادثة.</string>
     <string name="task_confirmation_mode_auto">إشعار فقط</string>
     <string name="task_confirmation_mode_auto_desc">إشعار بسيط يختفي تلقائيًا؛ لا يُحفظ شيء ولا يُطلب أي إجراء.</string>
     <string name="task_confirmation_card_style_section">بطاقة التأكيد</string>
     <string name="task_confirmation_card_style_bottom">أسفل</string>
     <string name="task_confirmation_card_style_centered">وسط</string>
+    <string name="task_confirmation_info_channel_name">نتائج المهام</string>
+    <string name="task_confirmation_info_channel_desc">إشعارات إعلامية بنتائج المهام المؤتمتة وفحوصات heartbeat.</string>
 </resources>

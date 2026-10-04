@@ -74,8 +74,20 @@ class TaskConfirmationStore(
                 modelMessageId = row.modelMessageId,
             )
             if (existing != null) return@withTransaction existing
-            chatDao.insertTaskConfirmation(row)
+            // INSERT is IGNORE: -1 means the unique index rejected the row (another writer won
+            // the dedup key). Returning the unsaved `row` would hand callers an id that does not
+            // exist, so surface the winner instead and skip eviction/retention.
+            if (chatDao.insertTaskConfirmation(row) == -1L) {
+                return@withTransaction chatDao.findTaskConfirmationByDedupKey(
+                    sourceType = row.sourceType,
+                    conversationId = row.conversationId,
+                    modelMessageId = row.modelMessageId,
+                ) ?: error("Task confirmation insert ignored but no dedup winner found")
+            }
             chatDao.deleteTaskConfirmationsBeyondCap(MAX_CONFIRMATIONS)
+            // Retention rides the only growth point. Heartbeat-only cleanup never ran when the
+            // heartbeat/daemon was off, so task confirmations (and resolved tombstones) piled up.
+            chatDao.cleanupTaskConfirmations(row.createdAtEpochMs - CLEANUP_AGE_MS)
             row
         }
     }
@@ -116,11 +128,16 @@ class TaskConfirmationStore(
             }
         }
 
+    /** PENDING rows with an armed snooze; used to re-arm reminder alarms after a reboot. */
+    suspend fun armedReminders(): List<TaskConfirmationEntity> = withContext(Dispatchers.IO) {
+        chatDao.selectDueTaskConfirmations(Long.MAX_VALUE)
+    }
+
     suspend fun get(id: String): TaskConfirmationEntity? = withContext(Dispatchers.IO) {
         chatDao.getTaskConfirmation(id)
     }
 
-    /** Age-based cleanup (7 days). Called from the heartbeat tick's retention sweep. */
+    /** Age-based cleanup (7 days). Runs at every staging and on the heartbeat's retention sweep. */
     suspend fun cleanupOld(
         cutoffEpochMs: Long = System.currentTimeMillis() - CLEANUP_AGE_MS,
     ): Int = withContext(Dispatchers.IO) {
@@ -139,6 +156,7 @@ class TaskConfirmationStore(
     companion object {
         const val MAX_CONFIRMATIONS = 20
         const val CLEANUP_AGE_MS = 7L * 24 * 60 * 60 * 1000
+        private val MARKDOWN_LINK = Regex("""\[([^\]]*)]\(([^)\s]+)\)""")
 
         /**
          * Plain-text projection of an actionable automation result for the rich-confirmation
@@ -149,16 +167,23 @@ class TaskConfirmationStore(
          * future loops) so the projection has exactly one owner.
          *
          * Emphasis runs strip BEFORE heading markers: "**###**" must end up empty, not leave
-         * a bare "###" behind. Content is otherwise untouched: no line-merging, no
+         * a bare "###" behind. Markdown links keep their label and URL ("label (url)") because
+         * the notification shade cannot render them and dropping the URL would lose information;
+         * blockquote markers are dropped. Content is otherwise untouched: no line-merging, no
          * truncation (surfaces clamp with maxLines/BigText themselves).
          */
         fun plainTextForConfirmation(raw: String): String = buildString {
             for (line in raw.lines()) {
                 var text = line.trimStart()
+                text = MARKDOWN_LINK.replace(text) { match ->
+                    val label = match.groupValues[1].trim()
+                    val url = match.groupValues[2].trim()
+                    if (label.isEmpty() || label == url) url else "$label ($url)"
+                }
                 text = text.replace("**", "").replace("__", "")
                     .replace("`", "")
                     .trimStart()
-                while (text.startsWith("#")) text = text.substring(1).trimStart()
+                while (text.startsWith("#") || text.startsWith(">")) text = text.substring(1).trimStart()
                 text = text.removePrefix("- ").removePrefix("* ").removePrefix("+ ")
                     .removePrefix("• ")
                     .trimStart()

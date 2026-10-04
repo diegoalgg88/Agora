@@ -43,6 +43,14 @@ class BootReceiver : BroadcastReceiver() {
                             recalculateForClockChange = intent.action == Intent.ACTION_TIME_CHANGED ||
                                 intent.action == Intent.ACTION_TIMEZONE_CHANGED,
                         )
+                        // Snooze reminder alarms do not survive reboot/update either.
+                        runCatching {
+                            container.taskConfirmationStore.armedReminders().forEach { row ->
+                                row.remindAtEpochMs?.let {
+                                    container.taskPromptNotifier.scheduleReminder(row.id, it)
+                                }
+                            }
+                        }.onFailure { DebugLog.w("BootReceiver", "Failed to re-arm snooze reminders", it) }
                     } catch (e: Exception) {
                         DebugLog.e("BootReceiver", "Failed to re-arm automation alarms", e)
                     } finally {

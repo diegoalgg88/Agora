@@ -67,7 +67,12 @@ class TaskManager(
     )
 
     sealed interface ExecutionResult {
-        data class Success(val conversationId: String, val response: String) : ExecutionResult
+        data class Success(
+            val conversationId: String,
+            val response: String,
+            /** Assistant message that produced [response]; the dedup identity for confirmations. */
+            val modelMessageId: String? = null,
+        ) : ExecutionResult
         data class Failure(
             val conversationId: String,
             val reason: String,
@@ -428,7 +433,15 @@ class TaskManager(
     ): ExecutionResult {
         if (existing != null) {
             val recovery = recoverExistingExecution(existing)
-            if (recovery != null) return recovery
+            if (recovery != null) {
+                // A retried occurrence that already SUCCEEDED may have died before its result was
+                // surfaced. Staging is idempotent on (source, conversation, modelMessageId), so an
+                // already-surfaced result is a no-op and a missed one is delivered now.
+                if (recovery is ExecutionResult.Success) {
+                    surfaceResultIsolated(task, conversationId, recovery.modelMessageId, recovery.response)
+                }
+                return recovery
+            }
             conversationRepository.deleteConversation(conversationId)
         }
 
@@ -465,20 +478,9 @@ class TaskManager(
                 }
                 // Rich confirmations (F8): the user explicitly asked for this task, so its
                 // result is always actionable — no sentinel filter, only the shared plain-text
-                // projection. Isolated like the title update: a confirmation failure must never
-                // flip a completed task run into a failure.
-                try {
-                    surfaceTaskResult(task, conversationId, result.modelMessageId, result.text)
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    DebugLog.e(
-                        "TaskManager",
-                        "Task result confirmation surfacing failed for conversation=$conversationId",
-                        e,
-                    )
-                }
-                ExecutionResult.Success(conversationId, result.text)
+                // projection.
+                surfaceResultIsolated(task, conversationId, result.modelMessageId, result.text)
+                ExecutionResult.Success(conversationId, result.text, result.modelMessageId)
             }
             is TaskExecutionEngine.Result.Busy ->
                 ExecutionResult.Deferred(conversationId, result.reason)
@@ -493,6 +495,29 @@ class TaskManager(
         }
         if (finishManualSchedule) finishManualRunLocked(task.id)
         return outcome
+    }
+
+    /**
+     * Isolated like the title update: a confirmation failure must never flip a completed task
+     * run into a failure. Shared by the normal and the recovery path so both honor one contract.
+     */
+    private suspend fun surfaceResultIsolated(
+        task: TaskEntity,
+        conversationId: String,
+        modelMessageId: String?,
+        response: String,
+    ) {
+        try {
+            surfaceTaskResult(task, conversationId, modelMessageId, response)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            DebugLog.e(
+                "TaskManager",
+                "Task result confirmation surfacing failed for conversation=$conversationId",
+                e,
+            )
+        }
     }
 
     /**
@@ -518,7 +543,7 @@ class TaskManager(
         } ?: return null
         val (topology, assistant) = recoverySnapshot
         return when (assistant?.status) {
-            MessageStatus.SUCCESS -> ExecutionResult.Success(existing.id, assistant.text)
+            MessageStatus.SUCCESS -> ExecutionResult.Success(existing.id, assistant.text, assistant.id)
             MessageStatus.ERROR -> {
                 if (topology.messages.any { isSyntheticToolMessageId(it.id) }) {
                     ExecutionResult.Failure(

@@ -17,11 +17,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +36,7 @@ import com.newoether.agora.R
 import com.newoether.agora.data.local.TaskConfirmationEntity
 import com.newoether.agora.service.TaskPromptNotifier
 import com.newoether.agora.ui.automation.TaskConfirmationActivity
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /**
@@ -44,6 +48,11 @@ import kotlinx.coroutines.launch
  * composed (never at startup, never from the conversation list), so the load-performance
  * invariant holds. The banner stays functional even when the feature toggle is OFF:
  * pre-existing PENDING rows remain resolvable so no row is ever orphaned.
+ *
+ * A snoozed row (remindAtEpochMs in the future) is hidden until its deadline and then shown
+ * again by this composable's own clock — independent of the daemon tick, which only re-posts
+ * the notification. Without this, "Snooze" left the row in the banner for the whole window,
+ * and with the daemon off the reminder never came back at all.
  */
 @Composable
 fun PendingTaskConfirmationsBanner(
@@ -54,9 +63,26 @@ fun PendingTaskConfirmationsBanner(
     val container = remember {
         (context.applicationContext as? AgoraApplication)?.requireContainer()
     }
-    val rows by (container?.taskConfirmationStore?.pendingConfirmations
-        ?: kotlinx.coroutines.flow.MutableStateFlow(emptyList<TaskConfirmationEntity>())
-        ).collectAsState(initial = emptyList())
+    val pendingFlow = remember(container) {
+        container?.taskConfirmationStore?.pendingConfirmations
+            ?: kotlinx.coroutines.flow.MutableStateFlow(emptyList<TaskConfirmationEntity>())
+    }
+    val allPending by pendingFlow.collectAsState(initial = emptyList())
+
+    // Visibility clock: advances to each snooze deadline so a due row reappears on time.
+    var visibilityNow by remember { mutableLongStateOf(System.currentTimeMillis()) }
+    LaunchedEffect(allPending) {
+        while (true) {
+            val nowMs = System.currentTimeMillis()
+            visibilityNow = nowMs
+            val nextDue = allPending.mapNotNull { it.remindAtEpochMs }.filter { it > nowMs }.minOrNull()
+                ?: break
+            delay(nextDue - nowMs + 50L)
+        }
+    }
+    val rows = remember(allPending, visibilityNow) {
+        allPending.filter { row -> row.remindAtEpochMs?.let { it <= visibilityNow } ?: true }
+    }
 
     AnimatedVisibility(
         visible = rows.isNotEmpty(),
@@ -90,7 +116,7 @@ fun PendingTaskConfirmationsBanner(
                                 scope.launch {
                                     store.acknowledge(row.id)
                                     // Cancel even when another surface won the race (no dead button).
-                                    container?.taskPromptNotifier?.cancel(row.id)
+                                    container.taskPromptNotifier.cancel(row.id)
                                 }
                             }
                         },
@@ -99,7 +125,7 @@ fun PendingTaskConfirmationsBanner(
                             if (store != null) {
                                 scope.launch {
                                     store.dismiss(row.id)
-                                    container?.taskPromptNotifier?.cancel(row.id)
+                                    container.taskPromptNotifier.cancel(row.id)
                                 }
                             }
                         },
@@ -132,11 +158,14 @@ private fun TaskConfirmationBannerRow(
                 .fillMaxWidth()
                 .padding(16.dp),
         ) {
+            val context = LocalContext.current
             Text(
                 // Source-aware header: HEARTBEAT localizes; TASK/LOOP show their row title
-                // (the task's own name, staged by F8).
-                text = com.newoether.agora.service.TaskPromptNotifier(LocalContext.current)
-                    .displayTitleFor(row.sourceType, row.title),
+                // (the task's own name, staged by F8). Remembered: building the notifier on every
+                // recomposition allocated a NotificationManagerCompat per row per frame.
+                text = remember(context, row.sourceType, row.title) {
+                    TaskPromptNotifier(context).displayTitleFor(row.sourceType, row.title)
+                },
                 style = MaterialTheme.typography.titleSmall,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,

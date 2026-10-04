@@ -115,6 +115,54 @@ class TaskConfirmationStoreTest {
     }
 
     @Test
+    fun stageLosingTheUniqueIndexRaceReturnsTheWinnerAndSkipsEviction() = runTest {
+        // INSERT is IGNORE: -1 means another writer owns the dedup key. The caller must get
+        // the persisted winner, never the unsaved row (its id would not exist in Room).
+        val winner = row("winner")
+        coEvery { chatDao.findTaskConfirmationByDedupKey(any(), any(), any()) } returnsMany
+            listOf(null, winner)
+        coEvery { chatDao.insertTaskConfirmation(any()) } returns -1L
+        val staged = store.stage(draft())
+        assertSame(winner, staged)
+        coVerify(exactly = 0) { chatDao.deleteTaskConfirmationsBeyondCap(any()) }
+        coVerify(exactly = 0) { chatDao.cleanupTaskConfirmations(any()) }
+    }
+
+    @Test
+    fun stageRunsRetentionSoCleanupDoesNotDependOnTheHeartbeat() = runTest {
+        // Heartbeat-only cleanup never ran with the heartbeat/daemon off, so task confirmations
+        // and their resolved tombstones accumulated forever.
+        coEvery { chatDao.findTaskConfirmationByDedupKey(any(), any(), any()) } returns null
+        val staged = store.stage(draft())
+        coVerify(exactly = 1) {
+            chatDao.cleanupTaskConfirmations(
+                staged.createdAtEpochMs - TaskConfirmationStore.CLEANUP_AGE_MS,
+            )
+        }
+    }
+
+    @Test
+    fun plainTextKeepsMarkdownLinkLabelAndUrl() {
+        assertEquals(
+            "Pronóstico (https://example.com/clima)",
+            TaskConfirmationStore.plainTextForConfirmation("[Pronóstico](https://example.com/clima)"),
+        )
+        assertEquals(
+            "https://example.com",
+            TaskConfirmationStore.plainTextForConfirmation("[https://example.com](https://example.com)"),
+        )
+    }
+
+    @Test
+    fun plainTextDropsBlockquoteMarkers() {
+        assertEquals(
+            "cita uno\ncita dos",
+            TaskConfirmationStore.plainTextForConfirmation("> cita uno\n>> cita dos"),
+        )
+        assertEquals("", TaskConfirmationStore.plainTextForConfirmation(">"))
+    }
+
+    @Test
     fun acknowledgeIsSingleWinnerViaPendingPredicate() = runTest {
         coEvery {
             chatDao.transitionTaskConfirmation("r1", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.ACKNOWLEDGED.name)

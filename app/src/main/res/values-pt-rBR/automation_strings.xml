@@ -155,10 +155,12 @@
     <string name="task_confirmation_result_title">Resultado do heartbeat</string>
     <string name="daemon_active_status">Automação ativa</string>
     <string name="task_confirmation_mode_prompt">Pedir confirmação</string>
-    <string name="task_confirmation_mode_prompt_desc">Confirmação durável com as ações Confirmar, Descartar e Adiar, além de um banner no chat.</string>
+    <string name="task_confirmation_mode_prompt_desc">Confirmação durável que você pode confirmar, descartar ou adiar, além de um banner no chat.</string>
     <string name="task_confirmation_mode_auto">Somente informativa</string>
     <string name="task_confirmation_mode_auto_desc">Uma notificação simples que se descarta sozinha; nada é salvo ou perguntado.</string>
     <string name="task_confirmation_card_style_section">Cartão de confirmação</string>
     <string name="task_confirmation_card_style_bottom">Embaixo</string>
     <string name="task_confirmation_card_style_centered">Centralizada</string>
+    <string name="task_confirmation_info_channel_name">Resultados de tarefas</string>
+    <string name="task_confirmation_info_channel_desc">Notificações informativas sobre resultados de tarefas automatizadas e heartbeats.</string>
 </resources>

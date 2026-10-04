@@ -155,10 +155,12 @@
     <string name="task_confirmation_result_title">Kết quả heartbeat</string>
     <string name="daemon_active_status">Tự động hóa đang chạy</string>
     <string name="task_confirmation_mode_prompt">Yêu cầu xác nhận</string>
-    <string name="task_confirmation_mode_prompt_desc">Xác nhận lâu dài với các thao tác Xác nhận, Bỏ qua và Hoãn, kèm banner trong trò chuyện.</string>
+    <string name="task_confirmation_mode_prompt_desc">Xác nhận lâu dài mà bạn có thể xác nhận, bỏ qua hoặc hoãn, kèm banner trong trò chuyện.</string>
     <string name="task_confirmation_mode_auto">Chỉ thông báo</string>
     <string name="task_confirmation_mode_auto_desc">Thông báo đơn giản tự biến mất; không lưu trữ hay yêu cầu gì.</string>
     <string name="task_confirmation_card_style_section">Thẻ xác nhận</string>
     <string name="task_confirmation_card_style_bottom">Ở dưới</string>
     <string name="task_confirmation_card_style_centered">Ở giữa</string>
+    <string name="task_confirmation_info_channel_name">Kết quả tác vụ</string>
+    <string name="task_confirmation_info_channel_desc">Thông báo thông tin về kết quả của tác vụ tự động và heartbeat.</string>
 </resources>

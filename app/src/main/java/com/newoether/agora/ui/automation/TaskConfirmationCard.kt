@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -95,8 +94,10 @@ internal fun TaskConfirmationCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_MAX_LINES,
                 overflow = TextOverflow.Ellipsis,
+                // No height cap: the collapsed state is bounded by maxLines and the expanded
+                // state by the Column's verticalScroll. A heightIn cap here clipped long results
+                // with no way to scroll to the rest.
                 onTextLayout = { layout -> if (!expanded) overflows = layout.hasVisualOverflow },
-                modifier = Modifier.heightIn(max = if (expanded) 320.dp else 160.dp),
             )
             if (expanded || overflows) {
                 TextButton(

@@ -155,10 +155,12 @@
     <string name="task_confirmation_result_title">하트비트 결과</string>
     <string name="daemon_active_status">자동화 실행 중</string>
     <string name="task_confirmation_mode_prompt">확인 요청</string>
-    <string name="task_confirmation_mode_prompt_desc">확인·무시·나중에 알림 작업이 있는 영구 확인 및 채팅 내 배너.</string>
+    <string name="task_confirmation_mode_prompt_desc">확인, 무시, 나중에 알림 중에서 선택할 수 있는 영구 확인 및 채팅 내 배너.</string>
     <string name="task_confirmation_mode_auto">정보 알림만</string>
     <string name="task_confirmation_mode_auto_desc">자동으로 사라지는 간단한 알림입니다. 아무것도 저장하거나 요청하지 않습니다.</string>
     <string name="task_confirmation_card_style_section">확인 카드</string>
     <string name="task_confirmation_card_style_bottom">아래</string>
     <string name="task_confirmation_card_style_centered">가운데</string>
+    <string name="task_confirmation_info_channel_name">작업 결과</string>
+    <string name="task_confirmation_info_channel_desc">자동화된 작업 및 하트비트 결과에 대한 정보 알림입니다.</string>
 </resources>

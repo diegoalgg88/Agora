@@ -313,7 +313,7 @@ class AppContainer(
     }
 
     /**
-     * Shared F8 surfacing for non-heartbeat automation results (tasks today, loops later):
+     * Shared F8 surfacing for non-heartbeat automation results (tasks, and the final cycle of loops):
      * applies the global toggle/mode and PROMPT-vs-AUTO semantics on top of the durable
      * staging pipeline. A scheduled task the user explicitly asked for is always actionable —
      * no sentinel filter, only the shared plain-text projection.
@@ -330,43 +330,18 @@ class AppContainer(
             com.newoether.agora.data.TaskConfirmationStore.plainTextForConfirmation(response)
         // Markdown-only bodies ("###") collapse to empty; the store rejects blank bodies.
         if (plainBody.isBlank()) return
-        val background =
-            !com.newoether.agora.service.AppForegroundTracker.isInForeground &&
-                taskPromptNotifier.canPost()
-        if (settingsRepository.taskConfirmationMode.value ==
-            com.newoether.agora.data.local.TaskConfirmationMode.AUTO
-        ) {
-            if (background) {
-                taskPromptNotifier.postInfo(
-                    sourceType = source.name,
-                    title = title,
-                    body = plainBody,
-                    conversationId = conversationId,
-                    modelMessageId = modelMessageId,
-                )
-            }
-        } else {
-            // PROMPT stages ALWAYS (the chat banner surfaces the row in the foreground);
-            // only the heads-up post is background-gated — same semantics as the heartbeat.
-            val staged = taskConfirmationStore.stage(
-                com.newoether.agora.data.TaskConfirmationStore.Draft(
-                    source = source,
-                    conversationId = conversationId,
-                    modelMessageId = modelMessageId,
-                    title = title,
-                    bodyText = plainBody,
-                ),
-            )
-            if (background) {
-                taskPromptNotifier.post(
-                    confirmationId = staged.id,
-                    sourceType = staged.sourceType,
-                    rowTitle = staged.title,
-                    body = staged.bodyText,
-                    conversationId = staged.conversationId,
-                )
-            }
-        }
+        // PROMPT/AUTO branching is shared with the heartbeat (one owner, see the function).
+        com.newoether.agora.automation.stageAndNotifyTaskConfirmation(
+            settings = settingsRepository,
+            store = taskConfirmationStore,
+            notifier = taskPromptNotifier,
+            appInForeground = com.newoether.agora.service.AppForegroundTracker.isInForeground,
+            source = source,
+            title = title,
+            conversationId = conversationId,
+            modelMessageId = modelMessageId,
+            plainBody = plainBody,
+        )
     }
 
     val loopManager: LoopManager by lazy {
@@ -380,6 +355,17 @@ class AppContainer(
             cancelAlarm = { conversationId -> automationScheduler.cancelLoop(conversationId) },
             executionCoordinator = conversationExecutionCoordinator,
             executionGate = automationExecutionGate,
+            surfaceFinalLoopResult = { conversationId, conversationTitle, modelMessageId, response ->
+                surfaceAutomationResult(
+                    source = com.newoether.agora.data.local.TaskConfirmationSource.LOOP,
+                    // Durable title = the loop conversation's own title (TASK shows the task
+                    // name); blank falls back to the settings label in displayTitleFor.
+                    title = conversationTitle.ifBlank { "Loop" },
+                    conversationId = conversationId,
+                    modelMessageId = modelMessageId,
+                    response = response,
+                )
+            },
         )
     }
 

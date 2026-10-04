@@ -60,7 +60,11 @@ class HeartbeatPromptBuilderTest {
             pendingSms = listOf(sms(7L, "", "")),
         )
         assertTrue("(unknown sender)" in prompt)
-        assertFalse(": " in prompt.substringAfter("(id: 7)"))
+        // Scope to the SMS line itself: the trailing ## Response Rule section legitimately
+        // contains "HEARTBEAT_OK: reply" and would trip a whole-prompt assertion. Only what
+        // comes AFTER the id marker can be the preview: "(id: 7)" itself contains ": ".
+        val smsLine = prompt.lines().first { "(id: 7)" in it }
+        assertFalse("unexpected preview colon in [$smsLine]", ": " in smsLine.substringAfter("(id: 7)"))
     }
 
     @Test
@@ -96,6 +100,30 @@ class HeartbeatPromptBuilderTest {
         assertFalse("## New Emails" in prompt)
         assertTrue("## Custom Instructions" in prompt)
         assertTrue("Always be concise." in prompt)
+    }
+
+    @Test
+    fun `adds the Response Rule last when incoming items are present`() = runBlocking {
+        val prompt = builder().buildHeartbeatPrompt(
+            customPrompt = "",
+            pendingSms = listOf(sms(1L, "TELCEL", "La fecha limite de pago ya vencio")),
+            recentResponses = listOf("HEARTBEAT_OK"),
+        )
+        assertTrue("## Response Rule" in prompt)
+        assertTrue(prompt.indexOf("## Response Rule") > prompt.indexOf("## Previous Heartbeat Results"))
+        assertTrue("do NOT answer HEARTBEAT_OK" in prompt)
+    }
+
+    @Test
+    fun `omits the Response Rule when nothing incoming`() = runBlocking {
+        val prompt = builder().buildHeartbeatPrompt(customPrompt = "")
+        assertFalse("## Response Rule" in prompt)
+    }
+
+    @Test
+    fun `never emits an empty Pending Tasks and Loops header`() = runBlocking {
+        val prompt = builder().buildHeartbeatPrompt(customPrompt = "")
+        assertFalse("## Pending Tasks & Loops" in prompt)
     }
 
     private fun email(uid: Long, from: String, subject: String, preview: String, date: Long = 1L) =
