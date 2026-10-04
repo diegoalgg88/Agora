@@ -120,6 +120,32 @@
       "supportedAccelerators": [],
       "defaultConfig": { "topK": 40, "topP": 0.95, "temperature": 0.7, "maxTokens": 2048, "contextSize": 8192 },
       "minAppVersion": "0.0.0"
+    },
+    {
+      "id": "gemma-4-e2b-it-litertlm-gpu",
+      "displayName": "Gemma 4 E2B IT (LiteRT-LM, GPU)",
+      "downloadUrl": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it-gpu.litertlm",
+      "sizeInBytes": 2008432640,
+      "minRamGb": 6,
+      "isGated": false,
+      "capabilities": { "vision": false, "tools": false, "thinking": true },
+      "supportedAccelerators": ["gpu", "cpu"],
+      "defaultConfig": { "topK": 64, "topP": 0.95, "temperature": 1.0, "maxTokens": 2048, "contextSize": 4096 },
+      "minAppVersion": "0.0.0",
+      "format": "litertlm"
+    },
+    {
+      "id": "gemma-4-e2b-it-litertlm",
+      "displayName": "Gemma 4 E2B IT (LiteRT-LM)",
+      "downloadUrl": "https://huggingface.co/litert-community/gemma-4-E2B-it-litert-lm/resolve/main/gemma-4-E2B-it.litertlm",
+      "sizeInBytes": 2588147712,
+      "minRamGb": 6,
+      "isGated": false,
+      "capabilities": { "vision": false, "tools": false, "thinking": true },
+      "supportedAccelerators": ["cpu"],
+      "defaultConfig": { "topK": 64, "topP": 0.95, "temperature": 1.0, "maxTokens": 2048, "contextSize": 4096 },
+      "minAppVersion": "0.0.0",
+      "format": "litertlm"
     }
   ]
 }

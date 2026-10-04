@@ -822,6 +822,10 @@
     <string name="litertlm_top_k">Top K</string>
     <string name="litertlm_load_failed">Не удалось инициализировать модель LiteRT-LM (бэкенд %1$s)</string>
     <string name="litertlm_format_badge">LiteRT-LM</string>
+    <string name="litertlm_mtp">Мульти-токенное предсказание (MTP)</string>
+    <string name="litertlm_mtp_desc">Ускоряет генерацию на GPU. Требуется пакет с MTP-головами (напр., Gemma 4); остальные не загрузятся.</string>
+    <string name="litertlm_backend_npu">NPU</string>
+    <string name="litertlm_backend_npu_desc">Только устройства с выделенным нейронным ускорителем (напр., Google Tensor). При недоступности ускорителя — откат на CPU.</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Память и данные</string>

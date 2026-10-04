@@ -329,6 +329,11 @@ class LocalProvider(
         val backend = when (modelConfig.backend) {
             LocalChatModelConfig.BACKEND_CPU -> LiteRtBackend.Cpu
             LocalChatModelConfig.BACKEND_GPU -> LiteRtBackend.Gpu
+            // NPU delegates resolve from the app's own native library directory; verified by
+            // compilation and contract only (no NPU device available for the smoke pass).
+            LocalChatModelConfig.BACKEND_NPU -> LiteRtBackend.Npu(
+                context.applicationInfo.nativeLibraryDir,
+            )
             else -> LiteRtBackend.Auto
         }
         val localContextWindow = minOf(config.maxContextWindow, modelConfig.nCtx).coerceAtLeast(1)
@@ -345,6 +350,7 @@ class LocalProvider(
             modelPath = modelConfig.localFilePath,
             backend = backend,
             visionCapable = modelConfig.visionCapable,
+            audioCapable = modelConfig.audioCapable,
         ) { engine ->
             when (streamLiteRtConversation(engine, resolvedRequest, modelConfig, config)) {
                 LiteRtOutcome.Streamed -> Unit
@@ -378,6 +384,7 @@ class LocalProvider(
                 modelPath = modelConfig.localFilePath,
                 backend = LiteRtBackend.Cpu,
                 visionCapable = modelConfig.visionCapable,
+                audioCapable = modelConfig.audioCapable,
             ) { cpuEngine ->
                 when (streamLiteRtConversation(cpuEngine, resolvedRequest, modelConfig, config)) {
                     LiteRtOutcome.Streamed -> Unit

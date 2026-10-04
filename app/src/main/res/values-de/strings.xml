@@ -822,6 +822,10 @@
     <string name="litertlm_top_k">Top K</string>
     <string name="litertlm_load_failed">Das LiteRT-LM-Modell konnte nicht initialisiert werden (Backend %1$s)</string>
     <string name="litertlm_format_badge">LiteRT-LM</string>
+    <string name="litertlm_mtp">Multi-Token-Vorhersage (MTP)</string>
+    <string name="litertlm_mtp_desc">Beschleunigt die Generierung auf der GPU. Erfordert ein Bundle mit MTP-Heads (z. B. Gemma 4); andere Bundles schlagen beim Laden fehl.</string>
+    <string name="litertlm_backend_npu">NPU</string>
+    <string name="litertlm_backend_npu_desc">Nur Geräte mit dediziertem Neural-Beschleuniger (z. B. Google Tensor). Fällt auf CPU zurück, wenn der Beschleuniger nicht verfügbar ist.</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Erinnerung und Daten</string>

@@ -822,6 +822,10 @@
     <string name="litertlm_top_k">Top K</string>
     <string name="litertlm_load_failed">LiteRT-LMモデルの初期化に失敗しました（%1$sバックエンド）</string>
     <string name="litertlm_format_badge">LiteRT-LM</string>
+    <string name="litertlm_mtp">マルチトークン予測（MTP）</string>
+    <string name="litertlm_mtp_desc">GPUでの生成を高速化します。MTPヘッドを持つバンドル（例：Gemma 4）が必要です。その他のバンドルは読み込みに失敗します。</string>
+    <string name="litertlm_backend_npu">NPU</string>
+    <string name="litertlm_backend_npu_desc">専用ニューラルアクセラレーター搭載端末のみ（例：Google Tensor）。アクセラレーターが利用不可の場合はCPUにフォールバックします。</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">メモリとデータ</string>

@@ -28,7 +28,13 @@ data class CatalogEntry(
     val supportedAccelerators: List<String> = emptyList(),
     val defaultConfig: CatalogDefaultConfig = CatalogDefaultConfig(),
     val minAppVersion: String = "0.0.0",
-    val socToModelFiles: Map<String, CatalogSocVariant> = emptyMap()
+    val socToModelFiles: Map<String, CatalogSocVariant> = emptyMap(),
+    /**
+     * Engine format of the downloadable file: `"gguf"` runs through the embedded llama.cpp
+     * path, `"litertlm"` through the embedded LiteRT-LM engine. Catalogs published before
+     * this field existed carry only GGUF entries, so the default keeps them correct.
+     */
+    val format: String = "gguf",
 )
 
 @Serializable

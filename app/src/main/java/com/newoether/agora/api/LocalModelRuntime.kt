@@ -36,6 +36,7 @@ internal sealed interface LocalModelIdentity {
         override val canonicalPath: String,
         val backend: LiteRtBackend,
         val visionCapable: Boolean,
+        val audioCapable: Boolean = false,
     ) : LocalModelIdentity
 }
 
@@ -224,10 +225,11 @@ internal object LocalModelRuntime {
         modelPath: String,
         backend: LiteRtBackend,
         visionCapable: Boolean,
+        audioCapable: Boolean = false,
         block: suspend (LiteRtChatEngine) -> Unit,
     ): Boolean = tasks.run {
         val cacheDir = liteRtCacheDirectory ?: return@run false
-        val identity = LocalModelIdentity.LiteRtChat(canonicalize(modelPath), backend, visionCapable)
+        val identity = LocalModelIdentity.LiteRtChat(canonicalize(modelPath), backend, visionCapable, audioCapable)
         val current = resident
         val engine = if (current is Resident.LiteRt && current.identity == identity) {
             current.engine
@@ -238,6 +240,7 @@ internal object LocalModelRuntime {
                 backend = backend,
                 cacheDir = cacheDir,
                 visionCapable = visionCapable,
+                audioCapable = audioCapable,
             )
             if (!loaded.load()) {
                 loaded.close()

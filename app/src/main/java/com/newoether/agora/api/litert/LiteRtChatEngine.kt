@@ -20,6 +20,14 @@ internal sealed interface LiteRtBackend {
     data object Cpu : LiteRtBackend
 
     data object Gpu : LiteRtBackend
+
+    /**
+     * Dedicated neural accelerator. The SDK resolves its delegate libraries from the app's
+     * native library directory at engine construction — same identity-participation rules
+     * as the other backends. Verified by compilation and contract only: no device with an
+     * NPU was available for the on-device smoke pass.
+     */
+    data class Npu(val nativeLibraryDir: String) : LiteRtBackend
 }
 
 /**
@@ -38,6 +46,7 @@ internal class LiteRtChatEngine(
     private val backend: LiteRtBackend,
     private val cacheDir: String,
     private val visionCapable: Boolean,
+    private val audioCapable: Boolean = false,
 ) : Closeable {
     companion object {
         private const val TAG = "LiteRtChatEngine"
@@ -92,6 +101,7 @@ internal class LiteRtChatEngine(
             LiteRtBackend.Cpu -> Backend.CPU()
             LiteRtBackend.Gpu -> Backend.GPU()
             LiteRtBackend.Auto -> Backend.GPU()
+            is LiteRtBackend.Npu -> Backend.NPU(nativeLibraryDir = backend.nativeLibraryDir)
         }
         resolvedInitialBackendName = sdkBackend.name
         return sdkBackend
@@ -104,6 +114,9 @@ internal class LiteRtChatEngine(
             // Vision weights live inside the bundle; only request a vision executor when the
             // registered record says the bundle carries multimodal weights.
             visionBackend = if (visionCapable) Backend.GPU() else null,
+            // Audio executor follows the same rule — CPU executor is sufficient for speech
+            // encoders; requested only when the record marks the bundle as audio-capable.
+            audioBackend = if (audioCapable) Backend.CPU() else null,
             cacheDir = cacheDir,
         )
         return Engine(config).also { it.initialize() }

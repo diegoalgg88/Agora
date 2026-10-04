@@ -64,6 +64,7 @@ fun AddLocalModelDialog(
     var addBackend by remember { mutableStateOf(LocalChatModelConfig.BACKEND_AUTO) }
     var addTopK by remember { mutableStateOf("40") }
     var addVision by remember { mutableStateOf(false) }
+    var addMtp by remember { mutableStateOf(false) }
     var idError by remember { mutableStateOf<String?>(null) }; var formError by remember { mutableStateOf<String?>(null) }
     val idRegex = remember { Regex("^[a-z0-9._-]+\$") }
 
@@ -99,6 +100,7 @@ fun AddLocalModelDialog(
                         LocalChatModelConfig.BACKEND_AUTO to R.string.litertlm_backend_auto,
                         LocalChatModelConfig.BACKEND_CPU to R.string.litertlm_backend_cpu,
                         LocalChatModelConfig.BACKEND_GPU to R.string.litertlm_backend_gpu,
+                        LocalChatModelConfig.BACKEND_NPU to R.string.litertlm_backend_npu,
                     ).forEach { (value, labelRes) ->
                         FilterChip(
                             selected = addBackend == value,
@@ -107,6 +109,10 @@ fun AddLocalModelDialog(
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                     }
+                }
+                if (addBackend == LocalChatModelConfig.BACKEND_NPU) {
+                    Text(stringResource(R.string.litertlm_backend_npu_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(modifier = Modifier.height(4.dp))
                 }
                 if (addBackend == LocalChatModelConfig.BACKEND_GPU || addBackend == LocalChatModelConfig.BACKEND_AUTO) {
                     val bundleSizeGb = java.io.File(importedPath).length() / (1024.0 * 1024.0 * 1024.0)
@@ -126,6 +132,15 @@ fun AddLocalModelDialog(
                 }
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(value = addTopK, onValueChange = { addTopK = it }, label = { Text(stringResource(R.string.litertlm_top_k)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = addMtp, onCheckedChange = { addMtp = it })
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(stringResource(R.string.litertlm_mtp), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.litertlm_mtp_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
             }
             Spacer(modifier = Modifier.height(8.dp))
             OutlinedTextField(value = nCtx, onValueChange = { nCtx = it }, label = { Text(stringResource(R.string.local_ctx_size)) }, supportingText = if (isLitertlm) {{ Text(stringResource(R.string.litertlm_context_hint), style = MaterialTheme.typography.bodySmall) }} else null, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
@@ -172,7 +187,7 @@ fun AddLocalModelDialog(
                     modelId = id, alias = modelAlias.ifBlank { id }, localFilePath = importedPath,
                     mmprojPath = if (isLitertlm) "" else addMmprojPath.trim(),
                     nCtx = n, temperature = t, topP = p, maxTokens = m,
-                    format = importedFormat, backend = addBackend, topK = k, visionCapable = addVision,
+                    format = importedFormat, backend = addBackend, topK = k, visionCapable = addVision, mtp = addMtp,
                 )
             )
         }) { Text(stringResource(R.string.add)) } },

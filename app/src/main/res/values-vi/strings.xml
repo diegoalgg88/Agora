@@ -825,6 +825,10 @@
     <string name="litertlm_top_k">Top K</string>
     <string name="litertlm_load_failed">Không thể khởi tạo mô hình LiteRT-LM (backend %1$s)</string>
     <string name="litertlm_format_badge">LiteRT-LM</string>
+    <string name="litertlm_mtp">Dự đoán đa token (MTP)</string>
+    <string name="litertlm_mtp_desc">Tăng tốc tạo sinh trên GPU. Cần gói có đầu MTP (vd. Gemma 4); các gói khác sẽ lỗi khi tải.</string>
+    <string name="litertlm_backend_npu">NPU</string>
+    <string name="litertlm_backend_npu_desc">Chỉ dành cho thiết bị có bộ tăng tốc thần kinh chuyên dụng (vd. Google Tensor). Tự chuyển sang CPU nếu bộ tăng tốc không khả dụng.</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Bộ nhớ &amp; Dữ liệu</string>

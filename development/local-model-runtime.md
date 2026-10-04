@@ -50,7 +50,9 @@ Exactly one of these identities may be resident:
 
 - `Chat(canonicalModelPath, nCtx)`;
 - `Embedding(canonicalModelPath)` using the fixed native Embedding context parameters;
-- `LiteRtChat(canonicalModelPath, backend, visionCapable)` for the embedded LiteRT-LM engine.
+- `LiteRtChat(canonicalModelPath, backend, visionCapable, audioCapable)` for the embedded
+  LiteRT-LM engine: vision and audio executors are constructed with the engine, so both
+  capability flags participate in the identity exactly like the backend.
 
 Chat and Embedding are different identities even when their canonical model paths match. Chat
 sampling values such as temperature, top P, frequency/presence penalties, and maximum output tokens
@@ -230,11 +232,26 @@ device), so the stripping covers both.
 
 `.litertlm` records live in the same `LocalChatModelConfig` DataStore list as GGUF records,
 discriminated by `format` (`"gguf"` default for legacy rows | `"litertlm"`). LiteRT-LM-only fields
-(`backend` `auto|cpu|gpu`, `topK`, `visionCapable`) carry defaults that keep legacy rows decoding as
-GGUF. For `.litertlm` records, `nCtx` is only Agora's history-truncation budget
+(`backend` `auto|cpu|gpu`, `topK`, `visionCapable`, `mtp`) carry defaults that keep legacy rows decoding
+as GGUF. For `.litertlm` records, `nCtx` is only Agora's history-truncation budget
 (`LITERTLM_DEFAULT_NCTX = 4096` for new records); it is never forwarded to the SDK's
 `EngineConfig.maxNumTokens`, which keeps the bundle's own preset. `mmprojPath` is always empty for
 `.litertlm` records: vision weights live inside the bundle.
+
+`mtp` is a per-model opt-in for Multi-Token Prediction (speculative decoding). The field,
+UI toggles, and persistence are wired end-to-end (UI-ready). The engine side is gated on the
+SDK: per-conversation speculative decoding (`ConversationConfig.enableSpeculativeDecoding`,
+with lazy drafter init and no process-global toggle) exists only in the SDK's `main`
+(upstream `bc16765a`), after the pinned 0.17.1 stable — never through the process-global
+experimental toggle, which Agora sources must not reference. Unlocking is a one-liner at
+the mapper's conversation-config site once a stable SDK ≥0.18 ships. A future SDK upgrade
+is not drop-in: `main` also refactors the wrapper Agora consumes (Capabilities API →
+ModelInfo, `Role.MODEL` → "assistant", priority-ordered backends — the natural shape for
+NPU), so plan a dedicated adaptation pass when bumping the pinned version.
+
+The hosted catalog's `defaultConfig.topK` travels into the record at download time; the
+catalog lists only device-verified bundles (the litert-community gold standard), never
+community conversions with a fragile Conversation API.
 
 ## 7. Native streaming and telemetry
 
@@ -294,9 +311,21 @@ behavior or memory.
 
 ### Deferred follow-ups (not in v1)
 
-- Catalog listing/downloading of litert-community `.litertlm` bundles (the hosted catalog schema is
-  GGUF-only today; the download worker registers as GGUF).
-- Speculative decoding / MTP: the SDK exposes it through a process-global `ExperimentalFlags` value
-  that cannot be isolated per engine; enabling it must wait for a per-engine API.
-- NPU backend and the SDK's audio executor; `EmbeddingEngine` of the SDK (Agora embeddings remain
-  llama.cpp-only).
+- Speculative decoding / MTP: **UI-ready** (per-model `mtp` opt-in shipped: field, toggles,
+  persistence). The engine unlock — `ConversationConfig.enableSpeculativeDecoding`, upstream
+  `bc16765a` — awaits a stable SDK release past the pinned 0.17.1; a one-liner at the mapper's
+  config site (see the record contract above).
+- NPU backend: **shipped as plumbing** (`backend` `auto|cpu|gpu|npu`; the SDK resolves NPU
+  delegate libraries from the app's native library directory at engine construction).
+  Verified by compilation and contract tests only — no NPU device was available for the
+  on-device smoke pass; on such devices it is compile-level unverified behavior. When a
+  stable SDK ≥0.18 ships, prefer its priority-ordered backends over the single-backend
+  selection (upstream `3f6f7486`), which also supersedes this enum's shape.
+- The SDK's audio executor: **engine-side plumbing shipped** (`audioCapable` record flag
+  configures the SDK audio backend at engine construction). Content mapping is deliberately
+  absent: Agora messages do not carry audio attachments yet, so there is nothing to map —
+  the flag prepares the engine for the day chat audio attachments exist.
+- `EmbeddingEngine` of the SDK: **rejected**. Agora's embeddings (memory, RAG, semantic
+  search) remain llama.cpp-only: the GGUF embedding path works, `.litertlm` embedding bundles
+  do not meaningfully exist in the wild, and a second embedding engine would either break
+  the one-resident rule or gain nothing. Revisit only if both conditions change.

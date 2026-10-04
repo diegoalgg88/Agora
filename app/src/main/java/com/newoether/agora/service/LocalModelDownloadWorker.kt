@@ -70,6 +70,8 @@ class LocalModelDownloadWorker(
         val maxTokens = inputData.getInt(KEY_MAX_TOKENS, 1024)
         val mmprojUrl = inputData.getString(KEY_MMPROJ_URL)
         val capabilitiesVision = inputData.getBoolean(KEY_CAPABILITIES_VISION, false)
+        val format = inputData.getString(KEY_FORMAT) ?: com.newoether.agora.data.LocalChatModelConfig.FORMAT_GGUF
+        val topK = inputData.getInt(KEY_TOP_K, 40)
 
         if (catalogEntryId.isNullOrBlank() || downloadUrl.isNullOrBlank() ||
             commitHash.isNullOrBlank() || fileName.isNullOrBlank() || modelId.isNullOrBlank()
@@ -93,7 +95,9 @@ class LocalModelDownloadWorker(
                     totalBytes = totalBytes
                 )
                 var mmprojPath = ""
-                if (!mmprojUrl.isNullOrBlank()) {
+                // The vision projector is a GGUF-side companion file; .litertlm bundles carry
+                // multimodal weights inside the bundle, so litertlm entries never fetch one.
+                if (format == com.newoether.agora.data.LocalChatModelConfig.FORMAT_GGUF && !mmprojUrl.isNullOrBlank()) {
                     val mmprojFile = downloadMmproj(catalogEntryId, commitHash, mmprojUrl)
                     mmprojPath = mmprojFile.absolutePath
                 }
@@ -110,7 +114,9 @@ class LocalModelDownloadWorker(
                     topP = topP,
                     maxTokens = maxTokens,
                     mmprojPath = mmprojPath,
-                    hasVision = capabilitiesVision
+                    hasVision = capabilitiesVision,
+                    format = format,
+                    topK = topK,
                 )
                 Result.success()
             } catch (cancelled: CancellationException) {
@@ -322,7 +328,9 @@ class LocalModelDownloadWorker(
         topP: Float,
         maxTokens: Int,
         mmprojPath: String,
-        hasVision: Boolean
+        hasVision: Boolean,
+        format: String,
+        topK: Int,
     ) {
         val finalFile = File(
             storageRoot(),
@@ -332,15 +340,18 @@ class LocalModelDownloadWorker(
             DebugLog.w(TAG, "Finalized model file missing at $finalFile — skipping registration")
             return
         }
+        val isLitertlm = format == com.newoether.agora.data.LocalChatModelConfig.FORMAT_LITERTLM
         val config = LocalChatModelConfig(
             modelId = modelId,
             alias = alias,
             localFilePath = finalFile.absolutePath,
-            mmprojPath = if (hasVision) mmprojPath else "",
+            mmprojPath = if (isLitertlm) "" else if (hasVision) mmprojPath else "",
             nCtx = if (nCtx > 0) nCtx else 4096,
             temperature = temperature,
             topP = topP,
-            maxTokens = maxTokens
+            maxTokens = maxTokens,
+            format = format,
+            topK = if (isLitertlm) topK.coerceAtLeast(1) else 40,
         )
         modelManager.addLocalChatModel(config)
     }
@@ -457,6 +468,8 @@ class LocalModelDownloadWorker(
         const val KEY_MAX_TOKENS = "max_tokens"
         const val KEY_MMPROJ_URL = "mmproj_url"
         const val KEY_CAPABILITIES_VISION = "capabilities_vision"
+        const val KEY_FORMAT = "format"
+        const val KEY_TOP_K = "top_k"
         const val KEY_RECEIVED_BYTES = "received_bytes"
         const val KEY_DOWNLOAD_RATE = "download_rate"
         const val KEY_REMAINING_MS = "remaining_ms"
@@ -509,6 +522,8 @@ class LocalModelDownloadWorker(
                 .putInt(KEY_MAX_TOKENS, maxTokens)
                 .putString(KEY_MMPROJ_URL, mmprojUrl)
                 .putBoolean(KEY_CAPABILITIES_VISION, entry.capabilities.vision)
+                .putString(KEY_FORMAT, entry.format)
+                .putInt(KEY_TOP_K, entry.defaultConfig.topK)
                 .build()
 
             val request = OneTimeWorkRequestBuilder<LocalModelDownloadWorker>()

@@ -200,6 +200,9 @@ private fun CatalogEntryItem(
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(top = 1.dp),
                 ) {
+                    if (entry.format == com.newoether.agora.data.LocalChatModelConfig.FORMAT_LITERTLM) {
+                        CatalogBadge(label = stringResource(R.string.litertlm_format_badge))
+                    }
                     if (entry.capabilities.vision) {
                         CatalogBadge(
                             icon = { Icon(Icons.Default.Visibility, null, modifier = Modifier.size(12.dp)) },

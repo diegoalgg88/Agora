@@ -822,6 +822,10 @@
     <string name="litertlm_top_k">Top K</string>
     <string name="litertlm_load_failed">فشل تهيئة نموذج LiteRT-LM (خلفية %1$s)</string>
     <string name="litertlm_format_badge">LiteRT-LM</string>
+    <string name="litertlm_mtp">التنبؤ متعدد الرموز (MTP)</string>
+    <string name="litertlm_mtp_desc">يسرّع التوليد على GPU. يتطلب حزمة برؤوس MTP (مثل Gemma 4)؛ تفشل الحزم الأخرى عند التحميل.</string>
+    <string name="litertlm_backend_npu">NPU</string>
+    <string name="litertlm_backend_npu_desc">فقط للأجهزة المزودة بمسرّع عصبي مخصص (مثل Google Tensor). يتراجع إلى CPU إذا كان المسرّع غير متوفر.</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">الذاكرة والبيانات</string>

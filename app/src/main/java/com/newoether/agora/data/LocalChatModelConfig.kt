@@ -35,6 +35,22 @@ data class LocalChatModelConfig(
      * engine configures a vision backend and image contents are forwarded to the SDK.
      */
     val visionCapable: Boolean = false,
+    /**
+     * LiteRT-LM only: opt-in Multi-Token Prediction (speculative decoding) for this model.
+     * The SDK lazily initializes the drafter on the first conversation that requests it —
+     * the SDK's process-global toggle is never touched. Off by default because
+     * bundles without MTP heads fail the lazy drafter initialization.
+     */
+    val mtp: Boolean = false,
+    /**
+     * LiteRT-LM only: the bundle carries audio-encoder weights. When true the engine
+     * configures an audio backend ready for audio contents. Plumbing only: Agora messages
+     * do not carry audio attachments yet, so nothing maps into audio contents today — the
+     * flag prepares the engine side for when chat audio attachments exist. Enable it by
+     * editing a record once an audio-capable bundle (e.g. a full Gemma 3n) is imported.
+     * Verified by compilation and contract only.
+     */
+    val audioCapable: Boolean = false,
 ) {
     companion object {
         const val FORMAT_GGUF = "gguf"
@@ -42,6 +58,7 @@ data class LocalChatModelConfig(
         const val BACKEND_AUTO = "auto"
         const val BACKEND_CPU = "cpu"
         const val BACKEND_GPU = "gpu"
+        const val BACKEND_NPU = "npu"
 
         /** Default Agora-side history budget for newly registered .litertlm models. */
         const val LITERTLM_DEFAULT_NCTX = 4096

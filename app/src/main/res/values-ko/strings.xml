@@ -822,6 +822,10 @@
     <string name="litertlm_top_k">Top K</string>
     <string name="litertlm_load_failed">LiteRT-LM 모델 초기화 실패 (%1$s 백엔드)</string>
     <string name="litertlm_format_badge">LiteRT-LM</string>
+    <string name="litertlm_mtp">멀티 토큰 예측 (MTP)</string>
+    <string name="litertlm_mtp_desc">GPU에서 생성 속도를 높입니다. MTP 헤드가 있는 번들(예: Gemma 4)이 필요하며, 다른 번들은 로드에 실패합니다.</string>
+    <string name="litertlm_backend_npu">NPU</string>
+    <string name="litertlm_backend_npu_desc">전용 뉴럴 가속기가 있는 기기에서만 사용 가능(예: Google Tensor). 가속기를 사용할 수 없으면 CPU로 전환됩니다.</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">메모리 및 데이터</string>

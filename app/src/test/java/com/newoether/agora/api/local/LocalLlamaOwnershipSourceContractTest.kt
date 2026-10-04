@@ -727,6 +727,109 @@ class LocalLlamaOwnershipSourceContractTest {
         ))
     }
 
+    @Test
+    fun `catalog litertlm entries download register and badge through the one pipeline`() {
+        val dto = mainSource("com/newoether/agora/data/catalog/ModelCatalog.kt")
+        val worker = mainSource("com/newoether/agora/service/LocalModelDownloadWorker.kt")
+        val catalogPage = mainSource("com/newoether/agora/ui/settings/SettingsLocalModelCatalogPage.kt")
+        val javaRoot = locateSourceRoot("java")
+        val hostedCatalog = javaRoot
+            .resolve("../../../../model_catalog.json")
+            .readText()
+        val bundledCatalog = javaRoot
+            .resolve("../assets/model_catalog.json")
+            .readText()
+
+        // 1. The wire DTO defaults to GGUF so catalogs published before the field existed
+        //    keep parsing with their original meaning.
+        assertTrue(dto.contains("""val format: String = "gguf""""))
+        val legacyEntryJson = """
+            {"id":"legacy-entry","displayName":"Legacy","downloadUrl":"https://x/y.gguf"}
+        """.trimIndent()
+        val legacyEntry = com.newoether.agora.data.catalog.ModelCatalogParser
+            .parse("""{"schemaVersion":1,"models":[$legacyEntryJson]}""")
+        assertEquals(LocalChatModelConfig.FORMAT_GGUF, legacyEntry.models.single().format)
+
+        // 2. The worker gates the vision-projector companion download to GGUF entries.
+        val doWorkSection = worker.substringAfter("override suspend fun doWork()")
+        assertTrue(doWorkSection.contains(
+            "if (format == com.newoether.agora.data.LocalChatModelConfig.FORMAT_GGUF && !mmprojUrl.isNullOrBlank())"
+        ))
+
+        // 3. Registration carries the catalog format, top-K, and never an mmproj for
+        //    litertlm bundles (multimodal weights live inside the bundle).
+        val registerSection = worker.substringAfter("private suspend fun registerModel(")
+        assertTrue(registerSection.contains("format = format,"))
+        assertTrue(registerSection.contains("topK = if (isLitertlm) topK.coerceAtLeast(1) else 40,"))
+        assertTrue(registerSection.contains("mmprojPath = if (isLitertlm) \"\""))
+
+        // 4. The catalog page badges litertlm entries so users see the engine before
+        //    spending the download.
+        assertTrue(catalogPage.contains(
+            "entry.format == com.newoether.agora.data.LocalChatModelConfig.FORMAT_LITERTLM"
+        ))
+        assertTrue(catalogPage.contains("R.string.litertlm_format_badge"))
+
+        // 5. Both the hosted catalog and the bundled fallback list litertlm entries, and
+        //    every litertlm entry points at a bundle URL (never a .gguf).
+        listOf(hostedCatalog to "hosted", bundledCatalog to "bundled").forEach { (raw, which) ->
+            val catalog = com.newoether.agora.data.catalog.ModelCatalogParser.parse(raw)
+            val litertlmEntries = catalog.models.filter {
+                it.format == LocalChatModelConfig.FORMAT_LITERTLM
+            }
+            assertTrue("$which catalog lists litertlm entries", litertlmEntries.isNotEmpty())
+            litertlmEntries.forEach { entry ->
+                assertTrue(
+                    "litertlm entry must point at a bundle: ${entry.downloadUrl}",
+                    entry.downloadUrl.endsWith(".litertlm"),
+                )
+            }
+        }
+    }
+
+    @Test
+    fun `mtp is a per-model opt-in isolated from the process-global experimental flags`() {
+        val config = mainSource("com/newoether/agora/data/LocalChatModelConfig.kt")
+        val mapper = mainSource("com/newoether/agora/api/local/LiteRtRequestMapper.kt")
+        val addDialog = mainSource("com/newoether/agora/ui/settings/AddLocalModelDialog.kt")
+        val editPage = mainSource("com/newoether/agora/ui/settings/SettingsProviderDetailPage.kt")
+        val manager = mainSource("com/newoether/agora/viewmodel/ModelManager.kt")
+        val legacyJson = """
+            [{"id":"legacy","modelId":"old","alias":"Old","localFilePath":"/x.litertlm","format":"litertlm"}]
+        """.trimIndent()
+        val json = kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+        val decoded = json.decodeFromString<List<LocalChatModelConfig>>(legacyJson)
+
+        // Off by default; rows persisted before the field existed decode with MTP disabled.
+        assertEquals(false, decoded.single().mtp)
+        assertTrue(config.contains("val mtp: Boolean = false"))
+
+        // MTP is UI-ready but engine-gated: the mapper must NOT call the SDK API yet —
+        // ConversationConfig gained per-conversation speculative decoding only after the
+        // pinned 0.17.1 release (upstream bc16765a, unreleased). The unlock one-liner is
+        // documented at the mapper's conversation-config construction site.
+        assertTrue(mapper.contains("MTP unlock (UI-ready): pass `enableSpeculativeDecoding = modelConfig.mtp`"))
+        assertFalse("the pinned SDK stable has no per-conversation speculative decoding", mapper.contains("enableSpeculativeDecoding = modelConfig.mtp,\n"))
+        // The SDK's process-global experimental toggle is never referenced in Agora sources.
+        val litertFiles = listOf(
+            "api/litert/LiteRtChatEngine.kt",
+            "api/litert/LiteRtConversation.kt",
+            "api/local/LiteRtRequestMapper.kt",
+            "api/local/LocalProvider.kt",
+        ).map { mainSource("com/newoether/agora/$it") }
+        litertFiles.forEach { source ->
+            assertFalse("the SDK's process-global experimental toggle must stay out of Agora sources", source.contains("ExperimentalFlags"))
+        }
+
+        // Both dialogs expose the toggle on the litertlm branch, and update preserves the
+        // registered value when the caller does not carry the field.
+        assertTrue(addDialog.contains("R.string.litertlm_mtp"))
+        assertTrue(addDialog.contains("mtp = addMtp"))
+        assertTrue(editPage.contains("R.string.litertlm_mtp"))
+        assertTrue(editPage.contains("mtp = if (isEditLitertlm) editMtp else null"))
+        assertTrue(manager.contains("mtp = mtp ?: it.mtp"))
+    }
+
     private fun functionSection(source: String, functionName: String): String = source
         .substringAfter("fun $functionName(")
         .substringBefore("\n    fun ")

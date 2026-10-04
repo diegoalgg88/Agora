@@ -822,6 +822,10 @@
     <string name="litertlm_top_k">Top K</string>
     <string name="litertlm_load_failed">Falha ao inicializar o modelo LiteRT-LM (backend %1$s)</string>
     <string name="litertlm_format_badge">LiteRT-LM</string>
+    <string name="litertlm_mtp">Predição de múltiplos tokens (MTP)</string>
+    <string name="litertlm_mtp_desc">Acelera a geração na GPU. Requer um pacote com cabeças MTP (ex.: Gemma 4); outros pacotes falham ao carregar.</string>
+    <string name="litertlm_backend_npu">NPU</string>
+    <string name="litertlm_backend_npu_desc">Apenas dispositivos com acelerador neural dedicado (ex.: Google Tensor). Retorna à CPU se o acelerador não estiver disponível.</string>
 
     <!-- Settings - Group Labels -->
     <string name="settings_group_memory_data">Memória e dados</string>

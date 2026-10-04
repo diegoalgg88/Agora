@@ -665,6 +665,7 @@ fun SettingsProviderDetailPage(
         var editModelId by remember { mutableStateOf(model.modelId) }; var editAlias by remember { mutableStateOf(model.alias) }; var editMmprojPath by remember { mutableStateOf(model.mmprojPath) }
         var editNCtx by remember { mutableStateOf(model.nCtx.toString()) }; var editTemp by remember { mutableStateOf(model.temperature.toString()) }; var editTopP by remember { mutableStateOf(model.topP.toString()) }; var editMaxTokens by remember { mutableStateOf(model.maxTokens.toString()) }
         var editBackend by remember { mutableStateOf(model.backend) }; var editTopK by remember { mutableStateOf(model.topK.toString()) }; var editVision by remember { mutableStateOf(model.visionCapable) }
+        var editMtp by remember { mutableStateOf(model.mtp) }
         var editIdError by remember { mutableStateOf<String?>(null) }; var editFormError by remember { mutableStateOf<String?>(null) }
         val idRegex = remember { Regex("^[a-z0-9._-]+\$") }
         LaunchedEffect(mmprojPickedUri) {
@@ -695,6 +696,7 @@ fun SettingsProviderDetailPage(
                             LocalChatModelConfig.BACKEND_AUTO to R.string.litertlm_backend_auto,
                             LocalChatModelConfig.BACKEND_CPU to R.string.litertlm_backend_cpu,
                             LocalChatModelConfig.BACKEND_GPU to R.string.litertlm_backend_gpu,
+                            LocalChatModelConfig.BACKEND_NPU to R.string.litertlm_backend_npu,
                         ).forEach { (value, labelRes) ->
                             FilterChip(
                                 selected = editBackend == value,
@@ -704,11 +706,24 @@ fun SettingsProviderDetailPage(
                             Spacer(modifier = Modifier.width(6.dp))
                         }
                     }
+                    if (editBackend == LocalChatModelConfig.BACKEND_NPU) {
+                        Text(stringResource(R.string.litertlm_backend_npu_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Spacer(modifier = Modifier.height(4.dp))
+                    }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Switch(checked = editVision, onCheckedChange = { editVision = it })
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(stringResource(R.string.litertlm_vision_capable), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = editMtp, onCheckedChange = { editMtp = it })
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(stringResource(R.string.litertlm_mtp), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.litertlm_mtp_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     OutlinedTextField(value = editTopK, onValueChange = { editTopK = it }, label = { Text(stringResource(R.string.litertlm_top_k)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
@@ -759,6 +774,7 @@ fun SettingsProviderDetailPage(
                     backend = if (isEditLitertlm) editBackend else null,
                     topK = k,
                     visionCapable = if (isEditLitertlm) editVision else null,
+                    mtp = if (isEditLitertlm) editMtp else null,
                 )
                 showEditModelDialog = null
             }) { Text(stringResource(R.string.save)) } },
