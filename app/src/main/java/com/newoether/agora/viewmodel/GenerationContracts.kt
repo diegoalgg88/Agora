@@ -48,7 +48,8 @@ data class GenerationConfig(
     val maxTokens: Int? = null,
     val topP: Float? = null,
     val frequencyPenalty: Float? = null,
-    val presencePenalty: Float? = null
+    val presencePenalty: Float? = null,
+    val repetitionPenalty: Float? = null
 )
 
 data class GenerationContext(

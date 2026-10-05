@@ -64,6 +64,7 @@ fun AddLocalModelDialog(
     var addBackend by remember { mutableStateOf(LocalChatModelConfig.BACKEND_AUTO) }
     var addTopK by remember { mutableStateOf("40") }
     var addVision by remember { mutableStateOf(false) }
+    var addAudio by remember { mutableStateOf(false) }
     var addMtp by remember { mutableStateOf(false) }
     var idError by remember { mutableStateOf<String?>(null) }; var formError by remember { mutableStateOf<String?>(null) }
     val idRegex = remember { Regex("^[a-z0-9._-]+\$") }
@@ -131,6 +132,15 @@ fun AddLocalModelDialog(
                     }
                 }
                 Spacer(modifier = Modifier.height(8.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Switch(checked = addAudio, onCheckedChange = { addAudio = it })
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Column {
+                        Text(stringResource(R.string.litertlm_audio_capable), style = MaterialTheme.typography.bodyMedium)
+                        Text(stringResource(R.string.litertlm_audio_capable_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(value = addTopK, onValueChange = { addTopK = it }, label = { Text(stringResource(R.string.litertlm_top_k)) }, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number), shape = RoundedCornerShape(16.dp), modifier = Modifier.fillMaxWidth())
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -187,7 +197,7 @@ fun AddLocalModelDialog(
                     modelId = id, alias = modelAlias.ifBlank { id }, localFilePath = importedPath,
                     mmprojPath = if (isLitertlm) "" else addMmprojPath.trim(),
                     nCtx = n, temperature = t, topP = p, maxTokens = m,
-                    format = importedFormat, backend = addBackend, topK = k, visionCapable = addVision, mtp = addMtp,
+                    format = importedFormat, backend = addBackend, topK = k, visionCapable = addVision, audioCapable = addAudio, mtp = addMtp,
                 )
             )
         }) { Text(stringResource(R.string.add)) } },

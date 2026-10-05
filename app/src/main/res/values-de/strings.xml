@@ -349,6 +349,8 @@
     <string name="gen_frequency_penalty">Häufigkeitsstrafe</string>
     <string name="gen_frequency_penalty_desc">Bestraft Token-Wiederholungen (-2.0 bis 2.0)</string>
     <string name="gen_presence_penalty">Präsenzstrafe</string>
+    <string name="gen_repetition_penalty">Wiederholungsstrafe</string>
+    <string name="gen_repetition_penalty_desc">Multipliziert die Logits bereits im Verlauf vorhandener Tokens (HuggingFace-Stil; 1,0 = aus, höhere Werte reduzieren Wiederholungen). Nur lokale Modelle — Remote-Anbieter ignorieren sie.</string>
     <string name="gen_presence_penalty_desc">Fördert thematische Vielfalt (-2.0 bis 2.0)</string>
     <string name="gen_default_value">Standard</string>
     <string name="gen_reset">Zurücksetzen</string>
@@ -824,6 +826,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">Multi-Token-Vorhersage (MTP)</string>
     <string name="litertlm_mtp_desc">Beschleunigt die Generierung auf der GPU. Erfordert ein Bundle mit MTP-Heads (z. B. Gemma 4); andere Bundles schlagen beim Laden fehl.</string>
+    <string name="litertlm_audio_capable">Audio-Eingabe</string>
+    <string name="litertlm_audio_capable_desc">Das Bundle enthält Audio-Encoder-Gewichte (z. B. ein vollständiges Gemma 3n). Fordert das SDK-Audio-Backend an; ohne audiofähige Gewichte wirkungslos.</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">Nur Geräte mit dediziertem Neural-Beschleuniger (z. B. Google Tensor). Fällt auf CPU zurück, wenn der Beschleuniger nicht verfügbar ist.</string>
 

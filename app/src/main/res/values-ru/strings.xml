@@ -349,6 +349,8 @@
     <string name="gen_frequency_penalty">Штраф за частоту</string>
     <string name="gen_frequency_penalty_desc">Штрафует повторение токенов (от -2.0 до 2.0)</string>
     <string name="gen_presence_penalty">Штраф за присутствие</string>
+    <string name="gen_repetition_penalty">Штраф за повторение</string>
+    <string name="gen_repetition_penalty_desc">Умножает логиты токенов, уже присутствующих в истории (в стиле HuggingFace; 1,0 = выключено, выше — меньше повторов). Только для локальных моделей — удалённые провайдеры игнорируют.</string>
     <string name="gen_presence_penalty_desc">Поощряет разнообразие тем (от -2.0 до 2.0)</string>
     <string name="gen_default_value">По умолчанию</string>
     <string name="gen_reset">Сбросить</string>
@@ -824,6 +826,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">Мульти-токенное предсказание (MTP)</string>
     <string name="litertlm_mtp_desc">Ускоряет генерацию на GPU. Требуется пакет с MTP-головами (напр., Gemma 4); остальные не загрузятся.</string>
+    <string name="litertlm_audio_capable">Звуковой ввод</string>
+    <string name="litertlm_audio_capable_desc">В наборе содержатся веса аудиокодера (напр., полный Gemma 3n). Запрашивает аудиобэкенд SDK; без весов с поддержкой звука не действует.</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">Только устройства с выделенным нейронным ускорителем (напр., Google Tensor). При недоступности ускорителя — откат на CPU.</string>
 

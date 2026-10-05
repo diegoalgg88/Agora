@@ -30,6 +30,7 @@ fun AdvancedSettingsDialog(
     var topP by remember { mutableStateOf(overrides.topP) }
     var frequencyPenalty by remember { mutableStateOf(overrides.frequencyPenalty) }
     var presencePenalty by remember { mutableStateOf(overrides.presencePenalty) }
+    var repetitionPenalty by remember { mutableStateOf(overrides.repetitionPenalty) }
 
     fun currentSettings() = overrides.copy(
         contextWindow = contextWindow,
@@ -37,7 +38,8 @@ fun AdvancedSettingsDialog(
         maxTokens = maxTokens,
         topP = topP,
         frequencyPenalty = frequencyPenalty,
-        presencePenalty = presencePenalty
+        presencePenalty = presencePenalty,
+        repetitionPenalty = repetitionPenalty
     )
 
     AlertDialog(
@@ -112,6 +114,16 @@ fun AdvancedSettingsDialog(
                     onChange = { presencePenalty = it },
                     onReset = { presencePenalty = null }
                 )
+                // Repetition Penalty (multiplicative, local engines)
+                AdvancedParamRow(
+                    label = stringResource(R.string.gen_repetition_penalty),
+                    value = repetitionPenalty,
+                    defaultVal = gDefaults.repetitionPenalty,
+                    valueRange = 1f..2f,
+                    format = fmt2,
+                    onChange = { repetitionPenalty = it },
+                    onReset = { repetitionPenalty = null }
+                )
             }
         },
         confirmButton = {
@@ -119,7 +131,7 @@ fun AdvancedSettingsDialog(
                 TextButton(onClick = {
                     onResetToDefaults()
                     contextWindow = null; temperature = null; maxTokens = null
-                    topP = null; frequencyPenalty = null; presencePenalty = null
+                    topP = null; frequencyPenalty = null; presencePenalty = null; repetitionPenalty = null
                 }) { Text(stringResource(R.string.gen_reset)) }
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     TextButton(onClick = onDismiss) {

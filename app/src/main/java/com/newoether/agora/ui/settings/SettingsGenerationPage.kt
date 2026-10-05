@@ -43,6 +43,7 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val defaultTopP by viewModel.settings.defaultTopP.collectAsState()
     val defaultFrequencyPenalty by viewModel.settings.defaultFrequencyPenalty.collectAsState()
     val defaultPresencePenalty by viewModel.settings.defaultPresencePenalty.collectAsState()
+    val defaultRepetitionPenalty by viewModel.settings.defaultRepetitionPenalty.collectAsState()
     val thinkingEnabled by viewModel.settings.thinkingEnabled.collectAsState()
     val thinkingLevel by viewModel.settings.thinkingLevel.collectAsState()
     val thinkingBudgetEnabled by viewModel.settings.thinkingBudgetEnabled.collectAsState()
@@ -209,6 +210,17 @@ fun SettingsGenerationPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                 format = { v -> String.format(Locale.US, "%.2f", v) },
                                 onValueChange = { viewModel.settings.setDefaultPresencePenalty(it) },
                                 onReset = { viewModel.settings.setDefaultPresencePenalty(null) }
+                            )
+                        },
+                        {
+                            GenParamSlider(
+                                label = stringResource(R.string.gen_repetition_penalty),
+                                desc = stringResource(R.string.gen_repetition_penalty_desc),
+                                value = defaultRepetitionPenalty,
+                                valueRange = 1f..2f,
+                                format = { v -> String.format(Locale.US, "%.2f", v) },
+                                onValueChange = { viewModel.settings.setDefaultRepetitionPenalty(it) },
+                                onReset = { viewModel.settings.setDefaultRepetitionPenalty(null) }
                             )
                         }
                     )

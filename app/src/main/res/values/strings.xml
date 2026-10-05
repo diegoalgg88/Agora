@@ -398,6 +398,8 @@
     <string name="gen_frequency_penalty">Frequency Penalty</string>
     <string name="gen_frequency_penalty_desc">Penalize token repetition (-2.0 to 2.0)</string>
     <string name="gen_presence_penalty">Presence Penalty</string>
+    <string name="gen_repetition_penalty">Repetition penalty</string>
+    <string name="gen_repetition_penalty_desc">Multiplies logits of tokens already in the history (HuggingFace style; 1.0 = off, higher = less repetition). Local models only — remote providers ignore it.</string>
     <string name="gen_presence_penalty_desc">Encourage topic diversity (-2.0 to 2.0)</string>
     <string name="gen_default_value">Default</string>
     <string name="gen_reset">Reset</string>
@@ -884,6 +886,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">Multi-Token Prediction (MTP)</string>
     <string name="litertlm_mtp_desc">Speeds up generation on GPU. Requires a bundle with MTP heads (e.g. Gemma 4); other bundles fail on load.</string>
+    <string name="litertlm_audio_capable">Audio input</string>
+    <string name="litertlm_audio_capable_desc">The bundle carries audio-encoder weights (e.g. a full Gemma 3n). Requests the SDK audio backend; no effect without audio-capable weights.</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">Only devices with a dedicated neural accelerator (e.g. Google Tensor). Falls back to CPU if the accelerator is unavailable.</string>
 

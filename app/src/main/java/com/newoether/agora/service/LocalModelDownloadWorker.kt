@@ -352,6 +352,9 @@ class LocalModelDownloadWorker(
             maxTokens = maxTokens,
             format = format,
             topK = if (isLitertlm) topK.coerceAtLeast(1) else 40,
+            // Only litertlm bundles carry vision weights inside the bundle; a GGUF record's
+            // vision comes from its mmproj companion, which never sets this flag.
+            visionCapable = isLitertlm && hasVision,
         )
         modelManager.addLocalChatModel(config)
     }

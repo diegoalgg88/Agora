@@ -349,6 +349,8 @@
     <string name="gen_frequency_penalty">빈도 페널티</string>
     <string name="gen_frequency_penalty_desc">토큰 반복에 페널티 부여(-2.0 ~ 2.0)</string>
     <string name="gen_presence_penalty">존재 페널티</string>
+    <string name="gen_repetition_penalty">반복 페널티</string>
+    <string name="gen_repetition_penalty_desc">히스토리에 이미 있는 토큰의 로짓을 곱합니다(HuggingFace 방식, 1.0 = 끔, 값이 높을수록 반복 감소). 로컬 모델 전용이며 원격 공급자는 무시합니다.</string>
     <string name="gen_presence_penalty_desc">주제 다양성 장려(-2.0 ~ 2.0)</string>
     <string name="gen_default_value">기본값</string>
     <string name="gen_reset">재설정</string>
@@ -824,6 +826,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">멀티 토큰 예측 (MTP)</string>
     <string name="litertlm_mtp_desc">GPU에서 생성 속도를 높입니다. MTP 헤드가 있는 번들(예: Gemma 4)이 필요하며, 다른 번들은 로드에 실패합니다.</string>
+    <string name="litertlm_audio_capable">오디오 입력</string>
+    <string name="litertlm_audio_capable_desc">번들에 오디오 인코더 가중치가 포함되어 있습니다(예: 완전한 Gemma 3n). SDK 오디오 백엔드를 요청합니다. 오디오 지원 가중치가 없으면 효과가 없습니다.</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">전용 뉴럴 가속기가 있는 기기에서만 사용 가능(예: Google Tensor). 가속기를 사용할 수 없으면 CPU로 전환됩니다.</string>
 

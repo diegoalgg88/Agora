@@ -58,6 +58,7 @@ class SettingsManager(val context: Context) {
     private val json = Json { ignoreUnknownKeys = true }
     private val modelPreferenceStore = SettingsModelPreferenceStore(context.dataStore, json)
     private val mediaSettingsStore = MediaSettingsStore(context, context.dataStore)
+    private val generationDefaults = GenerationDefaultsStore(context.dataStore)
 
     /** Email account settings (accounts, encrypted passwords, poll interval). */
     val emailAccountSettings = EmailAccountSettings(context.dataStore, json)
@@ -188,11 +189,12 @@ class SettingsManager(val context: Context) {
     val searchContextWindow: Flow<Int> = context.dataStore.data.map { it[SEARCH_CONTEXT_WINDOW] ?: 8 }
     val searchMatchLimit: Flow<Int> = context.dataStore.data.map { it[SEARCH_MATCH_LIMIT] ?: 10 }
     val ragThreshold: Flow<Float> = context.dataStore.data.map { it[RAG_THRESHOLD]?.toFloatOrNull() ?: 0.5f }
-    val defaultTemperature: Flow<Float?> = context.dataStore.data.map { it[DEFAULT_TEMPERATURE]?.toFloatOrNull() }
-    val defaultMaxTokens: Flow<Int?> = context.dataStore.data.map { it[DEFAULT_MAX_TOKENS] }
-    val defaultTopP: Flow<Float?> = context.dataStore.data.map { it[DEFAULT_TOP_P]?.toFloatOrNull() }
-    val defaultFrequencyPenalty: Flow<Float?> = context.dataStore.data.map { it[DEFAULT_FREQUENCY_PENALTY]?.toFloatOrNull() }
-    val defaultPresencePenalty: Flow<Float?> = context.dataStore.data.map { it[DEFAULT_PRESENCE_PENALTY]?.toFloatOrNull() }
+    val defaultTemperature: Flow<Float?> get() = generationDefaults.defaultTemperature
+    val defaultMaxTokens: Flow<Int?> get() = generationDefaults.defaultMaxTokens
+    val defaultTopP: Flow<Float?> get() = generationDefaults.defaultTopP
+    val defaultFrequencyPenalty: Flow<Float?> get() = generationDefaults.defaultFrequencyPenalty
+    val defaultPresencePenalty: Flow<Float?> get() = generationDefaults.defaultPresencePenalty
+    val defaultRepetitionPenalty: Flow<Float?> get() = generationDefaults.defaultRepetitionPenalty
     val conversationSettings: Flow<Map<String, ConversationSettings>> =
         context.dataStore.data.map { preferences -> decodeConversationSettings(preferences, json) }
     val autoCacheEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTO_CACHE_ENABLED] ?: true }
@@ -558,31 +560,12 @@ class SettingsManager(val context: Context) {
     suspend fun saveRagThreshold(threshold: Float) {
         context.dataStore.edit { it[RAG_THRESHOLD] = threshold.toString() }
     }
-    suspend fun saveDefaultTemperature(value: Float?) {
-        context.dataStore.edit { prefs ->
-            if (value == null) prefs.remove(DEFAULT_TEMPERATURE) else prefs[DEFAULT_TEMPERATURE] = value.toString()
-        }
-    }
-    suspend fun saveDefaultMaxTokens(value: Int?) {
-        context.dataStore.edit { prefs ->
-            if (value == null) prefs.remove(DEFAULT_MAX_TOKENS) else prefs[DEFAULT_MAX_TOKENS] = value
-        }
-    }
-    suspend fun saveDefaultTopP(value: Float?) {
-        context.dataStore.edit { prefs ->
-            if (value == null) prefs.remove(DEFAULT_TOP_P) else prefs[DEFAULT_TOP_P] = value.toString()
-        }
-    }
-    suspend fun saveDefaultFrequencyPenalty(value: Float?) {
-        context.dataStore.edit { prefs ->
-            if (value == null) prefs.remove(DEFAULT_FREQUENCY_PENALTY) else prefs[DEFAULT_FREQUENCY_PENALTY] = value.toString()
-        }
-    }
-    suspend fun saveDefaultPresencePenalty(value: Float?) {
-        context.dataStore.edit { prefs ->
-            if (value == null) prefs.remove(DEFAULT_PRESENCE_PENALTY) else prefs[DEFAULT_PRESENCE_PENALTY] = value.toString()
-        }
-    }
+    suspend fun saveDefaultTemperature(value: Float?) = generationDefaults.saveDefaultTemperature(value)
+    suspend fun saveDefaultMaxTokens(value: Int?) = generationDefaults.saveDefaultMaxTokens(value)
+    suspend fun saveDefaultTopP(value: Float?) = generationDefaults.saveDefaultTopP(value)
+    suspend fun saveDefaultFrequencyPenalty(value: Float?) = generationDefaults.saveDefaultFrequencyPenalty(value)
+    suspend fun saveDefaultPresencePenalty(value: Float?) = generationDefaults.saveDefaultPresencePenalty(value)
+    suspend fun saveDefaultRepetitionPenalty(value: Float?) = generationDefaults.saveDefaultRepetitionPenalty(value)
     suspend fun saveConversationSettings(
         conversationId: String,
         settings: ConversationSettings?,
@@ -979,11 +962,7 @@ class SettingsManager(val context: Context) {
             prefs.remove(SCHEME_STYLE)
             prefs.remove(FONT_PREFERENCE)
             prefs.remove(SHOW_DOCUMENTATION_FAB)
-            prefs.remove(DEFAULT_TEMPERATURE)
-            prefs.remove(DEFAULT_MAX_TOKENS)
-            prefs.remove(DEFAULT_TOP_P)
-            prefs.remove(DEFAULT_FREQUENCY_PENALTY)
-            prefs.remove(DEFAULT_PRESENCE_PENALTY)
+            generationDefaults.clearAll()
 
             // Derived fetch state is never restored. Invalidate it when portable provider/model
             // configuration is replaced so stale results cannot masquerade as imported data.

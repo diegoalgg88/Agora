@@ -153,6 +153,7 @@ class GenerationRequestBuilder(
             topP = overrides.topP ?: settings.defaultTopP.value,
             frequencyPenalty = overrides.frequencyPenalty ?: settings.defaultFrequencyPenalty.value,
             presencePenalty = overrides.presencePenalty ?: settings.defaultPresencePenalty.value,
+            repetitionPenalty = overrides.repetitionPenalty ?: settings.defaultRepetitionPenalty.value,
             codeExecutionEnabled = overrides.codeExecutionEnabled ?: settings.codeExecutionEnabled.value,
             googleSearchEnabled = overrides.googleSearchEnabled ?: settings.googleSearchEnabled.value,
             openAiWebSearchEnabled = overrides.openAiWebSearchEnabled ?: true,
@@ -438,7 +439,8 @@ class GenerationRequestBuilder(
             maxTokens = effectiveSettings.maxTokens,
             topP = effectiveSettings.topP,
             frequencyPenalty = effectiveSettings.frequencyPenalty,
-            presencePenalty = effectiveSettings.presencePenalty
+            presencePenalty = effectiveSettings.presencePenalty,
+            repetitionPenalty = effectiveSettings.repetitionPenalty
         )
         val genCtx = GenerationContext(
             conversationId = currentId,

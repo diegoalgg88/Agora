@@ -144,6 +144,7 @@ internal val DEFAULT_MAX_TOKENS = intPreferencesKey("default_max_tokens")
 internal val DEFAULT_TOP_P = stringPreferencesKey("default_top_p")
 internal val DEFAULT_FREQUENCY_PENALTY = stringPreferencesKey("default_frequency_penalty")
 internal val DEFAULT_PRESENCE_PENALTY = stringPreferencesKey("default_presence_penalty")
+internal val DEFAULT_REPETITION_PENALTY = stringPreferencesKey("default_repetition_penalty")
 internal val CONVERSATION_SETTINGS_JSON = stringPreferencesKey("conversation_settings_json")
 // ── Auto Backup ───────────────────────────────────────────
 internal val AUTO_BACKUP_ENABLED = booleanPreferencesKey("auto_backup_enabled")

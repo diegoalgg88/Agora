@@ -349,6 +349,8 @@
     <string name="gen_frequency_penalty">頻度ペナルティ</string>
     <string name="gen_frequency_penalty_desc">トークンの繰り返しにペナルティ（-2.0〜2.0）</string>
     <string name="gen_presence_penalty">出現ペナルティ</string>
+    <string name="gen_repetition_penalty">繰り返しペナルティ</string>
+    <string name="gen_repetition_penalty_desc">履歴に既に含まれるトークンのロジットを乗算します（HuggingFace 方式。1.0 = オフ、値を上げると繰り返しが減ります）。ローカルモデル専用です。リモートプロバイダーでは無視されます。</string>
     <string name="gen_presence_penalty_desc">話題の多様性を促進（-2.0〜2.0）</string>
     <string name="gen_default_value">デフォルト</string>
     <string name="gen_reset">リセット</string>
@@ -824,6 +826,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">マルチトークン予測（MTP）</string>
     <string name="litertlm_mtp_desc">GPUでの生成を高速化します。MTPヘッドを持つバンドル（例：Gemma 4）が必要です。その他のバンドルは読み込みに失敗します。</string>
+    <string name="litertlm_audio_capable">音声入力</string>
+    <string name="litertlm_audio_capable_desc">バンドルに音声エンコーダの重みが含まれる（例: 完全版 Gemma 3n）。SDK の音声バックエンドを要求します。音声対応の重みがない場合は効果がありません。</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">専用ニューラルアクセラレーター搭載端末のみ（例：Google Tensor）。アクセラレーターが利用不可の場合はCPUにフォールバックします。</string>
 

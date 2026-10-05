@@ -89,6 +89,9 @@ internal object LiteRtRequestMapper {
             },
         )
         val penalties = RepetitionPenaltyConfig(
+            // The SDK requires a multiplicative penalty >= 1.0 (init-validated); values below
+            // are invalid and treated as "off" (engine default 1.0).
+            repetitionPenalty = config.repetitionPenalty?.takeIf { it >= 1.0f },
             presencePenalty = (config.presencePenalty ?: 0f),
             frequencyPenalty = (config.frequencyPenalty ?: 0f),
         )

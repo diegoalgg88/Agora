@@ -256,6 +256,7 @@ class SettingsRepository(
     val defaultTopP: StateFlow<Float?> = hot(settingsManager.defaultTopP, null)
     val defaultFrequencyPenalty: StateFlow<Float?> = hot(settingsManager.defaultFrequencyPenalty, null)
     val defaultPresencePenalty: StateFlow<Float?> = hot(settingsManager.defaultPresencePenalty, null)
+    val defaultRepetitionPenalty: StateFlow<Float?> = hot(settingsManager.defaultRepetitionPenalty, null)
     val conversationSettings: StateFlow<Map<String, ConversationSettings>> = hotConversationSettings()
     val themeMode: StateFlow<String> = hot(settingsManager.themeMode, "FOLLOW_DEVICE")
     val amoledEnabled: StateFlow<Boolean> = hot(settingsManager.amoledEnabled, false)
@@ -827,6 +828,7 @@ class SettingsRepository(
     fun setDefaultTopP(v: Float?) = scope.launch { settingsManager.saveDefaultTopP(v) }
     fun setDefaultFrequencyPenalty(v: Float?) = scope.launch { settingsManager.saveDefaultFrequencyPenalty(v) }
     fun setDefaultPresencePenalty(v: Float?) = scope.launch { settingsManager.saveDefaultPresencePenalty(v) }
+    fun setDefaultRepetitionPenalty(v: Float?) = scope.launch { settingsManager.saveDefaultRepetitionPenalty(v) }
     fun setThemeMode(mode: String) = scope.launch { settingsManager.saveThemeMode(mode) }
     fun setAmoledEnabled(enabled: Boolean) = scope.launch { settingsManager.saveAmoledEnabled(enabled) }
     fun setColorScheme(scheme: String) = scope.launch { settingsManager.saveColorScheme(scheme) }

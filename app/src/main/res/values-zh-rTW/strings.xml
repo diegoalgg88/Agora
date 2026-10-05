@@ -267,6 +267,8 @@
     <string name="gen_frequency_penalty">頻率懲罰</string>
     <string name="gen_frequency_penalty_desc">懲罰 token 重複（-2.0 至 2.0）</string>
     <string name="gen_presence_penalty">存在懲罰</string>
+    <string name="gen_repetition_penalty">重複懲罰</string>
+    <string name="gen_repetition_penalty_desc">將歷史中已出現 token 的 logit 相乘（HuggingFace 風格；1.0 = 關閉，數值越高重複越少）。僅適用本機模型 — 遠端供應商會忽略。</string>
     <string name="gen_presence_penalty_desc">鼓勵話題多樣性（-2.0 至 2.0）</string>
     <string name="gen_default_value">預設</string>
     <string name="gen_reset">重設</string>
@@ -854,6 +856,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">多 Token 預測（MTP）</string>
     <string name="litertlm_mtp_desc">加速 GPU 上的生成。需要帶 MTP 頭的模型包（如 Gemma 4）；其他包載入時會失敗。</string>
+    <string name="litertlm_audio_capable">音訊輸入</string>
+    <string name="litertlm_audio_capable_desc">包中包含音訊編碼器權重（例如完整版 Gemma 3n）。請求 SDK 的音訊後端；若無支援音訊的權重則無效。</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">僅限配備專用神經加速器的裝置（如 Google Tensor）。加速器無法使用時回退至 CPU。</string>
     <string name="local_title">本機</string>

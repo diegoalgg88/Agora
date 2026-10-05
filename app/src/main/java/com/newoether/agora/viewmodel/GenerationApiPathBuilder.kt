@@ -111,6 +111,7 @@ internal class GenerationApiPathBuilder(
                     topP = config.topP,
                     frequencyPenalty = config.frequencyPenalty,
                     presencePenalty = config.presencePenalty,
+                    repetitionPenalty = config.repetitionPenalty,
                     promptCacheKey = request.conversationId.takeIf {
                         config.providerName == Constants.PROVIDER_OPENAI
                     },

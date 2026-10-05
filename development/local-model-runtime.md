@@ -313,18 +313,37 @@ behavior or memory.
 
 - Speculative decoding / MTP: **UI-ready** (per-model `mtp` opt-in shipped: field, toggles,
   persistence). The engine unlock — `ConversationConfig.enableSpeculativeDecoding`, upstream
-  `bc16765a` — awaits a stable SDK release past the pinned 0.17.1; a one-liner at the mapper's
-  config site (see the record contract above).
+  `bc16765a` — awaits a stable SDK release past the pinned 0.17.1 (Google Maven's latest
+  published artifact is 0.17.1 itself as of 2026-10-04; verified against the tag, which does
+  not contain the per-conversation flag); a one-liner at the mapper's config site (see the
+  record contract above). Bumping to the next stable when it publishes is a dedicated
+  adaptation pass: the SDK's JNI surface also changed on main (nativeLibraryDir plumbed per
+  backend, activation data type), so plan for more than the one-line unlock.
 - NPU backend: **shipped as plumbing** (`backend` `auto|cpu|gpu|npu`; the SDK resolves NPU
   delegate libraries from the app's native library directory at engine construction).
   Verified by compilation and contract tests only — no NPU device was available for the
   on-device smoke pass; on such devices it is compile-level unverified behavior. When a
   stable SDK ≥0.18 ships, prefer its priority-ordered backends over the single-backend
-  selection (upstream `3f6f7486`), which also supersedes this enum's shape.
-- The SDK's audio executor: **engine-side plumbing shipped** (`audioCapable` record flag
-  configures the SDK audio backend at engine construction). Content mapping is deliberately
-  absent: Agora messages do not carry audio attachments yet, so there is nothing to map —
-  the flag prepares the engine for the day chat audio attachments exist.
+  selection (upstream `3f6f7486`), which also supersedes this enum's shape. NPU-specific
+  per-SoC bundles exist upstream (`litert-community` publishes `gemma-4-E2B-it_Google_Tensor_G5/G6`,
+  `_qualcomm_sm8750`, `_intel_LNL/PTL` variants); the hosted catalog lists only
+  device-verified bundles, so those variants enter the catalog only after on-device
+  validation.
+- The SDK's audio executor: **engine-side plumbing shipped and user-reachable** — the
+  `audioCapable` record flag configures the SDK audio backend at engine construction, and
+  both the add-model and edit-model dialogs expose the toggle (default off). Content
+  mapping remains deliberately absent: Agora messages do not carry audio attachments yet,
+  so there is nothing to map — the flag prepares the engine for the day chat audio
+  attachments exist. Enabling it on a bundle without audio weights is a no-op at engine
+  construction, not an error.
+- Repetition penalty (multiplicative, HuggingFace-style): **shipped for `.litertlm`** —
+  the setting flows through the same chain as the other penalties (DataStore default →
+  per-conversation override → ProviderConfig → `RepetitionPenaltyConfig.repetitionPenalty`,
+  with the SDK's `>= 1.0` requirement guarded at the mapper: sub-1.0 values resolve to
+  the engine default instead of failing conversation creation). Remote OpenAI-compatible
+  requests never carry it. The GGUF/llama.cpp path does not forward it yet:
+  `llama_chat_jni.cpp` hardcodes `penalty_repeat = 1.0f`; wiring it there is a native
+  change (JNI parameter + rebuild) tracked as a separate follow-up.
 - `EmbeddingEngine` of the SDK: **rejected**. Agora's embeddings (memory, RAG, semantic
   search) remain llama.cpp-only: the GGUF embedding path works, `.litertlm` embedding bundles
   do not meaningfully exist in the wild, and a second embedding engine would either break

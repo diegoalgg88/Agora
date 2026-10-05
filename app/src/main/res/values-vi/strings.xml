@@ -352,6 +352,8 @@
     <string name="gen_frequency_penalty">Phạt tần suất (Frequency Penalty)</string>
     <string name="gen_frequency_penalty_desc">Phạt lặp lại token (-2.0 đến 2.0)</string>
     <string name="gen_presence_penalty">Phạt sự hiện diện (Presence Penalty)</string>
+    <string name="gen_repetition_penalty">Phạt lặp lại</string>
+    <string name="gen_repetition_penalty_desc">Nhân logit của các token đã có trong lịch sử (kiểu HuggingFace; 1,0 = tắt, giá trị cao hơn giảm lặp lại). Chỉ dùng cho mô hình cục bộ — nhà cung cấp từ xa bỏ qua.</string>
     <string name="gen_presence_penalty_desc">Khuyến khích sự đa dạng chủ đề (-2.0 đến 2.0)</string>
     <string name="gen_default_value">Mặc định</string>
     <string name="gen_reset">Đặt lại</string>
@@ -827,6 +829,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">Dự đoán đa token (MTP)</string>
     <string name="litertlm_mtp_desc">Tăng tốc tạo sinh trên GPU. Cần gói có đầu MTP (vd. Gemma 4); các gói khác sẽ lỗi khi tải.</string>
+    <string name="litertlm_audio_capable">Nhập âm thanh</string>
+    <string name="litertlm_audio_capable_desc">Bản bundle chứa trọng số của bộ mã hóa âm thanh (ví dụ: Gemma 3n đầy đủ). Yêu cầu backend âm thanh của SDK; không có tác dụng nếu không có trọng số hỗ trợ âm thanh.</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">Chỉ dành cho thiết bị có bộ tăng tốc thần kinh chuyên dụng (vd. Google Tensor). Tự chuyển sang CPU nếu bộ tăng tốc không khả dụng.</string>
 

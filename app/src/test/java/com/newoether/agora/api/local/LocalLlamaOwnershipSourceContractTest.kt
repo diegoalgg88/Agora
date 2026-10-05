@@ -756,12 +756,15 @@ class LocalLlamaOwnershipSourceContractTest {
             "if (format == com.newoether.agora.data.LocalChatModelConfig.FORMAT_GGUF && !mmprojUrl.isNullOrBlank())"
         ))
 
-        // 3. Registration carries the catalog format, top-K, and never an mmproj for
-        //    litertlm bundles (multimodal weights live inside the bundle).
+        // 3. Registration carries the catalog format, top-K, never an mmproj for
+        //    litertlm bundles (multimodal weights live inside the bundle), and marks
+        //    the record vision-capable only for litertlm bundles whose catalog entry
+        //    declares vision (a GGUF record's vision comes from its mmproj companion).
         val registerSection = worker.substringAfter("private suspend fun registerModel(")
         assertTrue(registerSection.contains("format = format,"))
         assertTrue(registerSection.contains("topK = if (isLitertlm) topK.coerceAtLeast(1) else 40,"))
         assertTrue(registerSection.contains("mmprojPath = if (isLitertlm) \"\""))
+        assertTrue(registerSection.contains("visionCapable = isLitertlm && hasVision,"))
 
         // 4. The catalog page badges litertlm entries so users see the engine before
         //    spending the download.
@@ -828,6 +831,43 @@ class LocalLlamaOwnershipSourceContractTest {
         assertTrue(editPage.contains("R.string.litertlm_mtp"))
         assertTrue(editPage.contains("mtp = if (isEditLitertlm) editMtp else null"))
         assertTrue(manager.contains("mtp = mtp ?: it.mtp"))
+
+        // audioCapable follows the same pattern: toggle in both dialogs, preserved by
+        // update, never a default-on value.
+        assertEquals(false, decoded.single().audioCapable)
+        assertTrue(config.contains("val audioCapable: Boolean = false"))
+        assertTrue(addDialog.contains("R.string.litertlm_audio_capable"))
+        assertTrue(addDialog.contains("audioCapable = addAudio"))
+        assertTrue(editPage.contains("R.string.litertlm_audio_capable"))
+        assertTrue(editPage.contains("audioCapable = if (isEditLitertlm) editAudio else null"))
+        assertTrue(manager.contains("audioCapable = audioCapable ?: it.audioCapable"))
+    }
+
+    @Test
+    fun `repetition penalty flows from settings to the litertlm mapper and stays local-only`() {
+        val mapper = mainSource("com/newoether/agora/api/local/LiteRtRequestMapper.kt")
+        val providerConfig = mainSource("com/newoether/agora/api/LlmProvider.kt")
+        val contracts = mainSource("com/newoether/agora/viewmodel/GenerationContracts.kt")
+        val builder = mainSource("com/newoether/agora/viewmodel/GenerationRequestBuilder.kt")
+        val schema = mainSource("com/newoether/agora/data/SettingsPreferenceSchema.kt")
+
+        // The wire setting exists with the other penalties and persists under its own key.
+        assertTrue(contracts.contains("val repetitionPenalty: Float? = null"))
+        assertTrue(schema.contains("default_repetition_penalty"))
+
+        // The effective-settings resolution and the ProviderConfig both carry it.
+        assertTrue(builder.contains("repetitionPenalty = overrides.repetitionPenalty ?: settings.defaultRepetitionPenalty.value"))
+        assertTrue(builder.contains("repetitionPenalty = effectiveSettings.repetitionPenalty"))
+        assertTrue(providerConfig.contains("val repetitionPenalty: Float? = null"))
+
+        // The LiteRT-LM mapper forwards it, guarding the SDK's >= 1.0 requirement;
+        // values below 1.0 fall back to the engine default (off) instead of crashing.
+        assertTrue(mapper.contains("repetitionPenalty = config.repetitionPenalty?.takeIf { it >= 1.0f }"))
+
+        // The remote OpenAI-compatible request DTO never gains the field: repetition
+        // penalty is a local-engine concept and remote APIs reject unknown params.
+        val openAiRequest = providerConfig.substringAfter("data class OpenAiChatRequest(")
+        assertFalse("OpenAI wire format must not carry repetition_penalty", openAiRequest.contains("repetition_penalty"))
     }
 
     private fun functionSection(source: String, functionName: String): String = source

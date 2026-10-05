@@ -122,6 +122,11 @@ data class ProviderConfig(
     val topP: Float? = null,
     val frequencyPenalty: Float? = null,
     val presencePenalty: Float? = null,
+    /**
+     * HuggingFace-style multiplicative repetition penalty (>= 1.0; 1.0 = off). Local engines
+     * only (llama.cpp / LiteRT-LM): remote OpenAI-compatible APIs do not accept it.
+     */
+    val repetitionPenalty: Float? = null,
     /** Stable cache partition key. Set only for the official OpenAI provider. */
     val promptCacheKey: String? = null,
     /** Resolves ordinary-generation prompt variables and rollout immediately before dispatch. */

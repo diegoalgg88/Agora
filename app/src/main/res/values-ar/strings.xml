@@ -349,6 +349,8 @@
     <string name="gen_frequency_penalty">عقوبة التكرار</string>
     <string name="gen_frequency_penalty_desc">معاقبة تكرار الرموز (-2.0 إلى 2.0)</string>
     <string name="gen_presence_penalty">عقوبة الحضور</string>
+    <string name="gen_repetition_penalty">عقاب التكرار</string>
+    <string name="gen_repetition_penalty_desc">يضرب أوزان (logits) الرموز الموجودة في السجل (بأسلوب HuggingFace‏؛ 1.0 = معطل، والقيم الأعلى تقلل التكرار). للنماذج المحلية فقط — تتجاهله الموفرات البعيدة.</string>
     <string name="gen_presence_penalty_desc">تشجيع تنوّع المواضيع (-2.0 إلى 2.0)</string>
     <string name="gen_default_value">افتراضي</string>
     <string name="gen_reset">إعادة تعيين</string>
@@ -824,6 +826,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">التنبؤ متعدد الرموز (MTP)</string>
     <string name="litertlm_mtp_desc">يسرّع التوليد على GPU. يتطلب حزمة برؤوس MTP (مثل Gemma 4)؛ تفشل الحزم الأخرى عند التحميل.</string>
+    <string name="litertlm_audio_capable">إدخال صوتي</string>
+    <string name="litertlm_audio_capable_desc">يحمل الحزمة أوزان مرمّز الصوت (مثل Gemma 3n الكاملة). يطلب backend الصوت من الـ SDK؛ لا تأثير بدون أوزان تدعم الصوت.</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">فقط للأجهزة المزودة بمسرّع عصبي مخصص (مثل Google Tensor). يتراجع إلى CPU إذا كان المسرّع غير متوفر.</string>
 

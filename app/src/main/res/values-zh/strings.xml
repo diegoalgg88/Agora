@@ -374,6 +374,8 @@
     <string name="gen_frequency_penalty">频率惩罚</string>
     <string name="gen_frequency_penalty_desc">惩罚 token 重复（-2.0 至 2.0）</string>
     <string name="gen_presence_penalty">存在惩罚</string>
+    <string name="gen_repetition_penalty">重复惩罚</string>
+    <string name="gen_repetition_penalty_desc">将历史中已出现 token 的 logit 相乘（HuggingFace 风格；1.0 = 关闭，数值越高重复越少）。仅适用于本地模型 — 远程提供商会忽略。</string>
     <string name="gen_presence_penalty_desc">鼓励话题多样性（-2.0 至 2.0）</string>
     <string name="gen_default_value">默认</string>
     <string name="gen_reset">重置</string>
@@ -969,6 +971,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">多 Token 预测（MTP）</string>
     <string name="litertlm_mtp_desc">加速 GPU 上的生成。需要带 MTP 头的模型包（如 Gemma 4）；其他包加载时会失败。</string>
+    <string name="litertlm_audio_capable">音频输入</string>
+    <string name="litertlm_audio_capable_desc">包内包含音频编码器权重（例如完整版 Gemma 3n）。请求 SDK 的音频后端；若无支持音频的权重则无效。</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">仅限配备专用神经加速器的设备（如 Google Tensor）。加速器不可用时回退到 CPU。</string>
     <string name="local_title">本地</string>

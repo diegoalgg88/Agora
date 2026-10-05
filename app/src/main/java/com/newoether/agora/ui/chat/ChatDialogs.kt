@@ -327,6 +327,7 @@ internal fun ChatAdvancedSettingsDialog(
     val defaultTopP by viewModel.settings.defaultTopP.collectAsState()
     val defaultFrequencyPenalty by viewModel.settings.defaultFrequencyPenalty.collectAsState()
     val defaultPresencePenalty by viewModel.settings.defaultPresencePenalty.collectAsState()
+    val defaultRepetitionPenalty by viewModel.settings.defaultRepetitionPenalty.collectAsState()
 
     val currentId = conversationSettingsOwnerId(isNewChatMode, currentConversationId)
     val overrides = if (isNewChatMode) {
@@ -340,7 +341,8 @@ internal fun ChatAdvancedSettingsDialog(
         maxTokens = defaultMaxTokens,
         topP = defaultTopP,
         frequencyPenalty = defaultFrequencyPenalty,
-        presencePenalty = defaultPresencePenalty
+        presencePenalty = defaultPresencePenalty,
+        repetitionPenalty = defaultRepetitionPenalty
     )
     AdvancedSettingsDialog(
         overrides = overrides,

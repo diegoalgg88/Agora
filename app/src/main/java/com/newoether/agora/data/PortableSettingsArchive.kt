@@ -250,6 +250,7 @@ internal object PortableSettingsArchive {
         putNullableFloat("defaultTopP", sm.defaultTopP.first())
         putNullableFloat("defaultFrequencyPenalty", sm.defaultFrequencyPenalty.first())
         putNullableFloat("defaultPresencePenalty", sm.defaultPresencePenalty.first())
+        putNullableFloat("defaultRepetitionPenalty", sm.defaultRepetitionPenalty.first())
         putNullableString("activeSystemPromptId", sm.activeSystemPromptId.first())
     }
 
@@ -676,6 +677,9 @@ internal object PortableSettingsArchive {
         }
         if (obj.containsKey("defaultPresencePenalty")) {
             sm.saveDefaultPresencePenalty(obj.float("defaultPresencePenalty"))
+        }
+        if (obj.containsKey("defaultRepetitionPenalty")) {
+            sm.saveDefaultRepetitionPenalty(obj.float("defaultRepetitionPenalty"))
         }
 
         val activePromptKey = when {

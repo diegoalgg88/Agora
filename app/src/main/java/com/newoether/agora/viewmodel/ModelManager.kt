@@ -61,6 +61,7 @@ class ModelManager(
         mmprojPath: String = "",
         // LiteRT-LM fields; null preserves the registered value (GGUF callers omit them).
         backend: String? = null, topK: Int? = null, visionCapable: Boolean? = null,
+        audioCapable: Boolean? = null,
         mtp: Boolean? = null,
     ) {
         scope.launch(Dispatchers.IO) {
@@ -75,6 +76,7 @@ class ModelManager(
                     backend = backend ?: it.backend,
                     topK = topK ?: it.topK,
                     visionCapable = visionCapable ?: it.visionCapable,
+                    audioCapable = audioCapable ?: it.audioCapable,
                     mtp = mtp ?: it.mtp,
                 )
                 else it

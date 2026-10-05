@@ -349,6 +349,8 @@
     <string name="gen_frequency_penalty">Pénalité de fréquence</string>
     <string name="gen_frequency_penalty_desc">Pénalise la répétition de tokens (-2.0 à 2.0)</string>
     <string name="gen_presence_penalty">Pénalité de présence</string>
+    <string name="gen_repetition_penalty">Pénalité de répétition</string>
+    <string name="gen_repetition_penalty_desc">Multiplie les logits des jetons déjà présents dans l’historique (style HuggingFace ; 1,0 = désactivée, des valeurs plus élevées réduisent les répétitions). Modèles locaux uniquement — les fournisseurs distants l’ignorent.</string>
     <string name="gen_presence_penalty_desc">Encourage la diversité des sujets (-2.0 à 2.0)</string>
     <string name="gen_default_value">Par défaut</string>
     <string name="gen_reset">Réinitialiser</string>
@@ -824,6 +826,8 @@
     <string name="litertlm_format_badge">LiteRT-LM</string>
     <string name="litertlm_mtp">Prédiction multi-jetons (MTP)</string>
     <string name="litertlm_mtp_desc">Accélère la génération sur GPU. Nécessite un bundle avec têtes MTP (ex. Gemma 4) ; les autres échouent au chargement.</string>
+    <string name="litertlm_audio_capable">Entrée audio</string>
+    <string name="litertlm_audio_capable_desc">Le bundle contient les poids de l’encodeur audio (p. ex. un Gemma 3n complet). Demande le backend audio du SDK ; aucun effet sans poids prenant en charge l’audio.</string>
     <string name="litertlm_backend_npu">NPU</string>
     <string name="litertlm_backend_npu_desc">Uniquement les appareils dotés d\'un accélérateur neuronal dédié (ex. Google Tensor). Repli sur CPU si l\'accélérateur est indisponible.</string>
 

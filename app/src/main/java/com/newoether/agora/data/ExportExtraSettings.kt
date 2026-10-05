@@ -43,6 +43,7 @@ object ExportExtraSettings {
         obj["defaultTopP"]?.jsonPrimitive?.float?.let { sm.saveDefaultTopP(it) }
         obj["defaultFrequencyPenalty"]?.jsonPrimitive?.float?.let { sm.saveDefaultFrequencyPenalty(it) }
         obj["defaultPresencePenalty"]?.jsonPrimitive?.float?.let { sm.saveDefaultPresencePenalty(it) }
+        obj["defaultRepetitionPenalty"]?.jsonPrimitive?.float?.let { sm.saveDefaultRepetitionPenalty(it) }
         obj["conversationSettings"]?.jsonObject?.forEach { (convId, settingsJson) ->
             if (convId !in allowedConversationIds) return@forEach
             val s = settingsJson.jsonObject
@@ -54,6 +55,7 @@ object ExportExtraSettings {
                 topP = s["topP"]?.jsonPrimitive?.float,
                 frequencyPenalty = s["frequencyPenalty"]?.jsonPrimitive?.float,
                 presencePenalty = s["presencePenalty"]?.jsonPrimitive?.float,
+                repetitionPenalty = s["repetitionPenalty"]?.jsonPrimitive?.float,
                 codeExecutionEnabled = s["codeExecutionEnabled"]?.jsonPrimitive?.boolean,
                 googleSearchEnabled = s["googleSearchEnabled"]?.jsonPrimitive?.boolean,
                 openAiWebSearchEnabled = s["openAiWebSearchEnabled"]?.jsonPrimitive?.boolean,

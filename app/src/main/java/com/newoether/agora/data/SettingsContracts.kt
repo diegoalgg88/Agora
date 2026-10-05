@@ -137,6 +137,7 @@ data class ConversationSettings(
     val topP: Float? = null,
     val frequencyPenalty: Float? = null,
     val presencePenalty: Float? = null,
+    val repetitionPenalty: Float? = null,
     val codeExecutionEnabled: Boolean? = null,
     val googleSearchEnabled: Boolean? = null,
     val openAiWebSearchEnabled: Boolean? = null,
@@ -151,7 +152,7 @@ data class ConversationSettings(
     val lowContextModeEnabled: Boolean? = null,
 ) {
     fun isAllNull() = contextWindow == null && temperature == null && maxTokens == null && topP == null
-        && frequencyPenalty == null && presencePenalty == null
+        && frequencyPenalty == null && presencePenalty == null && repetitionPenalty == null
         && codeExecutionEnabled == null && googleSearchEnabled == null
         && openAiWebSearchEnabled == null && thinkingEnabled == null
         && thinkingLevel == null && thinkingBudgetEnabled == null && thinkingBudgetTokens == null

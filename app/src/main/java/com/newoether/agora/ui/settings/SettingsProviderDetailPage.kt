@@ -665,6 +665,7 @@ fun SettingsProviderDetailPage(
         var editModelId by remember { mutableStateOf(model.modelId) }; var editAlias by remember { mutableStateOf(model.alias) }; var editMmprojPath by remember { mutableStateOf(model.mmprojPath) }
         var editNCtx by remember { mutableStateOf(model.nCtx.toString()) }; var editTemp by remember { mutableStateOf(model.temperature.toString()) }; var editTopP by remember { mutableStateOf(model.topP.toString()) }; var editMaxTokens by remember { mutableStateOf(model.maxTokens.toString()) }
         var editBackend by remember { mutableStateOf(model.backend) }; var editTopK by remember { mutableStateOf(model.topK.toString()) }; var editVision by remember { mutableStateOf(model.visionCapable) }
+        var editAudio by remember { mutableStateOf(model.audioCapable) }
         var editMtp by remember { mutableStateOf(model.mtp) }
         var editIdError by remember { mutableStateOf<String?>(null) }; var editFormError by remember { mutableStateOf<String?>(null) }
         val idRegex = remember { Regex("^[a-z0-9._-]+\$") }
@@ -715,6 +716,15 @@ fun SettingsProviderDetailPage(
                         Switch(checked = editVision, onCheckedChange = { editVision = it })
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(stringResource(R.string.litertlm_vision_capable), style = MaterialTheme.typography.bodyMedium)
+                    }
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Switch(checked = editAudio, onCheckedChange = { editAudio = it })
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Column {
+                            Text(stringResource(R.string.litertlm_audio_capable), style = MaterialTheme.typography.bodyMedium)
+                            Text(stringResource(R.string.litertlm_audio_capable_desc), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
                     Spacer(modifier = Modifier.height(8.dp))
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -774,6 +784,7 @@ fun SettingsProviderDetailPage(
                     backend = if (isEditLitertlm) editBackend else null,
                     topK = k,
                     visionCapable = if (isEditLitertlm) editVision else null,
+                    audioCapable = if (isEditLitertlm) editAudio else null,
                     mtp = if (isEditLitertlm) editMtp else null,
                 )
                 showEditModelDialog = null
