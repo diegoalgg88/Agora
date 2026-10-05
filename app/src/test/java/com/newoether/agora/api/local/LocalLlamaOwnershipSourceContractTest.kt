@@ -791,9 +791,12 @@ class LocalLlamaOwnershipSourceContractTest {
     }
 
     @Test
-    fun `mtp is a per-model opt-in isolated from the process-global experimental flags`() {
+    fun `mtp is a per-model opt-in unlocked engine-side through a scoped process-global`() {
         val config = mainSource("com/newoether/agora/data/LocalChatModelConfig.kt")
         val mapper = mainSource("com/newoether/agora/api/local/LiteRtRequestMapper.kt")
+        val engine = mainSource("com/newoether/agora/api/litert/LiteRtChatEngine.kt")
+        val runtime = mainSource("com/newoether/agora/api/LocalModelRuntime.kt")
+        val provider = mainSource("com/newoether/agora/api/local/LocalProvider.kt")
         val addDialog = mainSource("com/newoether/agora/ui/settings/AddLocalModelDialog.kt")
         val editPage = mainSource("com/newoether/agora/ui/settings/SettingsProviderDetailPage.kt")
         val manager = mainSource("com/newoether/agora/viewmodel/ModelManager.kt")
@@ -807,21 +810,43 @@ class LocalLlamaOwnershipSourceContractTest {
         assertEquals(false, decoded.single().mtp)
         assertTrue(config.contains("val mtp: Boolean = false"))
 
-        // MTP is UI-ready but engine-gated: the mapper must NOT call the SDK API yet —
-        // ConversationConfig gained per-conversation speculative decoding only after the
-        // pinned 0.17.1 release (upstream bc16765a, unreleased). The unlock one-liner is
-        // documented at the mapper's conversation-config construction site.
-        assertTrue(mapper.contains("MTP unlock (UI-ready): pass `enableSpeculativeDecoding = modelConfig.mtp`"))
+        // Engine-side unlock: the SDK's ExperimentalFlags.enableSpeculativeDecoding is a
+        // process global, but the pinned 0.17.1 reads it only at Engine construction. The
+        // engine sets the flag from the per-model opt-in inside load() and resets it in a
+        // finally, so no other construction (none exists — all engines load under the FIFO
+        // permit) can observe a stale value. The flag write must never appear outside load().
+        val loadSection = engine.substringAfter("fun load(): Boolean")
+        assertTrue(loadSection.contains("ExperimentalFlags.enableSpeculativeDecoding = mtp"))
+        assertTrue(
+            "the scoped flag write must be reset in a finally before load returns",
+            loadSection.substringBefore("private var resolvedInitialBackendName")
+                .contains("ExperimentalFlags.enableSpeculativeDecoding = null"),
+        )
+        val outsideLoad = engine.substringBefore("fun load(): Boolean")
+        assertFalse("flag writes belong only inside load()", outsideLoad.contains("ExperimentalFlags.enableSpeculativeDecoding ="))
+
+        // MTP is part of the resident identity: toggling it must reload the engine, and
+        // both provider admission sites (initial + CPU retry) carry the registered value.
+        assertTrue(runtime.contains("val mtp: Boolean = false,"))
+        assertTrue(runtime.contains("LiteRtChat(canonicalize(modelPath), backend, visionCapable, audioCapable, mtp)"))
+        assertTrue(runtime.contains("mtp = mtp,"))
+        assertTrue(provider.contains("mtp = modelConfig.mtp,"))
+
+        // The pinned SDK stable has no per-conversation speculative decoding, so the
+        // mapper keeps its comment pointer to the future one-line swap and never calls
+        // the SDK API from the request path.
+        assertTrue(mapper.contains("MTP is unlocked engine-side"))
         assertFalse("the pinned SDK stable has no per-conversation speculative decoding", mapper.contains("enableSpeculativeDecoding = modelConfig.mtp,\n"))
-        // The SDK's process-global experimental toggle is never referenced in Agora sources.
-        val litertFiles = listOf(
-            "api/litert/LiteRtChatEngine.kt",
+
+        // The mapper and conversation wrapper never touch the process-global toggle; only
+        // the engine's scoped window may.
+        listOf(
             "api/litert/LiteRtConversation.kt",
             "api/local/LiteRtRequestMapper.kt",
             "api/local/LocalProvider.kt",
-        ).map { mainSource("com/newoether/agora/$it") }
-        litertFiles.forEach { source ->
-            assertFalse("the SDK's process-global experimental toggle must stay out of Agora sources", source.contains("ExperimentalFlags"))
+        ).forEach { path ->
+            val source = mainSource("com/newoether/agora/$path")
+            assertFalse("$path must not touch the SDK process-global toggle", source.contains("ExperimentalFlags"))
         }
 
         // Both dialogs expose the toggle on the litertlm branch, and update preserves the

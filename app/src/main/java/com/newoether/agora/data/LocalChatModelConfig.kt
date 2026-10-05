@@ -37,9 +37,11 @@ data class LocalChatModelConfig(
     val visionCapable: Boolean = false,
     /**
      * LiteRT-LM only: opt-in Multi-Token Prediction (speculative decoding) for this model.
-     * The SDK lazily initializes the drafter on the first conversation that requests it —
-     * the SDK's process-global toggle is never touched. Off by default because
-     * bundles without MTP heads fail the lazy drafter initialization.
+     * Applied at engine construction — the engine scopes the SDK's process-global
+     * speculative-decoding flag to its own load window (the SDK reads it only at Engine
+     * construction, and every engine loads under the FIFO permit), so the opt-in stays
+     * per-model. Part of resident identity: toggling it reloads the engine. Off by default
+     * because bundles without MTP heads fail engine initialization when it is on.
      */
     val mtp: Boolean = false,
     /**

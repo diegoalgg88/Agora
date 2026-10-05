@@ -351,6 +351,7 @@ class LocalProvider(
             backend = backend,
             visionCapable = modelConfig.visionCapable,
             audioCapable = modelConfig.audioCapable,
+            mtp = modelConfig.mtp,
         ) { engine ->
             when (streamLiteRtConversation(engine, resolvedRequest, modelConfig, config)) {
                 LiteRtOutcome.Streamed -> Unit
@@ -385,6 +386,7 @@ class LocalProvider(
                 backend = LiteRtBackend.Cpu,
                 visionCapable = modelConfig.visionCapable,
                 audioCapable = modelConfig.audioCapable,
+                mtp = modelConfig.mtp,
             ) { cpuEngine ->
                 when (streamLiteRtConversation(cpuEngine, resolvedRequest, modelConfig, config)) {
                     LiteRtOutcome.Streamed -> Unit

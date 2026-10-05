@@ -3,6 +3,8 @@ package com.newoether.agora.api.litert
 import com.google.ai.edge.litertlm.Backend
 import com.google.ai.edge.litertlm.Engine
 import com.google.ai.edge.litertlm.EngineConfig
+import com.google.ai.edge.litertlm.ExperimentalApi
+import com.google.ai.edge.litertlm.ExperimentalFlags
 import com.newoether.agora.util.DebugLog
 import java.io.Closeable
 import java.io.File
@@ -47,6 +49,7 @@ internal class LiteRtChatEngine(
     private val cacheDir: String,
     private val visionCapable: Boolean,
     private val audioCapable: Boolean = false,
+    private val mtp: Boolean = false,
 ) : Closeable {
     companion object {
         private const val TAG = "LiteRtChatEngine"
@@ -64,30 +67,46 @@ internal class LiteRtChatEngine(
             DebugLog.e(TAG, "Model file not found")
             return false
         }
-        return try {
-            val resolvedBackend = resolveInitialSdkBackend()
-            val loaded = initializeEngine(resolvedBackend)
-            engine = loaded
-            activeBackendName = resolvedBackend.name
-            DebugLog.d(TAG, "Engine initialized, backend=${resolvedBackend.name}")
-            true
-        } catch (e: Exception) {
-            if (backend == LiteRtBackend.Auto && resolvedBackendWasGpu(resolvedInitialBackendName)) {
-                DebugLog.w(TAG, "Auto backend fell back to CPU after GPU init failure")
-                return try {
-                    val loaded = initializeEngine(Backend.CPU())
-                    engine = loaded
-                    activeBackendName = "CPU"
-                    true
-                } catch (cpuError: Exception) {
-                    DebugLog.e(TAG, "LiteRT-LM engine init failed on CPU fallback", cpuError)
-                    close()
-                    false
+        // MTP unlock, scoped: the SDK's ExperimentalFlags.enableSpeculativeDecoding is a
+        // process global, but the pinned SDK (0.17.1) reads it only inside Engine
+        // construction — and this process constructs LiteRT engines exclusively here,
+        // under the process-wide local-model FIFO permit, so no other engine creation can
+        // observe the value mid-window. Explicit false (not null) for non-MTP models: null
+        // means "model's default", and a bundle carrying drafter weights could default-enable
+        // MTP against the registered opt-out.
+        @OptIn(ExperimentalApi::class)
+        ExperimentalFlags.enableSpeculativeDecoding = mtp
+        try {
+            return try {
+                val resolvedBackend = resolveInitialSdkBackend()
+                val loaded = initializeEngine(resolvedBackend)
+                engine = loaded
+                activeBackendName = resolvedBackend.name
+                DebugLog.d(TAG, "Engine initialized, backend=${resolvedBackend.name}, mtp=$mtp")
+                true
+            } catch (e: Exception) {
+                if (backend == LiteRtBackend.Auto && resolvedBackendWasGpu(resolvedInitialBackendName)) {
+                    DebugLog.w(TAG, "Auto backend fell back to CPU after GPU init failure")
+                    return try {
+                        val loaded = initializeEngine(Backend.CPU())
+                        engine = loaded
+                        activeBackendName = "CPU"
+                        true
+                    } catch (cpuError: Exception) {
+                        DebugLog.e(TAG, "LiteRT-LM engine init failed on CPU fallback", cpuError)
+                        close()
+                        false
+                    }
                 }
+                DebugLog.e(TAG, "LiteRT-LM engine init failed", e)
+                close()
+                false
             }
-            DebugLog.e(TAG, "LiteRT-LM engine init failed", e)
-            close()
-            false
+        } finally {
+            // Never leave the process global set: any construction outside this scoped
+            // window (none today) must see the SDK default, not a stale model choice.
+            @OptIn(ExperimentalApi::class)
+            ExperimentalFlags.enableSpeculativeDecoding = null
         }
     }
 

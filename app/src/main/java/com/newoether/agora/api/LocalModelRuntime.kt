@@ -31,12 +31,15 @@ internal sealed interface LocalModelIdentity {
      * Embedded LiteRT-LM engine for .litertlm bundles. The requested backend is part of the
      * identity because it can only be applied when the engine is constructed: switching
      * backend means a full unload-before-load replacement, not resident substate mutation.
+     * `mtp` follows the same rule — the SDK reads its speculative-decoding toggle only at
+     * engine construction, so toggling MTP requires an engine reload.
      */
     data class LiteRtChat(
         override val canonicalPath: String,
         val backend: LiteRtBackend,
         val visionCapable: Boolean,
         val audioCapable: Boolean = false,
+        val mtp: Boolean = false,
     ) : LocalModelIdentity
 }
 
@@ -226,10 +229,11 @@ internal object LocalModelRuntime {
         backend: LiteRtBackend,
         visionCapable: Boolean,
         audioCapable: Boolean = false,
+        mtp: Boolean = false,
         block: suspend (LiteRtChatEngine) -> Unit,
     ): Boolean = tasks.run {
         val cacheDir = liteRtCacheDirectory ?: return@run false
-        val identity = LocalModelIdentity.LiteRtChat(canonicalize(modelPath), backend, visionCapable, audioCapable)
+        val identity = LocalModelIdentity.LiteRtChat(canonicalize(modelPath), backend, visionCapable, audioCapable, mtp)
         val current = resident
         val engine = if (current is Resident.LiteRt && current.identity == identity) {
             current.engine
@@ -241,6 +245,7 @@ internal object LocalModelRuntime {
                 cacheDir = cacheDir,
                 visionCapable = visionCapable,
                 audioCapable = audioCapable,
+                mtp = mtp,
             )
             if (!loaded.load()) {
                 loaded.close()

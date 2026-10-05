@@ -104,11 +104,12 @@ internal object LiteRtRequestMapper {
             samplerConfig = sampler,
             maxOutputToken = maxOutputToken,
             thinkingConfig = thinkingConfig,
-            // MTP unlock (UI-ready): pass `enableSpeculativeDecoding = modelConfig.mtp` here
-            // once the SDK stable that includes upstream bc16765a ships —
-            // ConversationConfig gained per-conversation speculative decoding after 0.17.1,
-            // with lazy drafter init and no process-global toggle. The per-model `mtp`
-            // field, UI toggles, and persistence are already wired end-to-end.
+            // MTP is unlocked engine-side: LiteRtChatEngine scopes the SDK's process-global
+            // speculative-decoding flag to each engine construction (the flag is read only at
+            // Engine.initialize, and this process constructs engines only under the FIFO
+            // permit). The SDK's per-conversation API (upstream bc16765a, post-0.17.1) stays
+            // unused; a future SDK bump can swap the engine-side scope for
+            // `enableSpeculativeDecoding = modelConfig.mtp` here.
         )
 
         return MappedRequest(

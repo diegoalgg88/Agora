@@ -311,14 +311,22 @@ behavior or memory.
 
 ### Deferred follow-ups (not in v1)
 
-- Speculative decoding / MTP: **UI-ready** (per-model `mtp` opt-in shipped: field, toggles,
-  persistence). The engine unlock — `ConversationConfig.enableSpeculativeDecoding`, upstream
-  `bc16765a` — awaits a stable SDK release past the pinned 0.17.1 (Google Maven's latest
-  published artifact is 0.17.1 itself as of 2026-10-04; verified against the tag, which does
-  not contain the per-conversation flag); a one-liner at the mapper's config site (see the
-  record contract above). Bumping to the next stable when it publishes is a dedicated
-  adaptation pass: the SDK's JNI surface also changed on main (nativeLibraryDir plumbed per
-  backend, activation data type), so plan for more than the one-line unlock.
+- Speculative decoding / MTP: **shipped** (per-model `mtp` opt-in: field, toggles,
+  persistence, engine-side unlock). The pinned SDK (0.17.1) exposes speculative decoding
+  only through the process-global `ExperimentalFlags.enableSpeculativeDecoding`, read
+  exclusively at `Engine` construction — `LiteRtChatEngine.load()` sets the flag from the
+  registered opt-in and resets it in a `finally`, which makes the global effectively
+  per-engine because this process constructs LiteRT engines only under the FIFO permit.
+  `mtp` is part of the resident identity (toggling reloads the engine) and explicit
+  `false` is passed for non-MTP models so drafter-bearing bundles cannot default-enable
+  it against the registered opt-out. On-device validation note (upstream #2227): MTP is
+  a measured speedup on Adreno GPUs (the S22 Ultra family) and a measured regression on
+  PowerVR (Tensor G6) — the opt-in stays per-model rather than global for exactly this
+  reason. When a stable SDK past 0.17.1 ships (Google Maven's latest published artifact
+  is 0.17.1 as of 2026-10-04; upstream `bc16765a` adds `ConversationConfig
+  .enableSpeculativeDecoding`), the adaptation pass can swap the engine-side scope for
+  the per-conversation parameter — the swap site is documented at the mapper's
+  conversation-config construction.
 - NPU backend: **shipped as plumbing** (`backend` `auto|cpu|gpu|npu`; the SDK resolves NPU
   delegate libraries from the app's native library directory at engine construction).
   Verified by compilation and contract tests only — no NPU device was available for the
@@ -335,7 +343,11 @@ behavior or memory.
   mapping remains deliberately absent: Agora messages do not carry audio attachments yet,
   so there is nothing to map — the flag prepares the engine for the day chat audio
   attachments exist. Enabling it on a bundle without audio weights is a no-op at engine
-  construction, not an error.
+  construction, not an error. Verification path (upstream research 2026-10-04): the
+  audio-capable test bundle is `google/gemma-3n-E2B-it-litert-lm` on HuggingFace (full
+  multimodal: text, image, video, audio input) — import it manually, enable the audio
+  toggle, and confirm engine init with the audio backend on the S22 Ultra; deeper
+  content-mapping verification waits for chat audio attachments.
 - Repetition penalty (multiplicative, HuggingFace-style): **shipped for `.litertlm`** —
   the setting flows through the same chain as the other penalties (DataStore default →
   per-conversation override → ProviderConfig → `RepetitionPenaltyConfig.repetitionPenalty`,
