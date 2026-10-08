@@ -8,10 +8,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Cached
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.AutoAwesome
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.ManageSearch
+import androidx.compose.material.icons.automirrored.filled.ManageSearch
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.MoreVert
@@ -44,7 +44,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.io.File
 
-private data class SearchMethodOption(val key: String, @androidx.annotation.StringRes val labelRes: Int)
+private data class SearchMethodOption(val key: String, @param:androidx.annotation.StringRes val labelRes: Int)
 
 private val searchMethods = listOf(
     SearchMethodOption("keyword", R.string.search_method_keyword),
@@ -160,7 +160,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             SettingsItem(
                                 headlineContent = { Text(stringResource(R.string.memory_access_past)) },
                                 supportingContent = { Text(stringResource(R.string.memory_access_past_desc)) },
-                                leadingContent = { Icon(Icons.Default.Chat, null, tint = MaterialTheme.colorScheme.primary) },
+                                leadingContent = { Icon(Icons.AutoMirrored.Filled.Chat, null, tint = MaterialTheme.colorScheme.primary) },
                                 trailingContent = {
                                     Switch(checked = accessPastConversations, onCheckedChange = { viewModel.settings.setAccessPastConversations(it) })
                                 },
@@ -260,7 +260,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         SettingsItem(
                             headlineContent = { Text(stringResource(R.string.manual_search_method)) },
                             supportingContent = { Text(stringResource(R.string.manual_search_method_desc)) },
-                            leadingContent = { Icon(Icons.Default.ManageSearch, null, tint = MaterialTheme.colorScheme.primary) },
+                            leadingContent = { Icon(Icons.AutoMirrored.Filled.ManageSearch, null, tint = MaterialTheme.colorScheme.primary) },
                             trailingContent = {
                                 Box {
                                     Text(
@@ -310,7 +310,7 @@ fun SettingsSearchPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         add {
                             SettingsItem(
                                 headlineContent = { Text(stringResource(R.string.no_embedding_models), color = MaterialTheme.colorScheme.onSurfaceVariant) },
-                                leadingContent = { Icon(Icons.Default.Chat, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)) },
+                                leadingContent = { Icon(Icons.AutoMirrored.Filled.Chat, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)) },
                                 modifier = Modifier.heightIn(min = 64.dp)
                             )
                         }

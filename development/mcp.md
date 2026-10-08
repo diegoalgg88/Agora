@@ -1,6 +1,6 @@
 # MCP Client Contract
 
-Status: authoritative, 2026-09-20.
+Status: authoritative, 2026-10-06.
 
 This contract owns Agora's Model Context Protocol client: server configuration and persistence
 shape, transports, protocol negotiation, the process-wide registry supervisor, tool discovery and
@@ -123,3 +123,100 @@ local tools as an MCP server.
   add provider-specific rendering paths outside `message-generation.md`'s tool-detail contract.
 - A behavior change in this contract updates `docs/en/mcp.md` (and maintained translations)
   together with the code, per `documentation-maintenance.md`.
+
+## 9. MCP Apps (SEP-1865, spec revision 2026-01-26)
+
+An MCP App is a *view of a completed tool result*. It adds no generation, queue, Stop, settlement,
+context or branch behavior: the tool call still runs through `McpToolProvider` →
+`GenerationToolExecutor` → `GenerationToolOverlay.complete`, and the view only reads what that
+path already persisted.
+
+### 9.1 Negotiation and discovery
+
+- `initialize` advertises `capabilities.extensions["io.modelcontextprotocol/ui"].mimeTypes =
+  ["text/html;profile=mcp-app"]` (`mcpClientCapabilities`). A server that ignores it stays a plain
+  tool server.
+- `tools/list` is parsed by `parseMcpToolUiMeta`: `_meta.ui.resourceUri` wins over the deprecated flat
+  `_meta["ui/resourceUri"]`; only `ui://` is accepted; `visibility` keeps only `model`/`app` and falls
+  back to both when empty or absent.
+- Visibility is enforced in the registry, not in the UI: tools without the `model` audience are
+  excluded from `McpRegistry.modelTools()` / `modelDescriptor()`, so they are never offered to a
+  Provider, never authorized for a tool round, and `execute` refuses them. A view reaches a tool only
+  through `McpRegistry.callToolForApp(serverId, remoteName, args)`, which requires the same server,
+  CONNECTED status, an enabled tool and the `app` audience.
+- `McpRegistry.readUiResource` (`resources/read`) accepts only `ui://` and validates through
+  `parseMcpUiResourceContents`: entry URI equal to the request, MIME `text/html;profile=mcp-app`
+  (whitespace/case-insensitive), `text` or base64 `blob`, non-blank, at most 2 MiB. Any failure is a
+  thrown error and the plain result remains the only presentation. Documents are cached in a bounded
+  access-ordered map (8 entries) guarded by the registry lock; the cache is cleared when the server's
+  runtime is replaced, closed, or its tool list is refreshed. No network call runs under that lock.
+
+### 9.2 Durable reference
+
+- A successful call of a tool that declares `resourceUri` returns `ToolExecutionResult.uiResource`
+  (`McpUiReference(serverId, resourceUri)`); error results never carry one.
+- `GenerationToolOverlay.complete` copies it to `MessageSegment.toolUiServerId` /
+  `toolUiResourceUri` and `ToolCallData.uiServerId` / `uiResourceUri`;
+  `GenerationToolRoundBuilder` preserves it when a round is rebuilt. The fields live in the existing
+  segment JSON (no Room migration; old rows decode with nulls).
+- The pointer is UI-only. Provider projection (`MessagePayloadBuilder`, `ApiPathAssembler`,
+  `ProviderMessageProjector`) must never read it, and the HTML is never persisted.
+- The `tool-input` / `tool-result` sent to a view are rebuilt from persisted segment fields
+  (`toolArgs`, `toolResultText ?: toolResult`, `toolStructuredResult`). Tool images are not forwarded
+  in v1.
+
+### 9.3 Rendering and isolation
+
+- Rendering is user-initiated and demand-driven: `McpAppEntry` (in the MCP branch of
+  `ToolDetailContent`) shows an *Open interactive view* control only for a SUCCEEDED segment that
+  carries the pointer. No resource is read and no WebView exists until the user opens it; closing it or
+  leaving the composition destroys the WebView.
+- A view is rendered only when WebView supports `WEB_MESSAGE_LISTENER` and `DOCUMENT_START_SCRIPT`
+  (`McpAppWebSupport`). There is deliberately no weaker fallback bridge.
+- `McpAppWebSession` owns one WebView per document: the page is served by `shouldInterceptRequest` on a
+  dedicated synthetic origin (`McpAppSandbox.origin`, SHA-256 of server and URI) with real
+  `Content-Security-Policy` and `Permissions-Policy` response headers; every other request is blocked
+  unless `McpAppSandbox.isRequestAllowed` finds the origin declared by the server (`data:` is allowed
+  because the CSP confines it to image/font/media). There is no `addJavascriptInterface`; messages use an
+  origin-restricted `WebMessageListener` plus a document-start shim that stands in for
+  `window.parent`. Navigation, popups, JS dialogs, file/content access, geolocation and every device
+  permission are refused; DOM storage is off.
+- `McpAppSandbox.buildCsp` follows the spec's construction. Declared domains are validated as bare
+  `https`/`wss` origins (optional `*.` prefix and port), deduplicated and capped at 16 per directive
+  before they reach a header, so a server cannot inject a directive or widen the policy.
+  `connectDomains` only reach `connect-src`; `resourceDomains` reach script/style/img/font/media.
+  Permissions are never granted in v1.
+
+### 9.4 Bridge router (`McpAppBridgeRouter`)
+
+- Pure JSON-RPC 2.0 router, no Android/Room/Provider/UI dependency; it maps one raw view message to
+  zero or more raw host messages and is the only place that decides what a view may do. Messages over
+  1 MiB, malformed JSON, responses and `id: null` requests are dropped.
+- Handshake order is enforced: `ui/initialize` → `ui/notifications/initialized`; the host sends nothing
+  before `initialized`, then `tool-input` precedes `tool-result`. Before the handshake completes
+  every request except `ping`/`ui/initialize` gets `-32002`.
+- Supported: `tools/call` (cap of 4 in flight, `-32602` on invalid params, thrown port failures become a
+  bounded `-32000`; tool errors are `isError` results), `ui/open-link` (`https` only, no credentials,
+  at most 2048 chars, always user-confirmed), `ui/request-display-mode` (always `inline`), `ping`,
+  `ui/notifications/size-changed` (height clamped to 0..100000 CSS px, then to 120..800 dp by the host),
+  `notifications/message` (bounded debug log).
+- Refused in v1: `ui/message` and `ui/update-model-context` (`-32000`; a view can never write into the
+  conversation or model context), `resources/read` and every unknown method (`-32601`).
+  `serverResources` is therefore not advertised.
+- Host-initiated `ui/resource-teardown` is sent best-effort on close; the WebView is destroyed
+  without waiting for the reply.
+
+### 9.5 Out of scope for v1
+
+Fullscreen/picture-in-picture, downloads, sampling, model-context updates, `ui/message`, partial tool
+input, the `domain` hint, view-initiated `resources/read`, device permissions and forwarding tool
+images to the view. Adding any of them changes this section and `McpAppBridgeRouter` only; it must not
+add a path from a view into the generation pipeline.
+
+### 9.6 Tests
+
+Pure-unit coverage lives in `McpUiMetaTest` (metadata, visibility, resource validation),
+`McpAppSandboxTest` (origin, CSP, request allow-list), `McpAppBridgeRouterTest` (handshake, limits,
+refusals, URL policy), `GenerationToolUiReferenceTest` and `MessageSegmentUiReferenceTest` (durable
+pointer). WebView isolation and the `window.parent` shim require device validation and are not claimed
+by compilation alone.

@@ -124,6 +124,8 @@ internal class GenerationToolRoundBuilder(
         toolStructuredResult = structuredResult,
         toolImages = resultImages,
         toolTranscription = transcription,
+        toolUiServerId = uiServerId,
+        toolUiResourceUri = uiResourceUri,
         responseOutputItems = if (includeResponseState) responseOutputItems else emptyList(),
         responseOutputItemProvider = if (includeResponseState) responseOutputItemProvider else null,
     )

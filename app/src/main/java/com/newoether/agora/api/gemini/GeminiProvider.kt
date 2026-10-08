@@ -451,18 +451,19 @@ class GeminiProvider(
                     }
                     entries.add(ApiRequestContent(role = "model", parts = parts))
                 } else if (msg.toolCall != null) {
+                    val tc = msg.toolCall
                     val args = try {
-                        json.parseToJsonElement(msg.toolCall!!.arguments) as? JsonObject
+                        json.parseToJsonElement(tc.arguments) as? JsonObject
                     } catch (_: Exception) { JsonObject(emptyMap()) }
                     entries.add(ApiRequestContent(
                         role = "model",
                         parts = listOf(ApiRequestPart(
                             functionCall = GeminiFunctionCall(
-                                id = msg.toolCall!!.toolCallId,
-                                name = msg.toolCall!!.toolName,
+                                id = tc.toolCallId,
+                                name = tc.toolName,
                                 args = args ?: JsonObject(emptyMap())
                             ),
-                            thoughtSignature = msg.toolCall!!.signature
+                            thoughtSignature = tc.signature
                         ))
                     ))
                 }
@@ -483,12 +484,13 @@ class GeminiProvider(
                     }
                     entries.add(ApiRequestContent(role = "user", parts = parts))
                 } else if (msg.toolCall != null) {
-                    val response = buildGeminiFunctionResponse(msg.toolCall!!.result)
+                    val tc = msg.toolCall
+                    val response = buildGeminiFunctionResponse(tc.result)
                     entries.add(ApiRequestContent(
                         role = "user",
                         parts = listOf(ApiRequestPart(functionResponse = GeminiFunctionResponse(
-                            id = msg.toolCall!!.toolCallId,
-                            name = msg.toolCall!!.toolName,
+                            id = tc.toolCallId,
+                            name = tc.toolName,
                             response = response
                         )))
                     ))

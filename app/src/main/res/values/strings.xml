@@ -1367,4 +1367,9 @@
     <string name="email_account_remove">Remove</string>
     <string name="email_account_remove_confirm_title">Remove email account?</string>
     <string name="email_account_remove_confirm_body">%1$s will be disconnected. Stored messages, pending items, and the saved password are deleted from this device.</string>
+    <string name="mcp_app_open_view">Open interactive view</string>
+    <string name="mcp_app_close_view">Close interactive view</string>
+    <string name="mcp_app_loading">Loading interactive view…</string>
+    <string name="mcp_app_unavailable">The interactive view could not be loaded.</string>
+    <string name="mcp_app_open_link_title">Open this link?</string>
 </resources>

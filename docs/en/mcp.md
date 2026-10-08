@@ -32,6 +32,14 @@ When a server announces that its tool catalog changed, Agora re-reads the tool l
 
 Enabled MCP tools join Agora's normal tool-calling pipeline. The model sees each tool's name, description, and input schema, and a tool result is stored with the conversation like other tool calls.
 
+## Interactive Views (MCP Apps)
+
+Some MCP servers attach an interactive view to a tool, such as a dashboard or a form. When such a tool succeeds, open its details in the conversation and tap **Open interactive view**. The view is loaded only when you tap, and it closes when you tap **Close interactive view** or leave the screen. The plain tool result stays available below it.
+
+A view runs in an isolated browser sandbox: it can only reach the network addresses its server declared, cannot use the camera, microphone, location, or files, and cannot navigate away. It can call that same server's tools, and it can ask to open a link, which always requires your confirmation. It cannot write into your conversation or the model's context. Interactive views need a recent Android System WebView; if the device does not support them, only the plain result is shown.
+
+Tools that a server marks as app-only are never offered to the model.
+
 ## Edit or Remove a Server
 
 Tap a server to edit its transport, name, URL, custom headers, connection status, and enabled tools. Use the server's overflow menu to reconnect or delete it.

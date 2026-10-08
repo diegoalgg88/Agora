@@ -56,7 +56,7 @@ fun SettingsLanguagePage(viewModel: ChatViewModel, onBack: () -> Unit) {
                         activity?.let {
                             it.finish()
                             it.startActivity(it.intent)
-                            it.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
+                            @Suppress("DEPRECATION") it.overridePendingTransition(android.R.anim.fade_in, android.R.anim.fade_out)
                         }
                     }
                 }

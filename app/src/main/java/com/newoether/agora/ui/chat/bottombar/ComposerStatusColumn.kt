@@ -60,7 +60,7 @@ internal fun ComposerStatusColumn(
     val statusItems = remember(queuedSends) {
         queuedSends
             .sortedBy(QueuedSend::createdAt)
-            .map { ComposerStatusItem.Queue(it) }
+            .map<QueuedSend, ComposerStatusItem> { ComposerStatusItem.Queue(it) }
     }
 
     AnimatedContent(

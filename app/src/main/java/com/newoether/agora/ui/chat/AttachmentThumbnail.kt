@@ -193,7 +193,7 @@ fun AttachmentThumbnailItem(
                                 )
                             }
                             if (content != null) {
-                                handlers.onFileClick?.invoke(fileName ?: "", content)
+                                handlers.onFileClick.invoke(fileName ?: "", content)
                             }
                         }
                     }

@@ -1,6 +1,7 @@
 package com.newoether.agora.tool
 
 import com.newoether.agora.api.ToolDefinition
+import com.newoether.agora.mcp.McpUiReference
 import com.newoether.agora.model.ToolImageAttachment
 import com.newoether.agora.viewmodel.GenerationContext
 import kotlinx.coroutines.flow.Flow
@@ -43,6 +44,11 @@ data class ToolExecutionResult(
      * description to [text]. Output images (image generation) never set this.
      */
     val transcribeImages: Boolean = false,
+    /**
+     * MCP App document that can render this result. Set only for successful calls of a tool that
+     * declares one; it is persisted with the segment and never projected to the Provider.
+     */
+    val uiResource: McpUiReference? = null,
 )
 
 /** Provider-owned presentation metadata resolved without exposing protocol routing IDs to the UI. */

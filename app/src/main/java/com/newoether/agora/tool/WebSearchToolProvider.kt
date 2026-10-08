@@ -382,7 +382,7 @@ class WebSearchToolProvider : ToolProvider {
                     url = resolved.toString()
                     return@repeat
                 }
-                return if (response.isSuccessful) response.body?.string() else null
+                return if (response.isSuccessful) response.body.string() else null
             }
         }
         return null

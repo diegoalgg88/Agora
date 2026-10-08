@@ -1522,4 +1522,9 @@
     <string name="email_account_remove">移除</string>
     <string name="email_account_remove_confirm_title">移除邮件账户？</string>
     <string name="email_account_remove_confirm_body">%1$s 将被断开连接。已存储的邮件、待处理项目和密码将从本设备删除。</string>
+    <string name="mcp_app_open_view">打开交互视图</string>
+    <string name="mcp_app_close_view">关闭交互视图</string>
+    <string name="mcp_app_loading">正在加载交互视图…</string>
+    <string name="mcp_app_unavailable">无法加载交互视图。</string>
+    <string name="mcp_app_open_link_title">要打开此链接吗？</string>
 </resources>

@@ -10,9 +10,9 @@ class McpToolProvider(
     private val registry: McpRegistry,
 ) : ToolProvider {
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> =
-        registry.enabledTools().map { it.asToolDefinition() }
+        registry.modelTools().map { it.asToolDefinition() }
 
-    override fun handles(name: String): Boolean = registry.descriptor(name) != null
+    override fun handles(name: String): Boolean = registry.modelDescriptor(name) != null
 
     override fun presentationMetadata(name: String): ToolPresentationMetadata? =
         registry.descriptor(name)?.let { descriptor ->

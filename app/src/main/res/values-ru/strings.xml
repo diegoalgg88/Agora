@@ -1363,4 +1363,9 @@
     <string name="email_account_remove">Удалить</string>
     <string name="email_account_remove_confirm_title">Удалить почтовый аккаунт?</string>
     <string name="email_account_remove_confirm_body">%1$s будет отключён. Сохранённые письма, ожидающие элементы и пароль будут удалены с этого устройства.</string>
+    <string name="mcp_app_open_view">Открыть интерактивное представление</string>
+    <string name="mcp_app_close_view">Закрыть интерактивное представление</string>
+    <string name="mcp_app_loading">Загрузка интерактивного представления…</string>
+    <string name="mcp_app_unavailable">Не удалось загрузить интерактивное представление.</string>
+    <string name="mcp_app_open_link_title">Открыть эту ссылку?</string>
 </resources>

@@ -77,7 +77,7 @@ internal fun AttachmentAddMenu(
                     lastAddDismissTime = System.currentTimeMillis()
                 }
             },
-            matchTextFieldWidth = false,
+            matchAnchorWidth = false,
             shape = RoundedCornerShape(16.dp),
         ) {
             AttachmentMenuItem(Icons.Default.PhotoCamera, R.string.camera) { select(onCamera) }

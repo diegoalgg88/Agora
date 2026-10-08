@@ -1363,4 +1363,9 @@
     <string name="email_account_remove">Entfernen</string>
     <string name="email_account_remove_confirm_title">E-Mail-Konto entfernen?</string>
     <string name="email_account_remove_confirm_body">%1$s wird getrennt. Gespeicherte Nachrichten, ausstehende Elemente und das Passwort werden von diesem Gerät gelöscht.</string>
+    <string name="mcp_app_open_view">Interaktive Ansicht öffnen</string>
+    <string name="mcp_app_close_view">Interaktive Ansicht schließen</string>
+    <string name="mcp_app_loading">Interaktive Ansicht wird geladen …</string>
+    <string name="mcp_app_unavailable">Die interaktive Ansicht konnte nicht geladen werden.</string>
+    <string name="mcp_app_open_link_title">Diesen Link öffnen?</string>
 </resources>

@@ -1,6 +1,8 @@
 package com.newoether.agora.mcp
 
 import android.content.Context
+import android.content.pm.PackageManager
+import android.os.Build
 import com.newoether.agora.data.McpServerConfig
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.tool.ToolExecutionResult
@@ -28,7 +30,24 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.io.IOException
 import kotlin.math.min
+
+/** The installed app's version name for MCP `clientInfo` / MCP Apps `hostInfo`; never throws. */
+internal fun appVersionName(context: Context): String {
+    val info = runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.packageManager.getPackageInfo(
+                context.packageName,
+                PackageManager.PackageInfoFlags.of(0),
+            )
+        } else {
+            @Suppress("DEPRECATION")
+            context.packageManager.getPackageInfo(context.packageName, 0)
+        }
+    }.getOrNull()
+    return info?.versionName?.takeIf(String::isNotBlank) ?: "unknown"
+}
 
 internal fun mcpServerIdsForPageEntryRefresh(
     configs: List<McpServerConfig>,
@@ -95,6 +114,7 @@ class McpRegistry(
         private const val INITIAL_RETRY_MS = 5_000L
         private const val MAX_RETRY_MS = 5L * 60L * 1_000L
         internal const val MAX_CONCURRENT_CONNECTIONS = 2
+        internal const val MAX_UI_RESOURCE_CACHE_ENTRIES = 8
     }
 
     private data class Runtime(
@@ -120,8 +140,15 @@ class McpRegistry(
 
     private val json = Json { ignoreUnknownKeys = true }
     private val imageStore = ToolImageStore(context)
+    private val clientVersion = appVersionName(context)
     private val lock = Any()
     private val runtimes = mutableMapOf<String, Runtime>()
+
+    /** Access-ordered, bounded; guarded by [lock]. Entries live only as long as their runtime. */
+    private val uiResourceCache = object : LinkedHashMap<String, McpUiResource>(16, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, McpUiResource>): Boolean =
+            size > MAX_UI_RESOURCE_CACHE_ENTRIES
+    }
     private val pendingBuilds = mutableMapOf<String, McpRuntimeBuildTicket>()
     private val connectionPermits = Semaphore(permits = MAX_CONCURRENT_CONNECTIONS)
     private var nextBuildGeneration = 0L
@@ -148,6 +175,55 @@ class McpRegistry(
             .flatMap { it.tools.asSequence() }
             .firstOrNull { it.enabled && it.publicName == publicName }
 
+    /** Tools offered to the model. MCP Apps `visibility: ["app"]` tools are excluded. */
+    fun modelTools(): List<McpToolDescriptor> =
+        enabledTools().filter(McpToolDescriptor::isModelVisible)
+
+    fun modelDescriptor(publicName: String): McpToolDescriptor? =
+        descriptor(publicName)?.takeIf(McpToolDescriptor::isModelVisible)
+
+    /**
+     * Reads an MCP App document from a currently installed runtime. Throws on a missing runtime,
+     * transport failure, or an invalid resource; callers degrade to the plain tool result.
+     */
+    suspend fun readUiResource(serverId: String, uri: String): McpUiResource {
+        val key = "$serverId|$uri"
+        synchronized(lock) { uiResourceCache[key] }?.let { return it }
+        val runtime = synchronized(lock) { runtimes[serverId] }
+            ?: throw IOException("MCP server is not enabled")
+        val resource = runtime.client.readUiResource(uri)
+        synchronized(lock) {
+            if (runtimes[serverId] === runtime) uiResourceCache[key] = resource
+        }
+        return resource
+    }
+
+    /**
+     * Executes a tool on behalf of an MCP App view. The tool must belong to [serverId], be enabled
+     * on a connected server, and declare the `app` audience; model-only tools are refused.
+     */
+    suspend fun callToolForApp(
+        serverId: String,
+        remoteName: String,
+        arguments: JsonObject,
+    ): ToolExecutionResult {
+        val snapshot = snapshots.value[serverId]
+        val allowed = snapshot?.status == McpConnectionStatus.CONNECTED &&
+            snapshot.tools.any { it.enabled && it.isAppVisible && it.remote.name == remoteName }
+        if (!allowed) {
+            return ToolExecutionResult("Unknown or unavailable MCP tool: $remoteName", isError = true)
+        }
+        val runtime = synchronized(lock) { runtimes[serverId] }
+            ?: return ToolExecutionResult("MCP server is not enabled", isError = true)
+        return runCall(runtime, remoteName, arguments)
+    }
+
+    private fun clearUiResourceCache(serverId: String) {
+        synchronized(lock) {
+            uiResourceCache.keys.removeAll { it.startsWith("$serverId|") }
+        }
+    }
+
     fun refresh(serverId: String) {
         scope.launch(workDispatcher) {
             val current = currentConfig(serverId) ?: return@launch
@@ -172,7 +248,7 @@ class McpRegistry(
     }
 
     suspend fun execute(publicName: String, arguments: String): ToolExecutionResult {
-        val descriptor = descriptor(publicName)
+        val descriptor = modelDescriptor(publicName)
             ?: return ToolExecutionResult("Unknown or disabled MCP tool: $publicName", isError = true)
         val runtime = synchronized(lock) { runtimes[descriptor.serverId] }
             ?: return ToolExecutionResult(
@@ -186,8 +262,22 @@ class McpRegistry(
                 isError = true,
             )
 
+        return runCall(
+            runtime = runtime,
+            remoteName = descriptor.remote.name,
+            args = args,
+            uiResource = descriptor.uiResourceUri?.let { McpUiReference(descriptor.serverId, it) },
+        )
+    }
+
+    private suspend fun runCall(
+        runtime: Runtime,
+        remoteName: String,
+        args: JsonObject,
+        uiResource: McpUiReference? = null,
+    ): ToolExecutionResult {
         return try {
-            val payload = runtime.client.callTool(descriptor.remote.name, args)
+            val payload = runtime.client.callTool(remoteName, args)
             val attachments = withContext(Dispatchers.IO) {
                 payload.images.map { image ->
                     imageStore.persistBase64(
@@ -236,6 +326,7 @@ class McpRegistry(
                 structuredContent = structured,
                 displayText = displayText,
                 isError = payload.isError,
+                uiResource = uiResource.takeUnless { payload.isError },
             )
         } catch (e: CancellationException) {
             throw e
@@ -243,7 +334,7 @@ class McpRegistry(
             markError(runtime, e)
             scheduleRetry(runtime)
             ToolExecutionResult(
-                text = "MCP tool '${descriptor.remote.name}' failed: ${userMessage(e)}",
+                text = "MCP tool '$remoteName' failed: ${userMessage(e)}",
                 isError = true,
             )
         }
@@ -275,6 +366,7 @@ class McpRegistry(
             }
         }
         runtimesToClose.forEach(Runtime::close)
+        runtimesToClose.forEach { clearUiResourceCache(it.config.id) }
         configs.filter { it.enabled && it.url.isNotBlank() }.forEach { config ->
             rebuildRuntime(config, McpRuntimeRefreshReason.RECONCILE)
         }
@@ -312,6 +404,7 @@ class McpRegistry(
         }
 
         build.previousRuntime?.close()
+        clearUiResourceCache(config.id)
         putBuildSnapshotIfCurrent(
             ticket = build.ticket,
             snapshot = McpServerSnapshot(
@@ -328,6 +421,7 @@ class McpRegistry(
                     endpoint = normalizeEndpoint(config.url),
                     customHeaders = config.headers,
                     transportType = config.transport,
+                    clientVersion = clientVersion,
                 ),
             )
         } catch (e: IllegalArgumentException) {
@@ -401,6 +495,7 @@ class McpRegistry(
         }
             .distinctBy(McpRemoteTool::name)
             .sortedBy(McpRemoteTool::name)
+        clearUiResourceCache(runtime.config.id)
         val descriptors = remoteTools.map { remote ->
             McpToolDescriptor(
                 publicName = publicMcpToolName(runtime.config.id, remote.name),

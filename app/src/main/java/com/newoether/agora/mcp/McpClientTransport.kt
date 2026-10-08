@@ -246,7 +246,7 @@ private class StreamableHttpMcpTransport(
                     ?.takeIf(String::isNotBlank)
                     ?.let { sessionId = it }
                 if (!expectResponse || response.code == 202) return@use null
-                val body = response.body ?: throw IOException("MCP response body is empty")
+                val body = response.body
                 if (response.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
                     parseFiniteSseResponse(body.source(), json, ::notifyToolsListChanged)
                 } else {
@@ -484,8 +484,7 @@ private class LegacySseMcpTransport(
                 if (!response.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
                     throw IOException("MCP SSE endpoint did not return text/event-stream")
                 }
-                val source = response.body?.source()
-                    ?: throw IOException("MCP SSE response body is empty")
+                val source = response.body.source()
                 val parser = McpSseEventParser()
                 while (!source.exhausted()) {
                     parser.accept(source.readUtf8Line() ?: break)?.let { event ->
@@ -560,7 +559,7 @@ private class LegacySseMcpTransport(
                 }
                 if (!response.isSuccessful) throw mcpHttpException(response)
                 if (response.code == 202) return@use null
-                val body = response.body ?: return@use null
+                val body = response.body
                 val contentType = response.header("Content-Type").orEmpty()
                 when {
                     contentType.contains("text/event-stream", true) ->
@@ -724,7 +723,7 @@ private fun parseFiniteSseResponse(
 }
 
 private fun mcpHttpException(response: Response): IOException {
-    val body = response.body?.string().orEmpty().take(2_048)
+    val body = response.body.string().take(2_048)
     return IOException(
         "MCP HTTP ${response.code}${body.takeIf(String::isNotBlank)?.let { ": $it" }.orEmpty()}",
     )

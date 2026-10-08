@@ -161,8 +161,10 @@ class SkillRegistry(private val json: Json = Json { ignoreUnknownKeys = true }) 
             return if (exclude.isEmpty()) selected else selected.filter { it.substringAfterLast('/') !in exclude }
         }
 
+        private val manifestJson = Json { ignoreUnknownKeys = true }
+
         fun parseMarketplaceManifest(jsonText: String): List<String> {
-            val root = runCatching { Json { ignoreUnknownKeys = true }.parseToJsonElement(jsonText).jsonObject }.getOrNull() ?: return emptyList()
+            val root = runCatching { manifestJson.parseToJsonElement(jsonText).jsonObject }.getOrNull() ?: return emptyList()
             val plugins = root["plugins"] as? JsonArray ?: return emptyList()
             val out = mutableListOf<String>()
             for (plugin in plugins) {

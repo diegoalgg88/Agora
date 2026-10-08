@@ -101,6 +101,7 @@ internal fun ToolDetailContent(
                     ?.takeIf(String::isNotBlank)
                     ?.let { MetaPill(it) }
             }
+            McpAppEntry(segment)
             Spacer(Modifier.height(18.dp))
         }
     }

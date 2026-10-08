@@ -24,6 +24,7 @@ internal class McpProtocolClient(
     endpoint: String,
     customHeaders: Map<String, String>,
     transportType: McpTransportType,
+    private val clientVersion: String = "unknown",
 ) : AutoCloseable {
     companion object {
         private const val STREAMABLE_HTTP_PROTOCOL_VERSION = "2025-11-25"
@@ -81,6 +82,7 @@ internal class McpProtocolClient(
                     val name = (obj["name"] as? JsonPrimitive)?.contentOrNull
                         ?.takeIf(String::isNotBlank)
                         ?: return@forEach
+                    val ui = parseMcpToolUiMeta(obj["_meta"]?.asObjectOrNull())
                     tools += McpRemoteTool(
                         name = name,
                         description = (obj["description"] as? JsonPrimitive)
@@ -91,6 +93,8 @@ internal class McpProtocolClient(
                                 put("type", "object")
                                 put("properties", buildJsonObject {})
                             },
+                        uiResourceUri = ui.resourceUri,
+                        uiVisibility = ui.visibility,
                     )
                 }
                 cursor = (result["nextCursor"] as? JsonPrimitive)
@@ -113,6 +117,27 @@ internal class McpProtocolClient(
                 },
             )
             parseCallPayload(result)
+        }
+    }
+
+    /**
+     * Reads one MCP App document (`resources/read`). Only `ui://` URIs are requested and the
+     * result must be a valid MCP App HTML resource for exactly that URI; anything else throws.
+     */
+    suspend fun readUiResource(uri: String): McpUiResource {
+        require(uri.startsWith("ui://") && uri.length > "ui://".length) {
+            "MCP UI resource must use the ui:// scheme"
+        }
+        return mutex.withLock {
+            retryAfterSessionExpiry {
+                ensureInitializedLocked()
+                val result = requestLocked(
+                    method = "resources/read",
+                    params = buildJsonObject { put("uri", uri) },
+                )
+                parseMcpUiResourceContents(uri, result)
+                    ?: throw IOException("MCP resources/read returned no valid MCP App resource")
+            }
         }
     }
 
@@ -161,12 +186,12 @@ internal class McpProtocolClient(
             method = "initialize",
             params = buildJsonObject {
                 put("protocolVersion", protocolVersion)
-                put("capabilities", buildJsonObject {})
+                put("capabilities", mcpClientCapabilities())
                 put(
                     "clientInfo",
                     buildJsonObject {
                         put("name", "Agora")
-                        put("version", "1.3.7")
+                        put("version", clientVersion)
                     },
                 )
             },

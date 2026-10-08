@@ -152,8 +152,9 @@ class OllamaProvider : LlmProvider {
                         toolCalls = toolCalls
                     ))
                 } else if (msg.toolCall != null) {
-                    val toolId = msg.toolCall!!.toolCallId ?: buildToolCallId(msg.toolCall!!.toolName, msg.toolCall!!.arguments)
-                    val argsObj = try { json.parseToJsonElement(msg.toolCall!!.arguments) as? JsonObject } catch (_: Exception) { JsonObject(emptyMap()) }
+                    val tc = msg.toolCall
+                    val toolId = tc.toolCallId ?: buildToolCallId(tc.toolName, tc.arguments)
+                    val argsObj = try { json.parseToJsonElement(tc.arguments) as? JsonObject } catch (_: Exception) { JsonObject(emptyMap()) }
                     entries.add(OllamaMessage(
                         role = "assistant",
                         content = "",
@@ -161,7 +162,7 @@ class OllamaProvider : LlmProvider {
                         toolCalls = listOf(OpenAiToolCall(
                             id = toolId,
                             type = "function",
-                            function = OpenAiFunctionCall(name = msg.toolCall!!.toolName, arguments = argsObj ?: JsonObject(emptyMap()))
+                            function = OpenAiFunctionCall(name = tc.toolName, arguments = argsObj ?: JsonObject(emptyMap()))
                         ))
                     ))
                 }
@@ -180,10 +181,11 @@ class OllamaProvider : LlmProvider {
                         ))
                     }
                 } else if (msg.toolCall != null) {
+                    val tc = msg.toolCall
                     entries.add(OllamaMessage(
                         role = "tool",
-                        content = msg.toolCall!!.result,
-                        toolName = msg.toolCall!!.toolName,
+                        content = tc.result,
+                        toolName = tc.toolName,
                     ))
                 }
                 return@flatMap entries

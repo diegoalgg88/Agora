@@ -44,6 +44,7 @@ class AgoraVoiceInteractionSession(context: Context) : VoiceInteractionSession(c
     private val owners = SessionOwners()
     private val state = AssistantOverlayState(context, scope, ::finish)
 
+    @Suppress("OVERRIDE_DEPRECATION", "DEPRECATION")
     override fun onHandleAssist(
         data: Bundle?,
         structure: android.app.assist.AssistStructure?,

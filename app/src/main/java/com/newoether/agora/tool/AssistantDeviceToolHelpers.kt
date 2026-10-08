@@ -14,6 +14,8 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
+private val LenientJson = Json { ignoreUnknownKeys = true }
+
 /** Pure helpers and projections for [AssistantDeviceToolProvider]: everything here is free
  *  of Android dependencies so the parsing/formatting rules are unit-testable (the provider
  *  only supplies clock, zone, flags and cursors). */
@@ -49,7 +51,7 @@ internal fun locationHttpError(statusCode: Int): Pair<String, String> = when (st
 }
 
 internal fun parseIpLocationResponse(body: String): IpLocationResponse? = runCatching {
-    Json { ignoreUnknownKeys = true }.decodeFromString<IpLocationResponse>(body)
+    LenientJson.decodeFromString<IpLocationResponse>(body)
 }.getOrNull()
 
 internal fun buildLocationResult(parsed: IpLocationResponse): String = buildJsonObject {

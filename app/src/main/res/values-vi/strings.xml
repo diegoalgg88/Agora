@@ -1369,4 +1369,9 @@
     <string name="email_account_remove">Xóa</string>
     <string name="email_account_remove_confirm_title">Xóa tài khoản email?</string>
     <string name="email_account_remove_confirm_body">%1$s sẽ bị ngắt kết nối. Thư đã lưu, các mục đang chờ và mật khẩu sẽ bị xóa khỏi thiết bị này.</string>
+    <string name="mcp_app_open_view">Mở chế độ xem tương tác</string>
+    <string name="mcp_app_close_view">Đóng chế độ xem tương tác</string>
+    <string name="mcp_app_loading">Đang tải chế độ xem tương tác…</string>
+    <string name="mcp_app_unavailable">Không thể tải chế độ xem tương tác.</string>
+    <string name="mcp_app_open_link_title">Mở liên kết này?</string>
 </resources>

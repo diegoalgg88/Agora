@@ -1363,4 +1363,9 @@
     <string name="email_account_remove">Eliminar</string>
     <string name="email_account_remove_confirm_title">¿Eliminar cuenta de correo?</string>
     <string name="email_account_remove_confirm_body">%1$s se desconectará. Los mensajes guardados, los pendientes y la contraseña se eliminan de este dispositivo.</string>
+    <string name="mcp_app_open_view">Abrir vista interactiva</string>
+    <string name="mcp_app_close_view">Cerrar vista interactiva</string>
+    <string name="mcp_app_loading">Cargando vista interactiva…</string>
+    <string name="mcp_app_unavailable">No se pudo cargar la vista interactiva.</string>
+    <string name="mcp_app_open_link_title">¿Abrir este enlace?</string>
 </resources>

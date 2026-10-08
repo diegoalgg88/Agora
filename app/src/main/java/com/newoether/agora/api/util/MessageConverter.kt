@@ -96,7 +96,7 @@ fun convertToOpenAiMessages(
                     }?.responseOutputItemProvider,
                 ))
             } else if (msg.toolCall != null) {
-                val tc = msg.toolCall!!
+                val tc = msg.toolCall
                 val toolId = tc.toolCallId ?: buildToolCallId(tc.toolName, tc.arguments)
                 entries.add(OpenAiMessage(
                     role = "assistant",
@@ -126,7 +126,7 @@ fun convertToOpenAiMessages(
                     ))
                 }
             } else if (msg.toolCall != null) {
-                val tc = msg.toolCall!!
+                val tc = msg.toolCall
                 val toolId = tc.toolCallId ?: buildToolCallId(tc.toolName, tc.arguments)
                 entries.add(OpenAiMessage(
                     role = "tool",

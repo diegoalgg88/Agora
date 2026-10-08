@@ -246,7 +246,7 @@ private fun AdvancedParamRow(
             )
             if (isOverride) {
                 Text(
-                    text = format(value!!),
+                    text = format(value),
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.primary,
                     fontWeight = FontWeight.Bold,

@@ -18,7 +18,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.CallSplit
+import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
@@ -828,7 +828,7 @@ internal fun AssistantMessageContent(
                                 .graphicsLayer { alpha = terminalActionsAlpha },
                         ) {
                             Icon(
-                                Icons.Default.CallSplit,
+                                Icons.AutoMirrored.Filled.CallSplit,
                                 contentDescription = stringResource(R.string.conversation_fork_from_here),
                                 modifier = Modifier.size(18.dp),
                                 tint = terminalActionTint,

@@ -1371,4 +1371,9 @@
     <string name="email_account_remove">移除</string>
     <string name="email_account_remove_confirm_title">移除郵件帳戶？</string>
     <string name="email_account_remove_confirm_body">%1$s 將被中斷連結。已儲存的郵件、待處理項目和密碼將從本裝置刪除。</string>
+    <string name="mcp_app_open_view">開啟互動檢視</string>
+    <string name="mcp_app_close_view">關閉互動檢視</string>
+    <string name="mcp_app_loading">正在載入互動檢視…</string>
+    <string name="mcp_app_unavailable">無法載入互動檢視。</string>
+    <string name="mcp_app_open_link_title">要開啟此連結嗎？</string>
 </resources>

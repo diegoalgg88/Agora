@@ -43,7 +43,7 @@ fun Modifier.verticalScrollbar(
         val viewPortHeight = size.height
         val totalHeight = scrollState.maxValue + viewPortHeight
         val thumbHeight = (viewPortHeight / totalHeight) * viewPortHeight
-        val thumbOffset = (scrollState.value / totalHeight.toFloat()) * viewPortHeight
+        val thumbOffset = (scrollState.value / totalHeight) * viewPortHeight
         drawRoundRect(color = color, topLeft = Offset(size.width - width.toPx() - 4.dp.toPx(), thumbOffset), size = Size(width.toPx(), thumbHeight), cornerRadius = CornerRadius(width.toPx() / 2))
     }
 }

@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Visibility
@@ -128,7 +128,7 @@ fun SettingsContextPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             },
                             leadingContent = {
                                 Icon(
-                                    Icons.Default.Chat,
+                                    Icons.AutoMirrored.Filled.Chat,
                                     null,
                                     tint = MaterialTheme.colorScheme.primary,
                                 )

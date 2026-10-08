@@ -18,8 +18,8 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.CallSplit
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.CallSplit
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Menu
@@ -531,7 +531,10 @@ internal fun ChatTopBar(
                                 DropdownMenuItem(
                                     text = { Text(stringResource(R.string.conversation_fork_menu)) },
                                     leadingIcon = {
-                                        Icon(Icons.Default.CallSplit, contentDescription = null)
+                                        Icon(
+                                            Icons.AutoMirrored.Filled.CallSplit,
+                                            contentDescription = null
+                                        )
                                     },
                                     enabled = conversationActionsEnabled,
                                     onClick = {

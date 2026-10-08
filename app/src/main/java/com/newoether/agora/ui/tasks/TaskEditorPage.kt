@@ -16,11 +16,11 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.History
-import androidx.compose.material.icons.filled.Label
+import androidx.compose.material.icons.automirrored.filled.Label
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Psychology
 import androidx.compose.material.icons.filled.Repeat
@@ -309,7 +309,7 @@ internal fun TaskDetailPage(
                     {
                         LabeledField(
                             label = stringResource(R.string.task_name),
-                            icon = Icons.Default.Label,
+                            icon = Icons.AutoMirrored.Filled.Label,
                             value = name,
                             onValueChange = editorSession::updateName,
                             placeholder = stringResource(R.string.task_name_hint),
@@ -337,7 +337,7 @@ internal fun TaskDetailPage(
                                 )
                             },
                             leadingContent = {
-                                Icon(Icons.Default.Chat, null, tint = MaterialTheme.colorScheme.primary)
+                                Icon(Icons.AutoMirrored.Filled.Chat, null, tint = MaterialTheme.colorScheme.primary)
                             },
                         )
                     },

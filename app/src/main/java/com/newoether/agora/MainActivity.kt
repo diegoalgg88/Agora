@@ -88,17 +88,17 @@ class MainActivity : ComponentActivity() {
             SettingsManager(newBase).appLanguage.first()
         }
         val locale = when (langCode) {
-            "zh" -> java.util.Locale("zh", "CN")
-            "en" -> java.util.Locale("en")
-            "es" -> java.util.Locale("es")
-            "fr" -> java.util.Locale("fr")
-            "de" -> java.util.Locale("de")
-            "ru" -> java.util.Locale("ru")
-            "pt-BR" -> java.util.Locale("pt", "BR")
-            "ja" -> java.util.Locale("ja")
-            "ko" -> java.util.Locale("ko")
-            "ar" -> java.util.Locale("ar")
-            "vi" -> java.util.Locale("vi")
+            "zh" -> java.util.Locale.forLanguageTag("zh-CN")
+            "en" -> java.util.Locale.forLanguageTag("en")
+            "es" -> java.util.Locale.forLanguageTag("es")
+            "fr" -> java.util.Locale.forLanguageTag("fr")
+            "de" -> java.util.Locale.forLanguageTag("de")
+            "ru" -> java.util.Locale.forLanguageTag("ru")
+            "pt-BR" -> java.util.Locale.forLanguageTag("pt-BR")
+            "ja" -> java.util.Locale.forLanguageTag("ja")
+            "ko" -> java.util.Locale.forLanguageTag("ko")
+            "ar" -> java.util.Locale.forLanguageTag("ar")
+            "vi" -> java.util.Locale.forLanguageTag("vi")
             "zh-Hant" -> java.util.Locale.forLanguageTag("zh-Hant")
             else -> null
         }
@@ -543,7 +543,7 @@ fun MainNavigation(
             icon = { Icon(Icons.Default.BugReport, null, modifier = Modifier.size(40.dp), tint = MaterialTheme.colorScheme.error) },
             title = { Text(stringResource(R.string.crash_title), fontWeight = FontWeight.Bold) },
             text = {
-                val clipboard = LocalClipboardManager.current
+                @Suppress("DEPRECATION") val clipboard = LocalClipboardManager.current
                 Column {
                     Text(
                         stringResource(R.string.crash_message),

@@ -116,7 +116,7 @@ object ExportExtraSettings {
 
         obj["modelAliases"]?.jsonObject?.let { aliasesObj ->
             val map = aliasesObj.mapNotNull { (k, v) ->
-                v.jsonPrimitive?.contentOrNull?.let { k to it }
+                v.jsonPrimitive.contentOrNull?.let { k to it }
             }.toMap()
             if (map.isNotEmpty()) {
                 sm.saveModelAliases(if (replace) map else sm.modelAliases.first() + map)

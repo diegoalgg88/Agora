@@ -1363,4 +1363,9 @@
     <string name="email_account_remove">إزالة</string>
     <string name="email_account_remove_confirm_title">إزالة حساب البريد الإلكتروني؟</string>
     <string name="email_account_remove_confirm_body">سيتم قطع اتصال %1$s. تُحذف الرسائل المخزنة والعناصر المعلقة وكلمة المرور من هذا الجهاز.</string>
+    <string name="mcp_app_open_view">فتح العرض التفاعلي</string>
+    <string name="mcp_app_close_view">إغلاق العرض التفاعلي</string>
+    <string name="mcp_app_loading">جارٍ تحميل العرض التفاعلي…</string>
+    <string name="mcp_app_unavailable">تعذّر تحميل العرض التفاعلي.</string>
+    <string name="mcp_app_open_link_title">هل تريد فتح هذا الرابط؟</string>
 </resources>

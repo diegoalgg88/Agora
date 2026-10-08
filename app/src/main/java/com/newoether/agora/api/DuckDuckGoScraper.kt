@@ -202,9 +202,8 @@ class DuckDuckGoScraper(
             val response = client.newCall(request).execute()
             response.use { resp ->
                 if (resp.isSuccessful) {
-                    val body = resp.body?.string()
-                    if (body != null) PageResult.Success(body)
-                    else PageResult.Error("Empty response body from DuckDuckGo.")
+                    val body = resp.body.string()
+                    PageResult.Success(body)
                 } else {
                     PageResult.Error("DuckDuckGo returned HTTP ${resp.code}.")
                 }

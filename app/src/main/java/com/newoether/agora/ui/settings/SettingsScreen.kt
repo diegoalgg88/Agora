@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Extension
@@ -222,10 +223,10 @@ fun SettingsAddItem(
 
 private data class SettingsCategory(
     val key: String,
-    @StringRes val titleRes: Int,
-    @StringRes val descriptionRes: Int,
+    @param:StringRes val titleRes: Int,
+    @param:StringRes val descriptionRes: Int,
     val icon: ImageVector? = null,
-    @DrawableRes val iconRes: Int? = null,
+    @param:DrawableRes val iconRes: Int? = null,
 )
 
 private data class SettingsGroupData(
@@ -236,7 +237,7 @@ private data class SettingsGroupData(
 private val baseSettingsGroups = listOf(
     SettingsGroupData(titleRes = R.string.settings_group_services, items = listOf(
         SettingsCategory("provider", R.string.settings_provider, R.string.settings_provider_desc, Icons.Default.Cloud),
-        SettingsCategory("models", R.string.settings_models, R.string.settings_models_desc, Icons.Default.Chat),
+        SettingsCategory("models", R.string.settings_models, R.string.settings_models_desc, Icons.AutoMirrored.Filled.Chat),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_responses, items = listOf(
         SettingsCategory("prompts", R.string.settings_prompts, R.string.settings_prompts_desc, Icons.Default.Psychology),

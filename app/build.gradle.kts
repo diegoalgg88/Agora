@@ -184,6 +184,7 @@ dependencies {
     implementation(libs.work.runtime.ktx)
     implementation(libs.jsch)
     implementation(libs.commons.compress)
+    implementation(libs.androidx.webkit)
     // Embedded .litertlm engine (second Local format). Statically-linked JNI AAR:
     // only system libs NEEDED (no libc++_shared conflict); minSdk 24; Apache-2.0.
     implementation("com.google.ai.edge.litertlm:litertlm-android:0.17.1")

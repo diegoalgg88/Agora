@@ -677,7 +677,7 @@ fun SettingsModelsPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                             onDismissRequest = {
                                 customModelProviderMenuExpanded = false
                             },
-                            matchTextFieldWidth = false,
+                            matchAnchorWidth = false,
                             shape = RoundedCornerShape(16.dp),
                         ) {
                             providerChoices.forEach { providerName ->

@@ -28,7 +28,7 @@ enum class CustomEndpointProtocol(val wireValue: String) {
     }
 }
 
-private object CustomEndpointProtocolSerializer : KSerializer<CustomEndpointProtocol> {
+object CustomEndpointProtocolSerializer : KSerializer<CustomEndpointProtocol> {
     override val descriptor: SerialDescriptor =
         PrimitiveSerialDescriptor("CustomEndpointProtocol", PrimitiveKind.STRING)
 

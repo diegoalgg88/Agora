@@ -21,6 +21,7 @@ internal data class ConversationRenderSnapshot(
     val selectedChildren: Map<String?, String> = emptyMap(),
 )
 
+@ConsistentCopyVisibility
 internal data class RoomMessageProjectionFence internal constructor(val id: Long)
 
 internal class ConversationRenderStore {

@@ -18,6 +18,7 @@ import androidx.compose.ui.window.DialogWindowProvider
  * the Activity set it transparent. Call this as the first line inside the dialog/sheet content.
  */
 @Composable
+@Suppress("DEPRECATION") // navigationBarColor is ignored on API 35+, still required below it.
 fun DialogWindowEdgeToEdge() {
     val window = (LocalView.current.parent as? DialogWindowProvider)?.window ?: return
     SideEffect {

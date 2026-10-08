@@ -1363,4 +1363,9 @@
     <string name="email_account_remove">削除</string>
     <string name="email_account_remove_confirm_title">メールアカウントを削除しますか？</string>
     <string name="email_account_remove_confirm_body">%1$s の接続が解除されます。保存されたメッセージ、保留中の項目、パスワードがこのデバイスから削除されます。</string>
+    <string name="mcp_app_open_view">インタラクティブビューを開く</string>
+    <string name="mcp_app_close_view">インタラクティブビューを閉じる</string>
+    <string name="mcp_app_loading">インタラクティブビューを読み込み中…</string>
+    <string name="mcp_app_unavailable">インタラクティブビューを読み込めませんでした。</string>
+    <string name="mcp_app_open_link_title">このリンクを開きますか？</string>
 </resources>

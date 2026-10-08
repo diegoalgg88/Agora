@@ -312,7 +312,7 @@ private fun DeviceEditor(
                         leadingIcon = { Icon(Icons.Default.Cable, null) },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(typeMenuExpanded) },
                         shape = RoundedCornerShape(16.dp),
-                        modifier = Modifier.menuAnchor().fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable).fillMaxWidth()
                     )
                     ExposedDropdownMenu(
                         expanded = typeMenuExpanded,

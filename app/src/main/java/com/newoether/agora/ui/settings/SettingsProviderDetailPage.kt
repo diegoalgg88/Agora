@@ -17,7 +17,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AutoAwesome
-import androidx.compose.material.icons.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.DataObject
 import androidx.compose.material.icons.filled.Delete
@@ -374,7 +374,7 @@ fun SettingsProviderDetailPage(
                                 SettingsItem(
                                     headlineContent = { Text(stringResource(R.string.provider_no_local_models), color = MaterialTheme.colorScheme.onSurfaceVariant) },
                                     supportingContent = { Text(stringResource(R.string.provider_no_local_models_desc), color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)) },
-                                    leadingContent = { Icon(Icons.Default.Chat, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)) },
+                                    leadingContent = { Icon(Icons.AutoMirrored.Filled.Chat, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)) },
                                     modifier = Modifier.heightIn(min = 64.dp)
                                 )
                             }

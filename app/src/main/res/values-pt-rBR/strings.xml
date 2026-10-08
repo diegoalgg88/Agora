@@ -1363,4 +1363,9 @@
     <string name="email_account_remove">Remover</string>
     <string name="email_account_remove_confirm_title">Remover conta de e-mail?</string>
     <string name="email_account_remove_confirm_body">%1$s será desconectada. Mensagens armazenadas, itens pendentes e a senha serão excluídos deste dispositivo.</string>
+    <string name="mcp_app_open_view">Abrir visualização interativa</string>
+    <string name="mcp_app_close_view">Fechar visualização interativa</string>
+    <string name="mcp_app_loading">Carregando visualização interativa…</string>
+    <string name="mcp_app_unavailable">Não foi possível carregar a visualização interativa.</string>
+    <string name="mcp_app_open_link_title">Abrir este link?</string>
 </resources>

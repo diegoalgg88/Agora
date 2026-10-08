@@ -98,7 +98,7 @@ internal fun AnthropicRequest.requireValidWireFormat() {
                     if (
                         message.role != "user" ||
                         part.source?.mediaType.isNullOrBlank() ||
-                        part.source?.data.isNullOrBlank() ||
+                        part.source.data.isNullOrBlank() ||
                         populated.size != 1
                     ) {
                         violations += "$partLocation is not a valid user image block"

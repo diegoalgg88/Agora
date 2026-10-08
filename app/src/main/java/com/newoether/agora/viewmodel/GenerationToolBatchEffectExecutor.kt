@@ -267,6 +267,8 @@ internal class GenerationToolOverlay(
             toolState = if (result.isError) ToolExecutionStates.FAILED else finalToolState(result.text),
             toolImages = result.images,
             toolTranscription = transcription,
+            toolUiServerId = result.uiResource?.serverId,
+            toolUiResourceUri = result.uiResource?.resourceUri,
         )
         segments[index] = completed
         return CompletedToolCall(
@@ -284,6 +286,8 @@ internal class GenerationToolOverlay(
                 responseOutputItems = completed.responseOutputItems,
                 responseOutputItemProvider = completed.responseOutputItemProvider,
                 transcription = transcription,
+                uiServerId = completed.toolUiServerId,
+                uiResourceUri = completed.toolUiResourceUri,
             ),
         )
     }

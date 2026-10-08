@@ -26,6 +26,10 @@ data class ToolCallData(
     val responseOutputItemProvider: String? = null,
     /** Transcription description of a tool-result image; travels with the result row. */
     val transcription: String? = null,
+    /** MCP App document pointer (server id). UI-only; never projected to a Provider. */
+    val uiServerId: String? = null,
+    /** MCP App `ui://` document pointer. UI-only; never projected to a Provider. */
+    val uiResourceUri: String? = null,
 )
 
 @Serializable
@@ -81,6 +85,13 @@ data class MessageSegment(
      * Displayed only in the Image Transcription thinking block, never in the tool card.
      */
     val toolTranscription: String? = null,
+    /**
+     * MCP App pointer for this tool result: owning server id and `ui://` document. Lives in the
+     * existing JSON segment payload, so old rows stay readable without a Room migration. UI-only;
+     * Provider projection must never read it.
+     */
+    val toolUiServerId: String? = null,
+    val toolUiResourceUri: String? = null,
     /** Raw provider protocol items needed to reconstruct a stateless tool continuation. */
     val responseOutputItems: List<JsonObject> = emptyList(),
     /** Provider identity that owns [responseOutputItems]; foreign transports must ignore them. */

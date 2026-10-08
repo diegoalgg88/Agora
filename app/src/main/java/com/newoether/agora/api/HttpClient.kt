@@ -474,7 +474,7 @@ object HttpClient {
             readTimeoutMillis = readTimeoutMillis,
         ).execute()
         return response.use {
-            if (it.isSuccessful) it.body?.string()
+            if (it.isSuccessful) it.body.string()
             else {
                 DebugLog.e("HttpClient", "POST failed status=${it.code}")
                 null
@@ -495,7 +495,7 @@ object HttpClient {
         return newCall(requestBuilder.build(), callTimeoutMillis).execute().use { response ->
             TextResponse(
                 code = response.code,
-                body = response.body?.string().orEmpty(),
+                body = response.body.string(),
                 isSuccessful = response.isSuccessful,
             )
         }
@@ -537,7 +537,7 @@ object HttpClient {
         return client.newCall(requestBuilder.build()).execute().use { response ->
             TextResponse(
                 code = response.code,
-                body = response.body?.string().orEmpty(),
+                body = response.body.string(),
                 isSuccessful = response.isSuccessful,
             )
         }
@@ -559,7 +559,7 @@ object HttpClient {
             readTimeoutMillis = readTimeoutMillis,
         ).execute()
         return response.use {
-            if (it.isSuccessful) it.body?.bytes() else null
+            if (it.isSuccessful) it.body.bytes() else null
         }
     }
 }

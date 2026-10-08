@@ -9,8 +9,8 @@ import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Forum
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Mic
-import androidx.compose.material.icons.filled.Notes
-import androidx.compose.material.icons.filled.OpenInNew
+import androidx.compose.material.icons.automirrored.filled.Notes
+import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -69,7 +69,7 @@ fun SettingsAssistantPage(
                 {
                     SettingsItem(
                         headlineContent = { Text(stringResource(R.string.settings_assistant_open_system_settings)) },
-                        leadingContent = { Icon(Icons.Default.OpenInNew, contentDescription = null) },
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.OpenInNew, contentDescription = null) },
                         modifier = Modifier.clickable {
                             context.startActivity(Intent(Settings.ACTION_VOICE_INPUT_SETTINGS))
                         },
@@ -105,7 +105,7 @@ fun SettingsAssistantPage(
                     SettingsItem(
                         headlineContent = { Text(stringResource(R.string.settings_assistant_include_screen_text)) },
                         supportingContent = { Text(stringResource(R.string.settings_assistant_include_screen_text_desc)) },
-                        leadingContent = { Icon(Icons.Default.Notes, contentDescription = null) },
+                        leadingContent = { Icon(Icons.AutoMirrored.Filled.Notes, contentDescription = null) },
                         trailingContent = {
                             Switch(
                                 checked = includeScreenText,

@@ -551,7 +551,7 @@ internal fun ChatBottomBar(
                                 lastModelDismissTime = System.currentTimeMillis()
                             }
                         },
-                        matchTextFieldWidth = false,
+                        matchAnchorWidth = false,
                         shape = CHAT_DROPDOWN_MENU_SHAPE,
                     ) {
                         if (enabledModels.isEmpty()) {
@@ -658,7 +658,7 @@ internal fun ChatBottomBar(
                                 lastContextDismissTime = System.currentTimeMillis()
                             }
                         },
-                        matchTextFieldWidth = false,
+                        matchAnchorWidth = false,
                         shape = CHAT_DROPDOWN_MENU_SHAPE,
                     ) {
                         Column(
@@ -714,7 +714,7 @@ internal fun ChatBottomBar(
                                 lastToolsDismissTime = System.currentTimeMillis()
                             }
                         },
-                        matchTextFieldWidth = false,
+                        matchAnchorWidth = false,
                         shape = CHAT_DROPDOWN_MENU_SHAPE,
                     ) {
                         if (showLowContextMode) {
