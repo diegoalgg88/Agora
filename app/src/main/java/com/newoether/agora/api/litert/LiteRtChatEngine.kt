@@ -62,6 +62,13 @@ internal class LiteRtChatEngine(
     var activeBackendName: String = ""
         private set
 
+    /**
+     * Resolved after a successful [load]: whether speculative decoding is actually active.
+     * False when MTP was requested but the bundle rejected it (no drafter weights).
+     */
+    var activeMtp: Boolean = false
+        private set
+
     fun load(): Boolean {
         if (!File(modelPath).exists()) {
             DebugLog.e(TAG, "Model file not found")
@@ -74,34 +81,28 @@ internal class LiteRtChatEngine(
         // observe the value mid-window. Explicit false (not null) for non-MTP models: null
         // means "model's default", and a bundle carrying drafter weights could default-enable
         // MTP against the registered opt-out.
-        @OptIn(ExperimentalApi::class)
-        ExperimentalFlags.enableSpeculativeDecoding = mtp
         try {
-            return try {
-                val resolvedBackend = resolveInitialSdkBackend()
-                val loaded = initializeEngine(resolvedBackend)
-                engine = loaded
-                activeBackendName = resolvedBackend.name
-                DebugLog.d(TAG, "Engine initialized, backend=${resolvedBackend.name}, mtp=$mtp")
-                true
-            } catch (e: Exception) {
-                if (backend == LiteRtBackend.Auto && resolvedBackendWasGpu(resolvedInitialBackendName)) {
-                    DebugLog.w(TAG, "Auto backend fell back to CPU after GPU init failure")
-                    return try {
-                        val loaded = initializeEngine(Backend.CPU())
-                        engine = loaded
-                        activeBackendName = "CPU"
-                        true
-                    } catch (cpuError: Exception) {
-                        DebugLog.e(TAG, "LiteRT-LM engine init failed on CPU fallback", cpuError)
-                        close()
-                        false
-                    }
-                }
-                DebugLog.e(TAG, "LiteRT-LM engine init failed", e)
-                close()
-                false
+            @OptIn(ExperimentalApi::class)
+            ExperimentalFlags.enableSpeculativeDecoding = mtp
+            if (initializeWithBackendFallback()) {
+                activeMtp = mtp
+                return true
             }
+            if (mtp) {
+                // Requesting MTP for a bundle without drafter weights makes the SDK throw at
+                // initialize(). Failing the whole load would leave the user with a generic
+                // "failed to initialize" and no hint that the toggle is the cause, so retry
+                // once with speculative decoding explicitly off.
+                DebugLog.w(TAG, "Engine init failed with MTP enabled; retrying without MTP")
+                @OptIn(ExperimentalApi::class)
+                ExperimentalFlags.enableSpeculativeDecoding = false
+                if (initializeWithBackendFallback()) {
+                    activeMtp = false
+                    return true
+                }
+            }
+            close()
+            return false
         } finally {
             // Never leave the process global set: any construction outside this scoped
             // window (none today) must see the SDK default, not a stale model choice.
@@ -110,35 +111,64 @@ internal class LiteRtChatEngine(
         }
     }
 
-    private var resolvedInitialBackendName: String = ""
-        private set
-
-    private fun resolvedBackendWasGpu(name: String): Boolean = name == "GPU"
-
-    private fun resolveInitialSdkBackend(): Backend {
-        val sdkBackend = when (backend) {
+    /**
+     * Primary backend first; for [LiteRtBackend.Auto] a failed GPU init falls back to CPU.
+     * Returns true once an engine is resident.
+     */
+    private fun initializeWithBackendFallback(): Boolean {
+        val primary = when (backend) {
             LiteRtBackend.Cpu -> Backend.CPU()
-            LiteRtBackend.Gpu -> Backend.GPU()
-            LiteRtBackend.Auto -> Backend.GPU()
+            LiteRtBackend.Gpu, LiteRtBackend.Auto -> Backend.GPU()
             is LiteRtBackend.Npu -> Backend.NPU(nativeLibraryDir = backend.nativeLibraryDir)
         }
-        resolvedInitialBackendName = sdkBackend.name
-        return sdkBackend
+        initializeOrNull(primary)?.let {
+            engine = it
+            activeBackendName = primary.name
+            DebugLog.d(TAG, "Engine initialized, backend=${primary.name}, mtp=$mtp")
+            return true
+        }
+        if (backend == LiteRtBackend.Auto) {
+            DebugLog.w(TAG, "Auto backend fell back to CPU after GPU init failure")
+            val cpu = Backend.CPU()
+            initializeOrNull(cpu)?.let {
+                engine = it
+                activeBackendName = cpu.name
+                return true
+            }
+        }
+        return false
     }
 
-    private fun initializeEngine(sdkBackend: Backend): Engine {
-        val config = EngineConfig(
-            modelPath = modelPath,
-            backend = sdkBackend,
-            // Vision weights live inside the bundle; only request a vision executor when the
-            // registered record says the bundle carries multimodal weights.
-            visionBackend = if (visionCapable) Backend.GPU() else null,
-            // Audio executor follows the same rule — CPU executor is sufficient for speech
-            // encoders; requested only when the record marks the bundle as audio-capable.
-            audioBackend = if (audioCapable) Backend.CPU() else null,
-            cacheDir = cacheDir,
-        )
-        return Engine(config).also { it.initialize() }
+    /**
+     * Builds and initializes one engine, or returns null. A candidate whose initialize() threw
+     * is released here: the failed attempt (typically GPU) may already hold delegate memory,
+     * and the previous version dropped it unclosed before falling back. Throwable (not
+     * Exception) on purpose: a missing/incompatible native library surfaces as
+     * UnsatisfiedLinkError, which must degrade to a normal load failure, not kill the process.
+     */
+    private fun initializeOrNull(sdkBackend: Backend): Engine? {
+        var created: Engine? = null
+        return try {
+            val config = EngineConfig(
+                modelPath = modelPath,
+                backend = sdkBackend,
+                // Vision weights live inside the bundle; only request a vision executor when the
+                // registered record says the bundle carries multimodal weights.
+                visionBackend = if (visionCapable) Backend.GPU() else null,
+                // Audio executor follows the same rule — CPU executor is sufficient for speech
+                // encoders; requested only when the record marks the bundle as audio-capable.
+                audioBackend = if (audioCapable) Backend.CPU() else null,
+                cacheDir = cacheDir,
+            )
+            val candidate = Engine(config)
+            created = candidate
+            candidate.initialize()
+            candidate
+        } catch (e: Throwable) {
+            DebugLog.e(TAG, "LiteRT-LM engine init failed on ${sdkBackend.name}", e)
+            runCatching { created?.takeIf { it.isInitialized() }?.close() }
+            null
+        }
     }
 
     /**

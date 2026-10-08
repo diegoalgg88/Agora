@@ -134,12 +134,12 @@ class LlamaChatEngine(
     private external fun nativeChatGenerateWithImages(
         handle: Long, template: LlamaChatTemplateResult, imagePaths: Array<String>,
         temperature: Float, topP: Float, frequencyPenalty: Float, presencePenalty: Float,
-        maxTokens: Int, callback: NativeChatCallback,
+        repetitionPenalty: Float, maxTokens: Int, callback: NativeChatCallback,
     ): Int
     private external fun nativeChatGenerate(
         handle: Long, template: LlamaChatTemplateResult, temperature: Float, topP: Float,
-        frequencyPenalty: Float, presencePenalty: Float, maxTokens: Int,
-        callback: NativeChatCallback,
+        frequencyPenalty: Float, presencePenalty: Float, repetitionPenalty: Float,
+        maxTokens: Int, callback: NativeChatCallback,
     ): Int
     private external fun nativeChatFreeModel(handle: Long)
     private external fun nativeChatCancel(handle: Long)
@@ -207,6 +207,7 @@ class LlamaChatEngine(
         topP: Float = 0.9f,
         frequencyPenalty: Float = 0f,
         presencePenalty: Float = 0f,
+        repetitionPenalty: Float = 1f,
         maxTokens: Int = 4096,
     ): Flow<LlamaGenerationEvent> = callbackFlow {
         if (nativeHandle == 0L) {
@@ -292,7 +293,7 @@ class LlamaChatEngine(
                 if (handle != 0L) {
                     val result = nativeChatGenerate(
                         handle, template, temperature, topP, frequencyPenalty, presencePenalty,
-                        maxTokens, callback,
+                        repetitionPenalty, maxTokens, callback,
                     )
                     if (result < 0 && !terminalSignalled.get()) {
                         callback.onError("Native generation ended without a terminal result", 0, 0)
@@ -367,6 +368,7 @@ class LlamaChatEngine(
         topP: Float = 0.9f,
         frequencyPenalty: Float = 0f,
         presencePenalty: Float = 0f,
+        repetitionPenalty: Float = 1f,
         maxTokens: Int = 4096,
     ): Flow<LlamaGenerationEvent> = callbackFlow {
         if (nativeHandle == 0L) {
@@ -450,7 +452,7 @@ class LlamaChatEngine(
                     val result = nativeChatGenerateWithImages(
                         handle, template, imagePaths.toTypedArray(),
                         temperature, topP, frequencyPenalty, presencePenalty,
-                        maxTokens, callback,
+                        repetitionPenalty, maxTokens, callback,
                     )
                     if (result < 0 && !terminalSignalled.get()) {
                         callback.onError("Native generation ended without a terminal result", 0, 0)

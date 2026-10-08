@@ -11,8 +11,10 @@ import com.newoether.agora.api.LlamaToolCall
 import com.newoether.agora.api.local.LITERTLM_CANCELLED_PREFIX
 import com.newoether.agora.util.DebugLog
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.buffer
 import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.launch
 import java.io.Closeable
@@ -57,7 +59,16 @@ internal class LiteRtConversation(
      */
     private val terminal = java.util.concurrent.CountDownLatch(1)
 
+    /**
+     * True once a native stream was actually started. close() only waits for the terminal
+     * callback when there is a stream to unwind: a conversation released before generate() was
+     * collected (creation succeeded, request failed early) used to block for the full timeout.
+     */
+    @Volatile
+    private var started = false
+
     fun generate(request: LiteRtGenerationRequest): Flow<LlamaGenerationEvent> = callbackFlow {
+        started = true
         val terminalSignalled = AtomicBoolean(false)
         val pendingToolCalls = mutableListOf<com.google.ai.edge.litertlm.ToolCall>()
 
@@ -147,6 +158,13 @@ internal class LiteRtConversation(
             runCatching { conversation.cancelProcess() }
         }
     }
+        // The SDK delivers chunks on its own native thread through non-suspending callbacks,
+        // so every send is a trySend. The default 64-slot callbackFlow buffer silently DROPPED
+        // text/thought chunks (and could drop the terminal event) whenever the collector — which
+        // persists checkpoints and renders markdown — fell behind a fast GPU decode. An
+        // unlimited buffer never fails a send and never blocks the native thread; its size is
+        // bounded by one response of text.
+        .buffer(Channel.UNLIMITED)
 
     fun cancel() {
         runCatching { conversation.cancelProcess() }
@@ -157,7 +175,7 @@ internal class LiteRtConversation(
         // The SDK's native stream must unwind before the conversation object is deleted:
         // deleting it while an upcall is in flight leaves a pending JNI exception on the
         // thread and the next JNI use aborts the process (hard variant of upstream #2718).
-        terminal.await(10, java.util.concurrent.TimeUnit.SECONDS)
+        if (started) terminal.await(10, java.util.concurrent.TimeUnit.SECONDS)
         runCatching { conversation.close() }
     }
 }

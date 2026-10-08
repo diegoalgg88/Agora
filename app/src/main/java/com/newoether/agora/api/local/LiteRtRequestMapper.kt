@@ -6,6 +6,7 @@ import com.google.ai.edge.litertlm.Content
 import com.google.ai.edge.litertlm.Message
 import com.google.ai.edge.litertlm.OpenApiTool
 import com.google.ai.edge.litertlm.RepetitionPenaltyConfig
+import com.google.ai.edge.litertlm.Role
 import com.google.ai.edge.litertlm.SamplerConfig
 import com.google.ai.edge.litertlm.ThinkingConfig
 import com.google.ai.edge.litertlm.ToolCall
@@ -50,28 +51,25 @@ internal object LiteRtRequestMapper {
         modelConfig: LocalChatModelConfig,
         config: ProviderConfig,
     ): MappedRequest {
-        val hasImages = resolvedMessages.any { message ->
-            message.participant == Participant.USER && message.images.any(String::isNotBlank)
+        // A tool round-trip is persisted as ONE result message per call, every one flagged
+        // Participant.USER (GenerationToolRoundBuilder). Consecutive results must reach the SDK as a
+        // single tool turn carrying every response in call order, and a trailing run of results is
+        // the message to send on a continuation pass. Dispatching on participant (the previous
+        // behavior) delivered the tool output to the model as plain user text, with the tool call
+        // in history left unanswered.
+        val sdkMessages = toSdkMessages(
+            resolvedMessages,
+            allowImagesOnLast = modelConfig.visionCapable,
+        )
+        val candidate = sdkMessages.lastOrNull() ?: Message.user(Contents.of(""))
+        // A model-role tail leaves nothing to answer; resend it as user text (pre-existing
+        // behavior for non-user tails).
+        val sendMessage = if (candidate.role == Role.MODEL) {
+            Message.user(candidate.contents)
+        } else {
+            candidate
         }
-
-        // History = every message except the final one; the final one is what we send now.
-        val history = resolvedMessages.dropLast(1)
-        val last = resolvedMessages.last()
-
-        val initialMessages = history.mapNotNull(::messageFor)
-        val sendContents = contentsFor(last, allowImages = modelConfig.visionCapable)
-        val sendMessage = when (last.participant) {
-            Participant.USER -> Message.user(sendContents)
-            else -> {
-                // Continuation pass: the last message carries tool results for the model.
-                val toolResponses = toolResponsesFor(last)
-                if (toolResponses.isNotEmpty()) {
-                    Message.tool(Contents.of(*toolResponses.toTypedArray()))
-                } else {
-                    Message.user(sendContents)
-                }
-            }
-        }
+        val initialMessages = sdkMessages.dropLast(1)
 
         val tools = config.tools.orEmpty().map(::toolFor)
         val sampler = SamplerConfig(
@@ -146,14 +144,47 @@ internal object LiteRtRequestMapper {
             throw IllegalStateException("Agora executes tools outside the LiteRT-LM SDK")
     }
 
-    private fun messageFor(message: ChatMessage): Message? = when {
+    /**
+     * Maps the resolved path to SDK messages. Runs of consecutive tool-result messages merge
+     * into one tool turn; images are only attached to the final message (history images are
+     * dropped: the SDK re-encodes every image on each request and the budget is per turn).
+     */
+    private fun toSdkMessages(
+        messages: List<ChatMessage>,
+        allowImagesOnLast: Boolean,
+    ): List<Message> {
+        val out = mutableListOf<Message>()
+        var index = 0
+        while (index < messages.size) {
+            val message = messages[index]
+            if (message.id.startsWith(Constants.RESULT_MSG_PREFIX)) {
+                val responses = mutableListOf<Content.ToolResponse>()
+                while (index < messages.size &&
+                    messages[index].id.startsWith(Constants.RESULT_MSG_PREFIX)
+                ) {
+                    responses += toolResponsesFor(messages[index])
+                    index++
+                }
+                if (responses.isNotEmpty()) {
+                    out += Message.tool(Contents.of(*responses.toTypedArray()))
+                }
+                continue
+            }
+            val isLast = index == messages.lastIndex
+            messageFor(message, allowImages = isLast && allowImagesOnLast)?.let(out::add)
+            index++
+        }
+        return out
+    }
+
+    private fun messageFor(message: ChatMessage, allowImages: Boolean): Message? = when {
         message.id.startsWith(Constants.TOOL_MSG_PREFIX) -> assistantToolCallMessage(message)
         message.id.startsWith(Constants.RESULT_MSG_PREFIX) -> {
             val responses = toolResponsesFor(message)
             if (responses.isEmpty()) null else Message.tool(Contents.of(*responses.toTypedArray()))
         }
         else -> when (message.participant) {
-            Participant.USER -> Message.user(contentsFor(message, allowImages = false))
+            Participant.USER -> Message.user(contentsFor(message, allowImages = allowImages))
             Participant.MODEL -> Message.model(contentsFor(message, allowImages = false))
             Participant.ERROR -> null
         }
@@ -181,7 +212,9 @@ internal object LiteRtRequestMapper {
             }.orEmpty()
         }
         if (calls.isEmpty()) return null
-        return Message.model(Contents.of(""), calls)
+        // No content part at all: an empty text part renders as an empty assistant string in
+        // several chat templates, which then fight the tool_calls block.
+        return Message.model(Contents.of(emptyList<Content>()), calls)
     }
 
     private fun toolResponsesFor(message: ChatMessage): List<Content.ToolResponse> {

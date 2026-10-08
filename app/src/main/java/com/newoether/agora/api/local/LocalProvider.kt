@@ -187,6 +187,7 @@ class LocalProvider(
                     topP = config.topP ?: modelConfig.topP,
                     frequencyPenalty = config.frequencyPenalty ?: 0f,
                     presencePenalty = config.presencePenalty ?: 0f,
+                    repetitionPenalty = config.repetitionPenalty ?: 1f,
                     maxTokens = config.maxTokens ?: modelConfig.maxTokens,
                 )
             } else {
@@ -196,6 +197,7 @@ class LocalProvider(
                     topP = config.topP ?: modelConfig.topP,
                     frequencyPenalty = config.frequencyPenalty ?: 0f,
                     presencePenalty = config.presencePenalty ?: 0f,
+                    repetitionPenalty = config.repetitionPenalty ?: 1f,
                     maxTokens = config.maxTokens ?: modelConfig.maxTokens,
                 )
             }
@@ -354,7 +356,7 @@ class LocalProvider(
             mtp = modelConfig.mtp,
         ) { engine ->
             when (streamLiteRtConversation(engine, resolvedRequest, modelConfig, config)) {
-                LiteRtOutcome.Streamed -> Unit
+                LiteRtOutcome.Streamed, LiteRtOutcome.Reported -> Unit
                 LiteRtOutcome.Failed ->
                     reportLiteRtLoadFailure(engine.activeBackendName)
                 LiteRtOutcome.RetryOnCpu -> {
@@ -389,7 +391,7 @@ class LocalProvider(
                 mtp = modelConfig.mtp,
             ) { cpuEngine ->
                 when (streamLiteRtConversation(cpuEngine, resolvedRequest, modelConfig, config)) {
-                    LiteRtOutcome.Streamed -> Unit
+                    LiteRtOutcome.Streamed, LiteRtOutcome.Reported -> Unit
                     else -> reportLiteRtLoadFailure(cpuEngine.activeBackendName)
                 }
             }
@@ -398,7 +400,14 @@ class LocalProvider(
     }
 
     /** Outcome of one LiteRT-LM conversation attempt on a resident engine. */
-    private enum class LiteRtOutcome { Streamed, Failed, RetryOnCpu }
+    private enum class LiteRtOutcome {
+        Streamed,
+        /** Conversation could not be opened; nothing was emitted yet. */
+        Failed,
+        RetryOnCpu,
+        /** Failure already surfaced to the collector; the caller must not report it again. */
+        Reported,
+    }
 
     /** Reports a model-load/conversation failure using the localized backend message. */
     private suspend fun FlowCollector<StreamEvent>.reportLiteRtLoadFailure(
@@ -469,7 +478,13 @@ class LocalProvider(
                                     streamKey = "local_tool_${call.index}",
                                 )
                             }
-                                if (calls.isNotEmpty()) emit(StreamEvent.ToolCallsRequest(calls))
+                                // Same contract as the GGUF path: a lone call is a ToolCallRequest, only a real
+                                // parallel batch is a ToolCallsRequest.
+                                if (calls.size == 1) {
+                                    emit(calls.single())
+                                } else if (calls.isNotEmpty()) {
+                                    emit(StreamEvent.ToolCallsRequest(calls))
+                                }
                             }
                             is LlamaGenerationEvent.Completed -> {
                                 inputTokenCount = event.inputTokenCount
@@ -505,7 +520,9 @@ class LocalProvider(
             } catch (e: Exception) {
                 DebugLog.e(TAG, "LiteRT-LM generation failed", e)
                 emit(StreamEvent.Error(GenerationError.LocalModel("Generation failed: ${e.message}")))
-                return LiteRtOutcome.Failed
+                // The generation error was just emitted; reporting it as a load failure as well would
+                // show the user a second, misleading "failed to initialize" message.
+                return LiteRtOutcome.Reported
             } finally {
                 conversation.close()
             }

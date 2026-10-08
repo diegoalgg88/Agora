@@ -638,6 +638,7 @@ static common_sampler * init_chat_sampler(
     float top_p,
     float frequency_penalty,
     float presence_penalty,
+    float repetition_penalty,
     std::string & error
 ) {
     common_params_sampling params;
@@ -648,7 +649,10 @@ static common_sampler * init_chat_sampler(
         COMMON_SAMPLER_TYPE_TEMPERATURE,
     };
     params.penalty_last_n = PENALTY_LAST_N;
-    params.penalty_repeat = 1.0f;
+    // Multiplicative repetition penalty (llama.cpp / HuggingFace style). 1.0 disables it; values
+    // below 1.0 would reward repetition, so they are treated as off (same guard as the LiteRT-LM
+    // mapper). It stacks with the OpenAI-style frequency/presence penalties below.
+    params.penalty_repeat = repetition_penalty >= 1.0f ? repetition_penalty : 1.0f;
     params.penalty_freq = frequency_penalty;
     params.penalty_present = presence_penalty;
     params.min_p = 0.05f;
@@ -962,7 +966,7 @@ JNIEXPORT jint JNICALL
 Java_com_newoether_agora_api_LlamaChatEngine_nativeChatGenerate(
     JNIEnv * env, jclass /*clazz*/, jlong handle_ptr,
     jobject template_result, jfloat temperature, jfloat top_p,
-    jfloat frequency_penalty, jfloat presence_penalty, jint max_tokens,
+    jfloat frequency_penalty, jfloat presence_penalty, jfloat repetition_penalty, jint max_tokens,
     jobject callback) {
 
     NativeChatCallbacks callbacks;
@@ -1020,7 +1024,7 @@ Java_com_newoether_agora_api_LlamaChatEngine_nativeChatGenerate(
     std::string sampler_error;
     common_sampler * smpl = init_chat_sampler(
         handle, metadata, temperature, top_p,
-        frequency_penalty, presence_penalty, sampler_error
+        frequency_penalty, presence_penalty, repetition_penalty, sampler_error
     );
     if (!smpl) {
         const char * message = sampler_error.empty()
@@ -1269,7 +1273,7 @@ Java_com_newoether_agora_api_LlamaChatEngine_nativeChatGenerateWithImages(
     JNIEnv * env, jclass /*clazz*/, jlong handle_ptr,
     jobject template_result, jobjectArray image_paths,
     jfloat temperature, jfloat top_p,
-    jfloat frequency_penalty, jfloat presence_penalty, jint max_tokens,
+    jfloat frequency_penalty, jfloat presence_penalty, jfloat repetition_penalty, jint max_tokens,
     jobject callback) {
 
     NativeChatCallbacks callbacks;
@@ -1414,7 +1418,7 @@ Java_com_newoether_agora_api_LlamaChatEngine_nativeChatGenerateWithImages(
     std::string sampler_error;
     common_sampler * smpl = init_chat_sampler(
         handle, metadata, temperature, top_p,
-        frequency_penalty, presence_penalty, sampler_error
+        frequency_penalty, presence_penalty, repetition_penalty, sampler_error
     );
     if (!smpl) {
         const char * message = sampler_error.empty()

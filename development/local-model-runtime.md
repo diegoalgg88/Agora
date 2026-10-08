@@ -353,7 +353,7 @@ behavior or memory.
   per-conversation override → ProviderConfig → `RepetitionPenaltyConfig.repetitionPenalty`,
   with the SDK's `>= 1.0` requirement guarded at the mapper: sub-1.0 values resolve to
   the engine default instead of failing conversation creation). Remote OpenAI-compatible
-  requests never carry it. The GGUF/llama.cpp path does not forward it yet:
+  requests never carry it. The GGUF/llama.cpp path now forwards it too (`LlamaChatEngine.generate*` -> `nativeChatGenerate*` -> `params.penalty_repeat`, values < 1.0 treated as off; code-complete, pending device verification). Historical note, before this change:
   `llama_chat_jni.cpp` hardcodes `penalty_repeat = 1.0f`; wiring it there is a native
   change (JNI parameter + rebuild) tracked as a separate follow-up.
 - `EmbeddingEngine` of the SDK: **rejected**. Agora's embeddings (memory, RAG, semantic
