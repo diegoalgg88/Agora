@@ -58,6 +58,14 @@ class TaskManager(
         modelMessageId: String?,
         response: String,
     ) -> Unit = { _, _, _, _ -> },
+    /**
+     * Whether rich task confirmations are enabled. When true, a successful run's result is
+     * surfaced through the confirmation pipeline (banner + rich notification), so the engine
+     * must suppress the generic "Agora responded" terminal notification — one Run, one result
+     * notification (contract: notify at most once per Run). The plain terminal notification
+     * remains the single signal when the toggle is off.
+     */
+    private val taskConfirmationsEnabled: () -> Boolean = { false },
 ) {
     data class ExecutionSummary(
         val conversation: ChatConversation,
@@ -462,6 +470,11 @@ class TaskManager(
             systemPromptOverride = task.systemPrompt ?: "",
             foregroundServiceManagedExternally = foregroundServiceManagedExternally,
             requestKind = "task",
+            // With confirmations on, the result notification comes from the confirmation
+            // pipeline (see surfaceTaskResult below); posting the generic terminal too would
+            // duplicate the same Run's result. Only a SUCCESS is suppressed-then-resurfaced —
+            // the terminal policy never notifies headless ERROR/STOPPED anyway.
+            suppressTerminalNotification = taskConfirmationsEnabled(),
         )
         val outcome = when (result) {
             is TaskExecutionEngine.Result.Success -> {

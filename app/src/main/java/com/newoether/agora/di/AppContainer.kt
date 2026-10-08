@@ -314,6 +314,7 @@ class AppContainer(
                     response = response,
                 )
             },
+            taskConfirmationsEnabled = { settingsRepository.taskConfirmationEnabled.value },
         )
     }
 
@@ -371,6 +372,7 @@ class AppContainer(
                     response = response,
                 )
             },
+            taskConfirmationsEnabled = { settingsRepository.taskConfirmationEnabled.value },
         )
     }
 

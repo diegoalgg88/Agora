@@ -23,8 +23,9 @@ import kotlinx.coroutines.CancellationException
  * Runs a single scheduled task execution off the main thread, reliably and across process death.
  *
  * Delegates to the process-scoped [com.newoether.agora.automation.TaskManager], which drives the
- * generation through the shared engine. The engine already raises [AgoraForegroundService] for
- * the duration of the LLM call, so this worker does not manage its own foreground state.
+ * generation through the shared engine. This worker owns the WorkManager foreground notification
+ * for its duration (setForeground below), and reports `foregroundServiceManagedExternally = true`
+ * to the engine so no second foreground service/lease is raised for the same run.
  */
 class TaskWorker(
     context: Context,

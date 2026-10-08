@@ -406,6 +406,7 @@ class TaskExecutionEngine(
         foregroundServiceManagedExternally: Boolean = false,
         precondition: suspend () -> Boolean = { true },
         requestKind: String = "loop",
+        suppressTerminalNotification: Boolean = false,
     ): Result {
         settings.awaitInitialLoad()
         return automationWakeLockOwner.whileHeld(settings.automationWakeLockEnabled.value) {
@@ -417,6 +418,7 @@ class TaskExecutionEngine(
                 foregroundServiceManagedExternally = foregroundServiceManagedExternally,
                 precondition = precondition,
                 requestKind = requestKind,
+                suppressTerminalNotification = suppressTerminalNotification,
             )
         }
     }

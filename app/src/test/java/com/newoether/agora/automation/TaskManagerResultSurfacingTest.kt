@@ -4,6 +4,7 @@ import com.newoether.agora.data.local.TaskEntity
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.TaskRepository
 import io.mockk.coEvery
+import io.mockk.coVerify
 import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -118,6 +119,51 @@ class TaskManagerResultSurfacingTest {
         assertTrue(result is TaskManager.ExecutionResult.Success)
     }
 
+    @Test
+    fun confirmationsOnSuppressesTheGenericTerminalNotification() = runTest {
+        // One Run, one result notification: with the confirmation toggle on, the rich
+        // pipeline is the sole result signal, so the engine must not also post the
+        // generic "Agora responded" terminal notification.
+        val (repository, conversations, engine) = mocksForScheduledRun(
+            result = TaskExecutionEngine.Result.Success("model-msg-1", "ok"),
+        )
+        val manager = TaskManager(
+            repository, conversations, engine, backgroundScope,
+            taskConfirmationsEnabled = { true },
+        )
+
+        val result = manager.executeById("task", "execution", storedNextRunAt)
+
+        assertTrue(result is TaskManager.ExecutionResult.Success)
+        coVerify {
+            engine.runOnceWithAutomationGuardsHeld(
+                any(), any(), any(), any(), any(), any(), any(), true,
+            )
+        }
+    }
+
+    @Test
+    fun confirmationsOffKeepsTheGenericTerminalNotification() = runTest {
+        // Toggle off: no confirmation pipeline, so the plain terminal notification stays
+        // the single result signal.
+        val (repository, conversations, engine) = mocksForScheduledRun(
+            result = TaskExecutionEngine.Result.Success("model-msg-1", "ok"),
+        )
+        val manager = TaskManager(
+            repository, conversations, engine, backgroundScope,
+            taskConfirmationsEnabled = { false },
+        )
+
+        val result = manager.executeById("task", "execution", storedNextRunAt)
+
+        assertTrue(result is TaskManager.ExecutionResult.Success)
+        coVerify {
+            engine.runOnceWithAutomationGuardsHeld(
+                any(), any(), any(), any(), any(), any(), any(), false,
+            )
+        }
+    }
+
     private fun mocksForScheduledRun(
         result: TaskExecutionEngine.Result,
     ): Triple<TaskRepository, ConversationRepository, TaskExecutionEngine> {
@@ -132,7 +178,7 @@ class TaskManagerResultSurfacingTest {
         coEvery { conversations.getConversation(any()) } returns null
         coEvery { conversations.upsertConversation(any()) } returns Unit
         coEvery {
-            engine.runOnceWithAutomationGuardsHeld(any(), any(), any(), any(), any(), any(), any())
+            engine.runOnceWithAutomationGuardsHeld(any(), any(), any(), any(), any(), any(), any(), any())
         } returns result
         return Triple(repository, conversations, engine)
     }

@@ -45,6 +45,12 @@ class LoopManager(
         modelMessageId: String,
         response: String,
     ) -> Unit = { _, _, _, _ -> },
+    /**
+     * Whether rich task confirmations are enabled. Only the final cycle surfaces its result
+     * through that pipeline, so only the final cycle may suppress the generic terminal
+     * notification — mid-cycles keep the plain "Agora responded" signal unchanged.
+     */
+    private val taskConfirmationsEnabled: () -> Boolean = { false },
 ) {
     /** Production convenience constructor; the primary constructor stays fully JVM-testable. */
     constructor(
@@ -302,6 +308,10 @@ class LoopManager(
                         latest.cycleCount == claimed.cycleCount
                 },
                 requestKind = "loop",
+                // The final cycle's result is surfaced via the confirmation pipeline when
+                // confirmations are on (one Run, one result notification); mid-cycles and
+                // confirmations-off runs keep the generic terminal signal.
+                suppressTerminalNotification = taskConfirmationsEnabled() && !claimed.active,
             )
         } catch (e: CancellationException) {
             throw e

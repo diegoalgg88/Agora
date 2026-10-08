@@ -260,9 +260,69 @@ class LoopManagerTest {
         }
     }
 
+    @Test
+    fun confirmationsOnSuppressesTerminalOnlyForTheFinalCycle() = runTest {
+        // One Run, one result notification: the final cycle's result is surfaced through
+        // the confirmation pipeline, so only it may suppress the generic terminal.
+        stored.value = loop(maxCycles = 1)
+        coEvery {
+            engine.runOnceWithAutomationGuardsHeld(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns TaskExecutionEngine.Result.Success("model-message", "done")
+        val manager = manager(taskConfirmationsEnabled = { true })
+
+        val result = manager.executeByConversationId("conversation")
+
+        assertTrue(result is LoopManager.ExecutionResult.Finished)
+        coVerify {
+            engine.runOnceWithAutomationGuardsHeld(
+                any(), any(), any(), any(), any(), any(), any(), true,
+            )
+        }
+    }
+
+    @Test
+    fun confirmationsOnMidCycleKeepsTheGenericTerminalNotification() = runTest {
+        // A mid-cycle is never surfaced through the pipeline, so its plain terminal
+        // notification must stay unchanged.
+        stored.value = loop(maxCycles = 2)
+        coEvery {
+            engine.runOnceWithAutomationGuardsHeld(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns TaskExecutionEngine.Result.Success("model-message", "done")
+        val manager = manager(taskConfirmationsEnabled = { true })
+
+        val result = manager.executeByConversationId("conversation")
+
+        assertTrue(result is LoopManager.ExecutionResult.Finished)
+        assertTrue(stored.value!!.active)
+        coVerify {
+            engine.runOnceWithAutomationGuardsHeld(
+                any(), any(), any(), any(), any(), any(), any(), false,
+            )
+        }
+    }
+
+    @Test
+    fun confirmationsOffFinalCycleKeepsTheGenericTerminalNotification() = runTest {
+        stored.value = loop(maxCycles = 1)
+        coEvery {
+            engine.runOnceWithAutomationGuardsHeld(any(), any(), any(), any(), any(), any(), any(), any())
+        } returns TaskExecutionEngine.Result.Success("model-message", "done")
+        val manager = manager(taskConfirmationsEnabled = { false })
+
+        val result = manager.executeByConversationId("conversation")
+
+        assertTrue(result is LoopManager.ExecutionResult.Finished)
+        coVerify {
+            engine.runOnceWithAutomationGuardsHeld(
+                any(), any(), any(), any(), any(), any(), any(), false,
+            )
+        }
+    }
+
     private fun kotlinx.coroutines.test.TestScope.manager(
         executionGate: AutomationExecutionGate = AutomationExecutionGate(),
         executionCoordinator: ConversationExecutionCoordinator? = null,
+        taskConfirmationsEnabled: () -> Boolean = { false },
     ) = LoopManager(
         taskRepository = taskRepository,
         conversationRepository = conversationRepository,
@@ -271,6 +331,7 @@ class LoopManagerTest {
         clock = { now },
         executionCoordinator = executionCoordinator,
         executionGate = executionGate,
+        taskConfirmationsEnabled = taskConfirmationsEnabled,
     )
 
     private fun loop(
