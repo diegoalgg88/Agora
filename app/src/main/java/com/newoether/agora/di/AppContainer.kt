@@ -2,6 +2,7 @@ package com.newoether.agora.di
 
 import android.app.Application
 import android.content.Context
+import androidx.work.WorkManager
 import com.newoether.agora.data.MemoryManager
 import com.newoether.agora.data.SkillManager
 import com.newoether.agora.data.SettingsManager
@@ -122,6 +123,7 @@ class AppContainer(
         ConversationRepository(
             chatDao = chatDao,
             database = database,
+            workManager = WorkManager.getInstance(appContext),
             semanticModelSnapshotProvider = {
                 settingsRepository.awaitInitialLoad()
                 semanticModelSnapshot(
@@ -145,7 +147,9 @@ class AppContainer(
         processServicesStarted = true
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
-                if (database.maintenanceDebtDao().hasDebt()) MaintenanceDebtWorker.schedule()
+                if (database.maintenanceDebtDao().hasDebt()) {
+                    MaintenanceDebtWorker.schedule(WorkManager.getInstance(appContext))
+                }
             } catch (error: Exception) {
                 com.newoether.agora.util.DebugLog.e(
                     "AppContainer",

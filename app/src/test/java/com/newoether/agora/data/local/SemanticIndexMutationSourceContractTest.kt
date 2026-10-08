@@ -172,7 +172,7 @@ class SemanticIndexMutationSourceContractTest {
             importGraph,
             "database.withSemanticGraphMutation(",
             "chatDao.upsertConversationSettingsImportTransfer(settingsTransfer)",
-            "scheduleMaintenance()",
+            "MaintenanceDebtWorker.schedule(workManager)",
         )
 
         val provider = container.section(

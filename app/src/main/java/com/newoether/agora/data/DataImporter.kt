@@ -2,6 +2,7 @@ package com.newoether.agora.data
 
 import android.content.Context
 import android.net.Uri
+import androidx.work.WorkManager
 import com.newoether.agora.automation.LoopPolicy
 import com.newoether.agora.data.local.ChatDao
 import com.newoether.agora.data.local.ChatDatabase
@@ -110,6 +111,7 @@ class DataImporter(
         chatDao = chatDao,
         importJson = importJson,
         mediaRestorer = conversationMediaRestorer,
+        workManager = WorkManager.getInstance(context),
     )
 
     private suspend fun reconcileImportedEmbeddingModels(

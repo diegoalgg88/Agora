@@ -1,6 +1,7 @@
 package com.newoether.agora.data.repository
 
 import androidx.room.withTransaction
+import androidx.work.WorkManager
 import com.newoether.agora.data.local.ChatDao
 import com.newoether.agora.data.local.ChatDatabase
 import com.newoether.agora.data.local.ChatEntity
@@ -94,7 +95,7 @@ class ConversationRepository(
     internal val chatDao: ChatDao,
     /** Non-null in production; null is an explicit DAO-isolated unit-test seam. */
     private val database: ChatDatabase?,
-    private val scheduleMaintenance: () -> Unit = { MaintenanceDebtWorker.schedule() },
+    private val workManager: WorkManager? = null,
     private val maintenanceDebtDao: MaintenanceDebtDao? = database?.maintenanceDebtDao(),
     private val semanticModelSnapshotProvider: suspend () -> SemanticModelSnapshot = {
         semanticModelSnapshot("", emptyList())
@@ -134,7 +135,7 @@ class ConversationRepository(
                 else -> enqueueAttachmentDebt(previous.removedReclaimablePaths(replacement))
             }
         }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
     }
 
     suspend fun deleteNewChatPersist(reclaimAttachments: Boolean = true): Boolean {
@@ -152,7 +153,7 @@ class ConversationRepository(
                 }
             }
         }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
         return deleted
     }
 
@@ -254,7 +255,7 @@ class ConversationRepository(
                 else -> enqueueAttachmentDebt(draftAttachments.orEmpty().reclaimablePaths())
             }
         }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
     }
 
     // ── Messages ──────────────────────────────────────────────
@@ -345,7 +346,7 @@ class ConversationRepository(
                 else -> enqueueAttachmentDebt(previous.appPrivatePaths())
             }
         }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
         return graph
     }
 
@@ -369,7 +370,7 @@ class ConversationRepository(
             }
             scheduled = enqueueReconcileDebt()
         }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
     }
 
     suspend fun createForkGraph(
@@ -441,7 +442,7 @@ class ConversationRepository(
                     enqueueDebt(MaintenanceDebtEntity.KIND_RUN_BRANCHES, listOf(conversationId))
             }
         }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
         return deleted
     }
 
@@ -576,7 +577,6 @@ class ConversationRepository(
         ),
     )
 
-
     suspend fun removeContextCompact(messageId: String): Boolean {
         var removed = false
         var scheduled = false
@@ -594,7 +594,7 @@ class ConversationRepository(
                     )
             }
         }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
         return removed
     }
 
@@ -819,7 +819,7 @@ class ConversationRepository(
                 }
             }
         }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
     }
 
     /** Enqueues an attachment-orphan reconcile for callers that stage app-private files with no
@@ -828,7 +828,7 @@ class ConversationRepository(
     suspend fun scheduleAttachmentReconcile() {
         var scheduled = false
         withMaintenanceTransaction { scheduled = enqueueAttachmentReconcile() }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
     }
 
     /** Enqueues exact paths whose non-draft owner has already been settled by the caller. */
@@ -839,7 +839,7 @@ class ConversationRepository(
         withMaintenanceTransaction {
             scheduled = enqueueAttachmentDebt(attachments.reclaimablePaths())
         }
-        if (scheduled) scheduleMaintenance()
+        if (scheduled) workManager?.let(MaintenanceDebtWorker::schedule)
         AttachmentFiles.deleteEmptySandboxParents(
             attachments.filter { it.storage.reclaimWhenAbandoned },
         )
@@ -996,4 +996,4 @@ class ConversationRepository(
         const val ATTACHMENT_REFERENCE_PAGE_SIZE = 128
         const val CONTEXT_MESSAGE_QUERY_PAGE_SIZE = 64
     }
-}
+}

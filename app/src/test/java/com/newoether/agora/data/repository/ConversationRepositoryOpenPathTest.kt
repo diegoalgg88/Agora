@@ -5,8 +5,11 @@ import com.newoether.agora.data.local.ChatEntity
 import com.newoether.agora.data.local.MaintenanceDebtDao
 import com.newoether.agora.data.local.MaintenanceDebtEntity
 import com.newoether.agora.model.SelectedAttachment
+import androidx.work.ExistingWorkPolicy
+import androidx.work.WorkManager
 import io.mockk.coEvery
 import io.mockk.coVerify
+import io.mockk.every
 import io.mockk.mockk
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToString
@@ -17,6 +20,23 @@ import org.junit.Test
 import java.io.File
 
 class ConversationRepositoryOpenPathTest {
+
+    /** WorkManager double recording each unique-work dispatch, hermetic (no WorkManager init). */
+    private fun mockWorkManager(onScheduled: () -> Unit): WorkManager {
+        val wm = mockk<WorkManager>()
+        every {
+            wm.enqueueUniqueWork(
+                any<String>(),
+                any<ExistingWorkPolicy>(),
+                any<androidx.work.OneTimeWorkRequest>(),
+            )
+        } answers {
+            onScheduled()
+            mockk<androidx.work.Operation>(relaxed = true)
+        }
+        return wm
+    }
+
     @Test
     fun draftReplacementSchedulesOnlyRemovedSourceAfterTheDurableWrite() = runTest {
         val dao = mockk<ChatDao>(relaxed = true)
@@ -44,7 +64,7 @@ class ConversationRepositoryOpenPathTest {
         }
         val repository = ConversationRepository(
             dao, database = null, maintenanceDebtDao = debt,
-            scheduleMaintenance = { events += "schedule" },
+            workManager = mockWorkManager { events += "schedule" },
         )
         repository.updateDraft(conversation.id, "", readyJson)
         assertEquals(listOf("persist", "debt", "schedule"), events)

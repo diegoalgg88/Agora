@@ -132,7 +132,7 @@ class MaintenanceDebtWorker(
         private const val RECONCILE_PAGE_SIZE = 64
         private const val CLAIM_STALE_AFTER_MS = 15 * 60 * 1000L
 
-        fun schedule(workManager: WorkManager = WorkManager.getInstance()) {
+        fun schedule(workManager: WorkManager) {
             val request = OneTimeWorkRequestBuilder<MaintenanceDebtWorker>()
                 .addTag(TAG)
                 .build()

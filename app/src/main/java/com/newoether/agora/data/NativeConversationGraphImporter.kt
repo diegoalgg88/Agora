@@ -2,6 +2,7 @@ package com.newoether.agora.data
 
 import android.util.JsonReader
 import android.util.JsonToken
+import androidx.work.WorkManager
 import com.newoether.agora.automation.LoopPolicy
 import com.newoether.agora.data.DataImporter.ImportStrategy
 import com.newoether.agora.data.NativeConversationMediaRestorer.RestoredMedia
@@ -56,7 +57,7 @@ internal class NativeConversationGraphImporter(
     private val chatDao: ChatDao,
     private val importJson: Json,
     private val mediaRestorer: NativeConversationMediaRestorer,
-    private val scheduleMaintenance: () -> Unit = { MaintenanceDebtWorker.schedule() },
+    private val workManager: WorkManager,
 ) {
     private companion object {
         const val IMPORT_MESSAGE_BATCH_SIZE = 64
@@ -700,7 +701,7 @@ internal class NativeConversationGraphImporter(
                 )
             }
         }
-        scheduleMaintenance()
+        MaintenanceDebtWorker.schedule(workManager)
         return settingsTransfer.transferId
     }
 
