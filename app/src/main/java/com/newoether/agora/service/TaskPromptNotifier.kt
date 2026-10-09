@@ -92,6 +92,11 @@ class TaskPromptNotifier(
      * surfaces must never render the durable `row.title` (a neutral "Heartbeat" label),
      * they localize their own headers. This was the 2026-10-03 device-run finding: the
      * notification arrived titled "Heartbeat" in English on a Spanish device.
+     *
+     * @return false when the post was refused (POST_NOTIFICATIONS denied / channel muted).
+     *   Callers must record it — a silently dropped prompt leaves the row visible only in
+     *   the in-chat banner, invisible to a user who never opens the app (Universal
+     *   Installer's P2 rule: never strand a result with nothing on screen).
      */
     fun post(
         confirmationId: String,
@@ -99,8 +104,11 @@ class TaskPromptNotifier(
         rowTitle: String,
         body: String,
         conversationId: String,
-    ) {
-        if (!canPost()) return
+    ): Boolean {
+        if (!canPost()) {
+            DebugLog.w(TAG, "Task confirmation post refused (notifications blocked): id=$confirmationId src=$sourceType")
+            return false
+        }
         ensureChannel()
         val notificationId = notificationIdFor(confirmationId)
         val title = displayTitleFor(sourceType, rowTitle)
@@ -167,6 +175,9 @@ class TaskPromptNotifier(
             .setStyle(NotificationCompat.BigTextStyle().bigText(body))
             .setAutoCancel(false)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
+            // A question must arrive as a heads-up, not wait quietly in the shade (UI's
+            // InstallPromptNotifier finding: DEFAULT only added a shade row).
+            .setDefaults(NotificationCompat.DEFAULT_ALL)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setOnlyAlertOnce(true)
             .setContentIntent(contentIntent)
@@ -180,8 +191,9 @@ class TaskPromptNotifier(
             )
             .build()
 
-        runCatching { manager.notify(notificationId, notification) }
+        return runCatching { manager.notify(notificationId, notification) }
             .onFailure { DebugLog.w(TAG, "Failed to post task confirmation", it) }
+            .isSuccess
     }
 
     /** Removes the notification for [confirmationId] from any consuming surface. */
@@ -212,6 +224,9 @@ class TaskPromptNotifier(
      * durable row exists, so this notification carries NO actions, NO delete intent, and
      * auto-cancels on tap. ID derives from the content (source+message) so consecutive
      * actionable results replace each other instead of piling up in the shade.
+     *
+     * @return false when the post was refused; AUTO has no durable row, so the caller has
+     *   nothing to surface — the structured log is the only trace of the lost result.
      */
     fun postInfo(
         sourceType: String,
@@ -219,8 +234,11 @@ class TaskPromptNotifier(
         body: String,
         conversationId: String,
         modelMessageId: String?,
-    ) {
-        if (!canPost()) return
+    ): Boolean {
+        if (!canPost()) {
+            DebugLog.w(TAG, "Task info post refused (notifications blocked): src=$sourceType conv=$conversationId")
+            return false
+        }
         ensureChannel(info = true)
         val stableKey = "$sourceType:${conversationId}:${modelMessageId ?: body.hashCode()}"
         val notificationId = notificationIdFor(stableKey)
@@ -244,8 +262,9 @@ class TaskPromptNotifier(
             .setOnlyAlertOnce(true)
             .setContentIntent(openConversationIntent)
             .build()
-        runCatching { manager.notify(notificationId, notification) }
+        return runCatching { manager.notify(notificationId, notification) }
             .onFailure { DebugLog.w(TAG, "Failed to post task info notification", it) }
+            .isSuccess
     }
 
     /**
@@ -274,6 +293,36 @@ class TaskPromptNotifier(
                 ),
             )
         }.onFailure { DebugLog.w(TAG, "Failed to arm snooze reminder", it) }
+    }
+
+    /**
+     * Deferred re-post when [post] was refused because notifications were blocked at staging
+     * time (P2, adapted headless: a run cannot launch a dialog, so the retry waits for the
+     * user to unblock). Deliberately does NOT touch `remindAtEpochMs` — that field is the
+     * snooze contract (the banner hides the row until the deadline) and a blocked
+     * notification must not hide the banner row too, which is the only visible surface
+     * while blocked. The receiver re-reads the row and re-posts only while it is still
+     * PENDING, so a stale firing after resolution is a no-op.
+     */
+    fun schedulePostRetry(confirmationId: String) {
+        val trigger = System.currentTimeMillis() + POST_RETRY_DELAY_MS
+        runCatching {
+            val alarms = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
+            alarms.setAndAllowWhileIdle(
+                AlarmManager.RTC_WAKEUP,
+                trigger,
+                PendingIntent.getBroadcast(
+                    context,
+                    0,
+                    Intent(context, TaskConfirmationReceiver::class.java).apply {
+                        action = TaskConfirmationReceiver.ACTION_RETRY_POST
+                        data = "agora://task-confirmation/retry/$confirmationId".toUri()
+                        putExtra(TaskConfirmationReceiver.EXTRA_CONFIRMATION_ID, confirmationId)
+                    },
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+                ),
+            )
+        }.onFailure { DebugLog.w(TAG, "Failed to arm post retry", it) }
     }
 
     /**
@@ -307,6 +356,13 @@ class TaskPromptNotifier(
         const val CHANNEL_ID = "task_confirmation_v1"
         const val INFO_CHANNEL_ID = "task_confirmation_info_v1"
         private const val MIN_REMINDER_DELAY_MS = 1_000L
+
+        /**
+         * Deferred re-post cadence for a notification refused at staging time. Long enough
+         * not to spam alarms while the user keeps notifications blocked; short enough that
+         * unblocking surfaces the pending result on the next cycle.
+         */
+        private const val POST_RETRY_DELAY_MS = 15L * 60_000L
 
         /** Stable notification ID for a confirmation ID (or an AUTO-mode content key). */
         internal fun notificationIdFor(key: String): Int =

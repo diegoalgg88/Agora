@@ -53,6 +53,30 @@ class TaskConfirmationReceiver : BroadcastReceiver() {
                         )
                         return@launch
                     }
+                    ACTION_RETRY_POST -> {
+                        // Deferred re-post for a notification refused at staging (blocked).
+                        // Re-read the row: a stale firing after resolution is a no-op, and a
+                        // row still blocked re-arms the cycle until it can surface.
+                        val row = container.taskConfirmationStore.get(confirmationId) ?: return@launch
+                        val stillPending =
+                            row.status == com.newoether.agora.data.local.TaskConfirmationStatus
+                                .PENDING.name
+                        if (!stillPending) return@launch
+                        if (AppForegroundTracker.isInForeground) return@launch
+                        if (container.taskPromptNotifier.canPost()) {
+                            val posted = container.taskPromptNotifier.post(
+                                confirmationId = row.id,
+                                sourceType = row.sourceType,
+                                rowTitle = row.title,
+                                body = row.bodyText,
+                                conversationId = row.conversationId,
+                            )
+                            if (!posted) container.taskPromptNotifier.schedulePostRetry(row.id)
+                        } else {
+                            container.taskPromptNotifier.schedulePostRetry(row.id)
+                        }
+                        return@launch
+                    }
                     else -> {
                         DebugLog.w(TAG, "Unknown action $action ignored")
                         return@launch
@@ -75,6 +99,7 @@ class TaskConfirmationReceiver : BroadcastReceiver() {
         const val ACTION_DISMISS = "com.newoether.agora.automation.TASK_CONFIRMATION_DISMISS"
         const val ACTION_SNOOZE = "com.newoether.agora.automation.TASK_CONFIRMATION_SNOOZE"
         const val ACTION_REMIND = "com.newoether.agora.automation.TASK_CONFIRMATION_REMIND"
+        const val ACTION_RETRY_POST = "com.newoether.agora.automation.TASK_CONFIRMATION_RETRY_POST"
 
         /** Notification Snooze has no picker; it uses the shortest card option. */
         const val DEFAULT_SNOOZE_MINUTES = 10

@@ -33,6 +33,8 @@ internal suspend fun stageAndNotifyTaskConfirmation(
     val background = !appInForeground && notifier.canPost()
     if (settings.taskConfirmationMode.value == TaskConfirmationMode.AUTO) {
         if (background) {
+            // AUTO has no durable row — a refused post leaves nothing to retry; the
+            // structured log inside postInfo is the only trace.
             notifier.postInfo(
                 sourceType = source.name,
                 title = title,
@@ -53,12 +55,18 @@ internal suspend fun stageAndNotifyTaskConfirmation(
         ),
     )
     if (background && staged.status == TaskConfirmationStatus.PENDING.name) {
-        notifier.post(
+        val posted = notifier.post(
             confirmationId = staged.id,
             sourceType = staged.sourceType,
             rowTitle = staged.title,
             body = staged.bodyText,
             conversationId = staged.conversationId,
         )
+        // P2 adapted headless: notifications were blocked at staging. The banner row is
+        // the only visible surface; arm the deferred re-post so the prompt surfaces the
+        // moment the user unblocks notifications, instead of never.
+        if (!posted) {
+            notifier.schedulePostRetry(staged.id)
+        }
     }
 }

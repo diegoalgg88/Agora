@@ -418,6 +418,9 @@ class HeartbeatSchedulerBusyPathTest {
         promptNotifier: com.newoether.agora.service.TaskPromptNotifier =
             mockk<com.newoether.agora.service.TaskPromptNotifier>(relaxed = true) {
                 every { canPost() } returns true
+                // Happy path: a staged prompt posts successfully, no deferred retry.
+                every { post(any(), any(), any(), any(), any()) } returns true
+                every { postInfo(any(), any(), any(), any(), any()) } returns true
             },
     ): Triple<HeartbeatScheduler, HeartbeatManager, HeartbeatNotifier> {
         // Reuse the main scheduler() harness but inject the capturing store/notifier by
