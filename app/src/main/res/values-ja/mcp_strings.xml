@@ -42,4 +42,8 @@
     <string name="mcp_refresh">再接続</string>
     <string name="mcp_tools_count">ツール（%1$d）</string>
     <string name="mcp_tool_no_description">説明なし</string>
+    <string name="mcp_resources_count">リソース (%1$d)</string>
+    <string name="mcp_resources_more">ほか %1$d 件は非表示</string>
+    <string name="mcp_tool_interactive_view">インタラクティブビュー</string>
+    <string name="mcp_tool_app_only">インタラクティブビュー専用</string>
 </resources>

@@ -54,7 +54,7 @@ private const val MCP_APP_MAX_HEIGHT_DP = 800
 
 private sealed interface McpAppLoadState {
     data object Loading : McpAppLoadState
-    data object Failed : McpAppLoadState
+    data class Failed(val detail: String? = null) : McpAppLoadState
     data class Ready(val resource: McpUiResource, val registry: McpRegistry) : McpAppLoadState
 }
 
@@ -100,20 +100,23 @@ private fun McpAppHost(segment: MessageSegment, serverId: String, resourceUri: S
     }
     LaunchedEffect(registry, serverId, resourceUri) {
         loadState = if (registry == null) {
-            McpAppLoadState.Failed
+            McpAppLoadState.Failed()
         } else {
             try {
                 McpAppLoadState.Ready(registry.readUiResource(serverId, resourceUri), registry)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
-                McpAppLoadState.Failed
+                McpAppLoadState.Failed(e.message?.take(160))
             }
         }
     }
     when (val state = loadState) {
         McpAppLoadState.Loading -> McpAppStatusText(stringResource(R.string.mcp_app_loading))
-        McpAppLoadState.Failed -> McpAppStatusText(stringResource(R.string.mcp_app_unavailable))
+        is McpAppLoadState.Failed -> McpAppStatusText(
+            listOfNotNull(stringResource(R.string.mcp_app_unavailable), state.detail)
+                .joinToString("\n"),
+        )
         is McpAppLoadState.Ready -> McpAppWebContent(
             segment = segment,
             serverId = serverId,

@@ -32,6 +32,10 @@ When a server announces that its tool catalog changed, Agora re-reads the tool l
 
 Enabled MCP tools join Agora's normal tool-calling pipeline. The model sees each tool's name, description, and input schema, and a tool result is stored with the conversation like other tool calls.
 
+## Resources
+
+If a server exposes resources (for example documentation pages or interactive-view documents), the server's edit page lists them in a **Resources** section with their name, address, and description. Resources are shown for reference only: Agora does not send them to the model or read them automatically. Tools that have an interactive view are labelled in the tool list.
+
 ## Interactive Views (MCP Apps)
 
 Some MCP servers attach an interactive view to a tool, such as a dashboard or a form. When such a tool succeeds, open its details in the conversation and tap **Open interactive view**. The view is loaded only when you tap, and it closes when you tap **Close interactive view** or leave the screen. The plain tool result stays available below it.

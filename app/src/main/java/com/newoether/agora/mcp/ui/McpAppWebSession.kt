@@ -5,6 +5,7 @@ import android.graphics.Color
 import android.net.Uri
 import android.os.Message
 import android.view.ViewGroup
+import android.webkit.ConsoleMessage
 import android.webkit.GeolocationPermissions
 import android.webkit.JsPromptResult
 import android.webkit.JsResult
@@ -21,9 +22,13 @@ import androidx.webkit.WebMessageCompat
 import androidx.webkit.WebViewCompat
 import androidx.webkit.WebViewFeature
 import com.newoether.agora.mcp.McpUiResource
+import com.newoether.agora.util.DebugLog
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 import java.io.ByteArrayInputStream
+
+private const val TAG = "McpApp"
+private const val MAX_LOGGED_CONSOLE_CHARS = 300
 
 /**
  * The features the isolation model depends on. Without both, the host never renders a view and the
@@ -43,6 +48,9 @@ internal object McpAppWebSupport {
  * blocked unless the server declared its origin; there is no `addJavascriptInterface`; messages
  * travel through an origin-restricted `WebMessageListener`; navigation, popups, dialogs, file and
  * device permissions are all refused. All methods must be called on the main thread.
+ *
+ * Blocked requests and the view's console output are written to [DebugLog] (never to the UI) so a
+ * view that renders blank can be diagnosed: a missing CSP domain or a script error shows up there.
  */
 internal class McpAppWebSession(
     context: Context,
@@ -52,51 +60,6 @@ internal class McpAppWebSession(
     private val scope: CoroutineScope,
     private val onRenderProcessGone: () -> Unit,
 ) {
-    private companion object {
-        const val BRIDGE_NAME = "__agoraMcpHost"
-
-        /**
-         * Runs before any page script. SDK views talk to `window.parent.postMessage` and listen for
-         * `message` events whose `source` is `window.parent`; in a top-level WebView there is no
-         * parent frame, so this shim substitutes one that forwards to the native listener.
-         */
-        val BRIDGE_SHIM = """
-            (function () {
-              var host = function () { return window.__agoraMcpHost; };
-              var parentProxy = {
-                postMessage: function (message) {
-                  var h = host();
-                  if (!h) return;
-                  try { h.postMessage(JSON.stringify(message)); } catch (e) {}
-                }
-              };
-              try {
-                Object.defineProperty(window, 'parent', {
-                  configurable: true,
-                  get: function () { return parentProxy; }
-                });
-              } catch (e) {}
-              function bind() {
-                var h = host();
-                if (!h) return false;
-                h.onmessage = function (event) {
-                  var data;
-                  try { data = JSON.parse(event.data); } catch (e) { return; }
-                  window.dispatchEvent(new MessageEvent('message', {
-                    data: data,
-                    source: parentProxy,
-                    origin: window.location.origin
-                  }));
-                };
-                return true;
-              }
-              if (!bind()) {
-                var timer = setInterval(function () { if (bind()) clearInterval(timer); }, 5);
-              }
-            })();
-        """.trimIndent()
-    }
-
     private val origin = McpAppSandbox.origin(serverId, resource.uri)
     private val pageUrl = McpAppSandbox.pageUrl(origin)
     private val pageBytes = resource.html.toByteArray(Charsets.UTF_8)
@@ -150,7 +113,7 @@ internal class McpAppWebSession(
                 view: WebView?,
                 request: WebResourceRequest?,
             ): WebResourceResponse? {
-                val url = request?.url?.toString() ?: return blocked()
+                val url = request?.url?.toString() ?: return blocked(null)
                 if (url == pageUrl && request.isForMainFrame && request.method == "GET") {
                     return WebResourceResponse(
                         "text/html",
@@ -161,7 +124,11 @@ internal class McpAppWebSession(
                         ByteArrayInputStream(pageBytes),
                     )
                 }
-                return if (McpAppSandbox.isRequestAllowed(url, origin, resource.uiMeta)) null else blocked()
+                return if (McpAppSandbox.isRequestAllowed(url, origin, resource.uiMeta)) {
+                    null
+                } else {
+                    blocked(url)
+                }
             }
 
             override fun shouldOverrideUrlLoading(
@@ -173,12 +140,24 @@ internal class McpAppWebSession(
                 view: WebView?,
                 detail: RenderProcessGoneDetail?,
             ): Boolean {
+                DebugLog.w(TAG, "render process gone (crashed=${detail?.didCrash()})")
                 onRenderProcessGone()
                 return true
             }
         }
 
         webView.webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: ConsoleMessage?): Boolean {
+                if (consoleMessage != null) {
+                    DebugLog.d(
+                        TAG,
+                        "console ${consoleMessage.messageLevel()}: " +
+                            consoleMessage.message().orEmpty().take(MAX_LOGGED_CONSOLE_CHARS),
+                    )
+                }
+                return true
+            }
+
             override fun onPermissionRequest(request: PermissionRequest?) {
                 request?.deny()
             }
@@ -230,10 +209,10 @@ internal class McpAppWebSession(
         }
 
         val allowedOrigins = setOf(origin)
-        WebViewCompat.addDocumentStartJavaScript(webView, BRIDGE_SHIM, allowedOrigins)
+        WebViewCompat.addDocumentStartJavaScript(webView, McpAppBridgeShim.SCRIPT, allowedOrigins)
         WebViewCompat.addWebMessageListener(
             webView,
-            BRIDGE_NAME,
+            McpAppBridgeShim.HOST_OBJECT_NAME,
             allowedOrigins,
         ) { _, message, sourceOrigin, isMainFrame, replyProxy ->
             onViewMessage(message, sourceOrigin, isMainFrame, replyProxy)
@@ -256,12 +235,23 @@ internal class McpAppWebSession(
         }
     }
 
-    private fun blocked() = WebResourceResponse(
-        "text/plain",
-        "utf-8",
-        403,
-        "Blocked",
-        emptyMap(),
-        ByteArrayInputStream(ByteArray(0)),
-    )
+    private fun blocked(url: String?): WebResourceResponse {
+        if (url != null) DebugLog.w(TAG, "blocked request to ${loggableUrl(url)}")
+        return WebResourceResponse(
+            "text/plain",
+            "utf-8",
+            403,
+            "Blocked",
+            emptyMap(),
+            ByteArrayInputStream(ByteArray(0)),
+        )
+    }
+}
+
+/** Scheme, host and path only: query strings and fragments may carry tokens or user data. */
+internal fun loggableUrl(url: String): String {
+    val uri = Uri.parse(url)
+    val scheme = uri.scheme ?: return "(invalid url)"
+    val host = uri.host ?: return "$scheme:"
+    return "$scheme://$host${uri.path.orEmpty()}".take(200)
 }

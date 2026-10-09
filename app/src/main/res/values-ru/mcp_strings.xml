@@ -42,4 +42,8 @@
     <string name="mcp_refresh">Переподключиться</string>
     <string name="mcp_tools_count">Инструменты (%1$d)</string>
     <string name="mcp_tool_no_description">Нет описания</string>
+    <string name="mcp_resources_count">Ресурсы (%1$d)</string>
+    <string name="mcp_resources_more">Ещё %1$d не показано</string>
+    <string name="mcp_tool_interactive_view">Интерактивное представление</string>
+    <string name="mcp_tool_app_only">Только для интерактивных представлений</string>
 </resources>

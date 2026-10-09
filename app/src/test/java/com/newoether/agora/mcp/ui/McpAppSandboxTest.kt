@@ -51,7 +51,8 @@ class McpAppSandboxTest {
         assertTrue(csp.contains("frame-src 'none'"))
         assertTrue(csp.contains("object-src 'none'"))
         assertTrue(csp.contains("base-uri 'self'"))
-        assertTrue(csp.contains("img-src 'self' data:"))
+        assertTrue(csp.contains("img-src 'self' data: blob:"))
+        assertTrue(csp.contains("worker-src 'self' blob:"))
         assertFalse(csp.contains("http"))
     }
 
@@ -69,7 +70,8 @@ class McpAppSandboxTest {
         assertTrue(csp.contains("connect-src https://api.example.com wss://live.example.com"))
         assertTrue(csp.contains("script-src 'self' 'unsafe-inline' https://cdn.example.com https://*.fonts.example.com"))
         assertTrue(csp.contains("style-src 'self' 'unsafe-inline' https://cdn.example.com"))
-        assertTrue(csp.contains("img-src 'self' data: https://cdn.example.com"))
+        assertTrue(csp.contains("img-src 'self' data: blob: https://cdn.example.com"))
+        assertTrue(csp.contains("worker-src 'self' blob: https://cdn.example.com https://*.fonts.example.com"))
         assertTrue(csp.contains("frame-src https://player.example.com"))
         assertTrue(csp.contains("base-uri https://base.example.com"))
         assertFalse(csp.contains("connect-src 'none'"))

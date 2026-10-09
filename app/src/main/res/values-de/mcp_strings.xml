@@ -42,4 +42,8 @@
     <string name="mcp_refresh">Neu verbinden</string>
     <string name="mcp_tools_count">Tools (%1$d)</string>
     <string name="mcp_tool_no_description">Keine Beschreibung</string>
+    <string name="mcp_resources_count">Ressourcen (%1$d)</string>
+    <string name="mcp_resources_more">+%1$d weitere nicht angezeigt</string>
+    <string name="mcp_tool_interactive_view">Interaktive Ansicht</string>
+    <string name="mcp_tool_app_only">Nur für interaktive Ansichten</string>
 </resources>

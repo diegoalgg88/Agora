@@ -57,9 +57,13 @@ internal object McpAppSandbox {
             "script-src ${sources(resources, "'self'", "'unsafe-inline'")}",
             "style-src ${sources(resources, "'self'", "'unsafe-inline'")}",
             "connect-src ${if (connect.isEmpty()) "'none'" else sources(connect)}",
-            "img-src ${sources(resources, "'self'", "data:")}",
-            "font-src ${sources(resources, "'self'", "data:")}",
-            "media-src ${sources(resources, "'self'", "data:")}",
+            // `blob:` for generated images/fonts/media and for dynamic workers: WebGL map and 3D
+            // libraries (MapLibre, Cesium, three.js) cannot start without `worker-src blob:`. This
+            // matches the MCP Apps reference host and adds no external origin.
+            "img-src ${sources(resources, "'self'", "data:", "blob:")}",
+            "font-src ${sources(resources, "'self'", "data:", "blob:")}",
+            "media-src ${sources(resources, "'self'", "data:", "blob:")}",
+            "worker-src ${sources(resources, "'self'", "blob:")}",
             "frame-src ${if (frames.isEmpty()) "'none'" else sources(frames)}",
             "object-src 'none'",
             "base-uri ${if (base.isEmpty()) "'self'" else sources(base)}",

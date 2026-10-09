@@ -70,12 +70,29 @@ data class McpToolDescriptor(
     )
 }
 
+/**
+ * A resource advertised by `resources/list`. Resources are listed in settings so the user can see
+ * what a server exposes (documentation, MCP App documents). They are display-only: nothing here is
+ * offered to a model or read automatically.
+ */
+data class McpRemoteResource(
+    val uri: String,
+    /** Display name: the resource `title`, else its `name`, else its URI. */
+    val name: String,
+    val description: String? = null,
+    val mimeType: String? = null,
+) {
+    val isMcpAppDocument: Boolean
+        get() = uri.startsWith("ui://")
+}
+
 data class McpServerSnapshot(
     val serverId: String,
     val status: McpConnectionStatus = McpConnectionStatus.IDLE,
     val tools: List<McpToolDescriptor> = emptyList(),
     val error: String? = null,
     val lastSyncedAt: Long? = null,
+    val resources: List<McpRemoteResource> = emptyList(),
 )
 
 data class McpImagePayload(
@@ -240,6 +257,42 @@ internal fun parseMcpUiResourceContents(requestedUri: String, result: JsonObject
     }?.takeIf(String::isNotBlank) ?: return null
     val uiMeta = item["_meta"]?.asObjectOrNull()?.get("ui")?.asObjectOrNull()
     return McpUiResource(uri = requestedUri, html = html, uiMeta = uiMeta)
+}
+
+/** Upper bound on resources kept per server; a catalogue can be far larger than is useful to show. */
+internal const val MAX_MCP_RESOURCES = 500
+private const val MAX_MCP_RESOURCE_URI_CHARS = 2048
+private const val MAX_MCP_RESOURCE_TEXT_CHARS = 500
+private const val MAX_MCP_RESOURCE_MIME_CHARS = 100
+
+/**
+ * Parses one `resources/list` page. Entries without a usable `uri` are skipped; `title` wins over
+ * `name` as the display name. Returns null when the result carries no `resources` array.
+ */
+internal fun parseMcpResourcesPage(result: JsonObject): List<McpRemoteResource>? {
+    val page = result["resources"] as? JsonArray ?: return null
+    return page.mapNotNull { element ->
+        val item = element.asObjectOrNull() ?: return@mapNotNull null
+        fun text(key: String): String? =
+            (item[key] as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf(String::isNotEmpty)
+        val uri = text("uri") ?: return@mapNotNull null
+        McpRemoteResource(
+            uri = uri.take(MAX_MCP_RESOURCE_URI_CHARS),
+            name = (text("title") ?: text("name") ?: uri).take(MAX_MCP_RESOURCE_TEXT_CHARS),
+            description = text("description")?.take(MAX_MCP_RESOURCE_TEXT_CHARS),
+            mimeType = text("mimeType")?.take(MAX_MCP_RESOURCE_MIME_CHARS),
+        )
+    }
+}
+
+/**
+ * Whether `resources/list` should be called after `initialize`. A server that declares its
+ * capabilities without `resources` is never asked, so it cannot fail a refresh; a result with no
+ * capabilities object at all is treated as unknown and tried.
+ */
+internal fun mcpServerMayListResources(initializeResult: JsonObject): Boolean {
+    val capabilities = initializeResult["capabilities"] as? JsonObject ?: return true
+    return capabilities.containsKey("resources")
 }
 
 internal fun isToolsListChangedNotification(envelope: JsonObject): Boolean =

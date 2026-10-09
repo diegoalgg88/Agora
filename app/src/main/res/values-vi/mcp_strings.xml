@@ -42,4 +42,8 @@
     <string name="mcp_refresh">Kết nối lại</string>
     <string name="mcp_tools_count">Công cụ (%1$d)</string>
     <string name="mcp_tool_no_description">Không có mô tả</string>
+    <string name="mcp_resources_count">Tài nguyên (%1$d)</string>
+    <string name="mcp_resources_more">+%1$d mục khác chưa hiển thị</string>
+    <string name="mcp_tool_interactive_view">Chế độ xem tương tác</string>
+    <string name="mcp_tool_app_only">Chỉ dùng cho chế độ xem tương tác</string>
 </resources>

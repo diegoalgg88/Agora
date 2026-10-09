@@ -411,6 +411,7 @@ class McpRegistry(
                 serverId = config.id,
                 status = McpConnectionStatus.CONNECTING,
                 tools = snapshots.value[config.id]?.tools.orEmpty(),
+                resources = snapshots.value[config.id]?.resources.orEmpty(),
             ),
         )
 
@@ -466,6 +467,7 @@ class McpRegistry(
                         serverId = runtime.config.id,
                         status = McpConnectionStatus.CONNECTING,
                         tools = snapshots.value[runtime.config.id]?.tools.orEmpty(),
+                        resources = snapshots.value[runtime.config.id]?.resources.orEmpty(),
                     ),
                 )
             ) {
@@ -490,9 +492,11 @@ class McpRegistry(
      * tools/list_changed refresh stop instead of publishing into a replaced runtime.
      */
     private suspend fun refreshToolsSnapshot(runtime: Runtime): Boolean {
-        val remoteTools = connectionPermits.withPermit {
-            runtime.client.listTools()
+        val (listedTools, remoteResources) = connectionPermits.withPermit {
+            val tools = runtime.client.listTools()
+            tools to listResourcesOrEmpty(runtime)
         }
+        val remoteTools = listedTools
             .distinctBy(McpRemoteTool::name)
             .sortedBy(McpRemoteTool::name)
         clearUiResourceCache(runtime.config.id)
@@ -512,9 +516,24 @@ class McpRegistry(
                 status = McpConnectionStatus.CONNECTED,
                 tools = descriptors,
                 lastSyncedAt = System.currentTimeMillis(),
+                resources = remoteResources.distinctBy(McpRemoteResource::uri),
             ),
         )
     }
+
+    /**
+     * Resources are informational: a server that rejects or breaks `resources/list` must keep its
+     * working tools, so any non-cancellation failure degrades to an empty list.
+     */
+    private suspend fun listResourcesOrEmpty(runtime: Runtime): List<McpRemoteResource> =
+        try {
+            runtime.client.listResources()
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            DebugLog.d("McpRegistry", "MCP server ${runtime.config.id} resources/list failed", e)
+            emptyList()
+        }
 
     /**
      * `notifications/tools/list_changed` arrived from a connected server. Coalesced per runtime:
@@ -570,6 +589,7 @@ class McpRegistry(
                     serverId = runtime.config.id,
                     status = McpConnectionStatus.CONNECTED,
                     tools = if (keepTools) previous?.tools.orEmpty() else emptyList(),
+                    resources = if (keepTools) previous?.resources.orEmpty() else emptyList(),
                     lastSyncedAt = previous?.lastSyncedAt ?: System.currentTimeMillis(),
                 ),
             )
@@ -585,6 +605,7 @@ class McpRegistry(
                     serverId = runtime.config.id,
                     status = McpConnectionStatus.ERROR,
                     tools = previous?.tools.orEmpty(),
+                    resources = previous?.resources.orEmpty(),
                     error = userMessage(error),
                     lastSyncedAt = previous?.lastSyncedAt,
                 ),

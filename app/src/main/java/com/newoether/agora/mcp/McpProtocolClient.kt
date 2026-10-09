@@ -30,6 +30,7 @@ internal class McpProtocolClient(
         private const val STREAMABLE_HTTP_PROTOCOL_VERSION = "2025-11-25"
         private const val LEGACY_SSE_PROTOCOL_VERSION = "2024-11-05"
         private const val MAX_TOOL_PAGES = 100
+        private const val MAX_RESOURCE_PAGES = 20
         internal val STREAMABLE_HTTP_PROTOCOL_VERSIONS = listOf(
             STREAMABLE_HTTP_PROTOCOL_VERSION,
             "2025-06-18",
@@ -62,6 +63,9 @@ internal class McpProtocolClient(
 
     private var initialized = false
     private var initializedGeneration: Long? = null
+
+    /** Set by [initializeLocked] from the server's declared capabilities. */
+    private var serverMayListResources = true
 
     suspend fun listTools(): List<McpRemoteTool> = mutex.withLock {
         retryAfterSessionExpiry {
@@ -103,6 +107,38 @@ internal class McpProtocolClient(
                 if (cursor == null) return@retryAfterSessionExpiry tools
             }
             throw IOException("MCP tools/list exceeded $MAX_TOOL_PAGES pages")
+        }
+    }
+
+    /**
+     * Lists the server's resources (`resources/list`, paginated, bounded by [MAX_MCP_RESOURCES]).
+     * Empty without a request when the server did not declare the `resources` capability. Callers
+     * decide whether a failure matters: it must not fail a tool refresh.
+     */
+    suspend fun listResources(): List<McpRemoteResource> = mutex.withLock {
+        retryAfterSessionExpiry {
+            ensureInitializedLocked()
+            if (!serverMayListResources) return@retryAfterSessionExpiry emptyList()
+            val resources = mutableListOf<McpRemoteResource>()
+            var cursor: String? = null
+            repeat(MAX_RESOURCE_PAGES) {
+                val params = if (cursor == null) {
+                    buildJsonObject {}
+                } else {
+                    buildJsonObject { put("cursor", cursor) }
+                }
+                val result = requestLocked("resources/list", params)
+                resources += parseMcpResourcesPage(result)
+                    ?: throw IOException("MCP resources/list returned no resources array")
+                if (resources.size >= MAX_MCP_RESOURCES) {
+                    return@retryAfterSessionExpiry resources.take(MAX_MCP_RESOURCES)
+                }
+                cursor = (result["nextCursor"] as? JsonPrimitive)
+                    ?.contentOrNull
+                    ?.takeIf(String::isNotBlank)
+                if (cursor == null) return@retryAfterSessionExpiry resources.toList()
+            }
+            resources.toList()
         }
     }
 
@@ -205,6 +241,7 @@ internal class McpProtocolClient(
             protocolVersion = negotiated
             transport.updateProtocolVersion(negotiated)
         }
+        serverMayListResources = mcpServerMayListResources(result)
         notificationLocked("notifications/initialized", buildJsonObject {})
         if (transport.ensureReady() != generation) {
             throw McpSessionExpiredException("MCP session changed during initialization")

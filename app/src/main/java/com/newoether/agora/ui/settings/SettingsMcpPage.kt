@@ -89,7 +89,7 @@ private data class McpEditorRoute(
     val isNew: Boolean,
 )
 
-private data class McpHeaderDraft(
+internal data class McpHeaderDraft(
     val id: String = UUID.randomUUID().toString(),
     val name: String = "",
     val value: String = "",
@@ -689,6 +689,20 @@ private fun McpServerEditor(
                             }
                             SettingsItem(
                                 headlineContent = { Text(tool.remote.name) },
+                                supportingContent = tool.uiResourceUri?.let {
+                                    {
+                                        Text(
+                                            text = stringResource(
+                                                if (tool.isModelVisible) {
+                                                    R.string.mcp_tool_interactive_view
+                                                } else {
+                                                    R.string.mcp_tool_app_only
+                                                },
+                                            ),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        )
+                                    }
+                                },
                                 leadingContent = {
                                     Icon(
                                         Icons.Default.Build,
@@ -709,6 +723,9 @@ private fun McpServerEditor(
                         }
                     },
                 )
+            }
+            if (snapshot?.resources?.isNotEmpty() == true) {
+                McpResourcesGroup(snapshot.resources)
             }
         }
         if (showDocFab) { Spacer(modifier = Modifier.height(80.dp)) }
@@ -955,22 +972,4 @@ private fun McpLabeledField(
             )
         }
     }
-}
-
-private fun buildMcpHeaders(headers: List<McpHeaderDraft>): Map<String, String> {
-    return buildMap {
-        headers
-            .filterNot { it.name.isBlank() && it.value.isBlank() }
-            .forEach { header ->
-                put(header.name.trim(), header.value.trim())
-            }
-    }
-}
-
-private fun isValidMcpUrl(value: String): Boolean {
-    val uri = runCatching { java.net.URI(value.trim()) }.getOrNull() ?: return false
-    return (uri.scheme.equals("http", true) || uri.scheme.equals("https", true)) &&
-        uri.host != null &&
-        uri.userInfo == null &&
-        uri.fragment == null
 }

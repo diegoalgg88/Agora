@@ -42,4 +42,8 @@
     <string name="mcp_refresh">重新連線</string>
     <string name="mcp_tools_count">工具（%1$d）</string>
     <string name="mcp_tool_no_description">無說明</string>
+    <string name="mcp_resources_count">資源 (%1$d)</string>
+    <string name="mcp_resources_more">另有 %1$d 項未顯示</string>
+    <string name="mcp_tool_interactive_view">互動檢視</string>
+    <string name="mcp_tool_app_only">僅供互動檢視使用</string>
 </resources>

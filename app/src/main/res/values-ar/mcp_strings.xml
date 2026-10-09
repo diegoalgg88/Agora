@@ -42,4 +42,8 @@
     <string name="mcp_refresh">إعادة الاتصال</string>
     <string name="mcp_tools_count">الأدوات (%1$d)</string>
     <string name="mcp_tool_no_description">لا يوجد وصف</string>
+    <string name="mcp_resources_count">الموارد (%1$d)</string>
+    <string name="mcp_resources_more">+%1$d أخرى غير معروضة</string>
+    <string name="mcp_tool_interactive_view">عرض تفاعلي</string>
+    <string name="mcp_tool_app_only">للعروض التفاعلية فقط</string>
 </resources>

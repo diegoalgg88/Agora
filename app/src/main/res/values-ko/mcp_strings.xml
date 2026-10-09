@@ -42,4 +42,8 @@
     <string name="mcp_refresh">다시 연결</string>
     <string name="mcp_tools_count">도구(%1$d)</string>
     <string name="mcp_tool_no_description">설명 없음</string>
+    <string name="mcp_resources_count">리소스 (%1$d)</string>
+    <string name="mcp_resources_more">%1$d개 더 있음 (표시되지 않음)</string>
+    <string name="mcp_tool_interactive_view">인터랙티브 뷰</string>
+    <string name="mcp_tool_app_only">인터랙티브 뷰 전용</string>
 </resources>

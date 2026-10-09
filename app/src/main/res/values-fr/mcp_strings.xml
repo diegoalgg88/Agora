@@ -42,4 +42,8 @@
     <string name="mcp_refresh">Reconnecter</string>
     <string name="mcp_tools_count">Outils (%1$d)</string>
     <string name="mcp_tool_no_description">Aucune description</string>
+    <string name="mcp_resources_count">Ressources (%1$d)</string>
+    <string name="mcp_resources_more">+%1$d de plus non affichées</string>
+    <string name="mcp_tool_interactive_view">Vue interactive</string>
+    <string name="mcp_tool_app_only">Réservé aux vues interactives</string>
 </resources>

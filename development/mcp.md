@@ -165,6 +165,20 @@ path already persisted.
   (`toolArgs`, `toolResultText ?: toolResult`, `toolStructuredResult`). Tool images are not forwarded
   in v1.
 
+### 9.2b Resources (display-only)
+
+- `McpProtocolClient.listResources()` pages through `resources/list` (at most 20 pages, 500 resources) and
+  `McpRegistry.refreshToolsSnapshot` publishes the result as `McpServerSnapshot.resources`, in the same
+  snapshot as the tools so the two never disagree.
+- A server is asked only if its `initialize` result declares the `resources` capability (a result with no
+  capabilities object at all is tried). Any non-cancellation failure of `resources/list` degrades to an
+  empty list and never fails the tool refresh or marks the server ERROR.
+- Resources are display-only: the MCP settings page lists them per server (name, URI, description; `ui://`
+  documents get their own icon, at most 50 rows with a "+N more" row), and tools that declare a `ui://`
+  document are labelled there. Nothing in this section is offered to a model, read automatically, or
+  added to a Provider request. Exposing resources to the model is a separate decision that needs its own
+  authorization and context-budget design.
+
 ### 9.3 Rendering and isolation
 
 - Rendering is user-initiated and demand-driven: `McpAppEntry` (in the MCP branch of
@@ -181,10 +195,17 @@ path already persisted.
   origin-restricted `WebMessageListener` plus a document-start shim that stands in for
   `window.parent`. Navigation, popups, JS dialogs, file/content access, geolocation and every device
   permission are refused; DOM storage is off.
-- `McpAppSandbox.buildCsp` follows the spec's construction. Declared domains are validated as bare
-  `https`/`wss` origins (optional `*.` prefix and port), deduplicated and capped at 16 per directive
-  before they reach a header, so a server cannot inject a directive or widen the policy.
-  `connectDomains` only reach `connect-src`; `resourceDomains` reach script/style/img/font/media.
+- `McpAppSandbox.buildCsp` follows the spec's construction, plus `worker-src 'self' blob:` and `blob:` for
+  images, fonts and media (WebGL map/3D libraries such as MapLibre cannot start without a blob worker; the
+  MCP Apps reference host allows the same). No external origin is added.
+- The page-side bridge is `McpAppBridgeShim`. Host-to-view messages are re-dispatched as `message` events;
+  `MessageEventInit.source` rejects anything but a Window/MessagePort/ServiceWorker, so the stand-in parent
+  is attached to the event instance afterwards instead of passed to the constructor. Blocked sub-requests
+  and the view's console output go to `DebugLog` (scheme, host and path only), never to the UI.
+- Declared domains are validated as bare `https`/`wss` origins (optional `*.` prefix and port),
+  deduplicated and capped at 16 per directive before they reach a header, so a server cannot inject a
+  directive or widen the policy. `connectDomains` only reach `connect-src`; `resourceDomains` reach
+  script/style/img/font/media/worker.
   Permissions are never granted in v1.
 
 ### 9.4 Bridge router (`McpAppBridgeRouter`)
@@ -217,6 +238,7 @@ add a path from a view into the generation pipeline.
 
 Pure-unit coverage lives in `McpUiMetaTest` (metadata, visibility, resource validation),
 `McpAppSandboxTest` (origin, CSP, request allow-list), `McpAppBridgeRouterTest` (handshake, limits,
-refusals, URL policy), `GenerationToolUiReferenceTest` and `MessageSegmentUiReferenceTest` (durable
+refusals, URL policy), `McpAppBridgeShimTest` (the `MessageEvent.source` rule), `McpResourcesTest`
+(`resources/list` parsing, capability gate), `GenerationToolUiReferenceTest` and `MessageSegmentUiReferenceTest` (durable
 pointer). WebView isolation and the `window.parent` shim require device validation and are not claimed
 by compilation alone.
