@@ -187,6 +187,39 @@ when it lost the race, so no dead action buttons linger.
 If the platform refuses the post (`canPost()` false, permission revoked), the row
 survives for the banner — no orphan result.
 
+### Deep-link delivery contract (2026-10-08)
+`MainActivity` is `launchMode="singleTask"` (manifest) so notification PendingIntents
+reach the live instance via `onNewIntent` — the "Open conversation" action
+(`EXTRA_CONVERSATION_ID` / `agora://conversation/{id}`, flags `NEW_TASK|CLEAR_TOP`)
+and every other notification entry point (terminal notification, automation FGS,
+device-notification tool, assistant overlay) deliver their target conversation
+regardless of what was open when the task existed in the background. With the
+implicit `standard` mode the platform only brought the task to the front
+(`START_TASK_TO_FRONT`) and DROPPED the intent — the notification re-showed the
+previously open conversation (verified on-device 2026-10-08, logcat
+`result code=2`). The consumer chain `onNewIntent → handleNavigationIntent →
+notificationConversationId → LaunchedEffect → selectConversation` predates the fix
+and is unchanged; an anchored source-contract test (`MainActivityLaunchModeContractTest`)
+keeps the launch mode and launcher-root requirements pinned.
+
+### Scheduled-prompt factual header (2026-10-08)
+`TaskManager.composeExecutionPrompt` prepends one factual line to the stored task
+prompt at the engine call-site only — `Fecha y hora de ejecución: YYYY-MM-DD HH:mm
+(zone)` (locale-free ISO) — so an unattended run cannot misinfer "today" (a
+scheduled forecast asked for the current date and the model answered a 2025 date).
+`TaskEntity.prompt` is NEVER persisted modified; the header exists only in the
+admitted Run's user message. Tasks that bake their own date logic continue to work
+verbatim after the header.
+
+### Result body rendering surfaces (2026-10-08)
+Exactly one surface renders the result markdown: the expanded state of the
+confirmation card (`TaskConfirmationCard` uses the library `Markdown()` composable
+with the literal-HTML annotator — the same minimal surface as the file viewer;
+the collapsed peek stays plain `Text`, maxLines 6). The notification keeps the
+plain-text `BigTextStyle` projection (Android cannot render markdown) and the chat
+banner keeps its 2-line plain peek. `TaskConfirmationMarkdownSurfacesContractTest`
+pins the split so no surface accidentally inherits rich rendering.
+
 ### Snooze contract (fetch-and-clear)
 `TaskConfirmationStore.consumeDueReminders(now)` is the ONLY writer of
 `remindAtEpochMs = NULL`. It returns due rows and clears the column in one

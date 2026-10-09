@@ -24,6 +24,7 @@
     <string name="task_empty_desc">Create a task to run a prompt now or on a schedule.</string>
     <string name="task_new_task">New Task</string>
     <string name="task_execution_log">History</string>
+    <string name="task_execution_log_hint">Each run is saved here as its own conversation. Tap an entry to open it; these conversations are not shown in the chat list.</string>
     <string name="task_no_executions">No runs yet</string>
     <string name="task_no_executions_desc">Run this task to create execution history.</string>
     <string name="task_running">Running…</string>

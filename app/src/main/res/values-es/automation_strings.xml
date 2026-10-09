@@ -25,6 +25,7 @@
     <string name="task_empty_desc">Crea una tarea para ejecutar un prompt ahora o según una programación.</string>
     <string name="task_new_task">Nueva tarea</string>
     <string name="task_execution_log">Historial</string>
+    <string name="task_execution_log_hint">Cada ejecución se guarda aquí como una conversación propia. Toca una entrada para abrirla; estas conversaciones no aparecen en la lista de chats.</string>
     <string name="task_no_executions">Aún no hay ejecuciones</string>
     <string name="task_no_executions_desc">Ejecuta esta tarea para crear un historial de ejecuciones.</string>
     <string name="task_running">Ejecutando…</string>

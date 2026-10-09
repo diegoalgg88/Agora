@@ -36,7 +36,7 @@ fun PendingDeviceActionBanners(
         PendingSmsBanner(viewModel = viewModel)
         PendingEmailDraftBanner(viewModel = viewModel)
         PendingAssistantActionsBanner()
-        PendingTaskConfirmationsBanner()
+        PendingTaskConfirmationsBanner(visibleConversationId = viewModel.currentConversationId.collectAsState().value)
     }
 }
 

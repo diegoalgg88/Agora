@@ -57,6 +57,7 @@ import kotlinx.coroutines.launch
 @Composable
 fun PendingTaskConfirmationsBanner(
     modifier: Modifier = Modifier,
+    visibleConversationId: String? = null,
 ) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -80,8 +81,12 @@ fun PendingTaskConfirmationsBanner(
             delay(nextDue - nowMs + 50L)
         }
     }
-    val rows = remember(allPending, visibilityNow) {
-        allPending.filter { row -> row.remindAtEpochMs?.let { it <= visibilityNow } ?: true }
+    val rows = remember(allPending, visibilityNow, visibleConversationId) {
+        allPending
+            .filter { row -> row.remindAtEpochMs?.let { it <= visibilityNow } ?: true }
+            // The banner is global by design (multiple origins), but the row belonging to
+            // the conversation the user is looking at sorts first (stable for the rest).
+            .sortedBy { row -> if (row.conversationId == visibleConversationId) 0L else 1L }
     }
 
     AnimatedVisibility(

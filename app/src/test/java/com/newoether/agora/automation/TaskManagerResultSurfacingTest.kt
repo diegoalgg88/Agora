@@ -3,6 +3,9 @@ package com.newoether.agora.automation
 import com.newoether.agora.data.local.TaskEntity
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.TaskRepository
+import com.newoether.agora.util.DebugLog
+import android.content.Context
+import android.content.pm.ApplicationInfo
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -13,6 +16,7 @@ import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 /**
@@ -26,6 +30,16 @@ import org.junit.Test
  */
 @OptIn(ExperimentalCoroutinesApi::class)
 class TaskManagerResultSurfacingTest {
+
+    /** Focused runs execute before the api-package tests that disable DebugLog globally; the
+     *  Failure/surfacing branches log via android.util.Log, which is not mocked on the JVM. */
+    @Before
+    fun disableAndroidLoggingForJvmTests() {
+        val context = mockk<Context>()
+        every { context.applicationInfo } returns ApplicationInfo().apply { flags = 0 }
+        DebugLog.forceEnabled = false
+        DebugLog.init(context)
+    }
 
     private data class Surfaced(
         val taskId: String,

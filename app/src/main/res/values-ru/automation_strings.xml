@@ -25,6 +25,7 @@
     <string name="task_empty_desc">Создайте задачу, чтобы запускать промпт сейчас или по расписанию.</string>
     <string name="task_new_task">Новая задача</string>
     <string name="task_execution_log">История</string>
+    <string name="task_execution_log_hint">Каждый запуск сохраняется здесь как отдельный разговор. Коснитесь записи, чтобы открыть её; эти разговоры не отображаются в списке чатов.</string>
     <string name="task_no_executions">Запусков пока нет</string>
     <string name="task_no_executions_desc">Запустите эту задачу, чтобы создать историю выполнений.</string>
     <string name="task_running">Выполняется…</string>

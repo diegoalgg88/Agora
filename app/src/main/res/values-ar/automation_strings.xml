@@ -25,6 +25,7 @@
     <string name="task_empty_desc">أنشئ مهمة لتشغيل موجّه الآن أو وفق جدول.</string>
     <string name="task_new_task">مهمة جديدة</string>
     <string name="task_execution_log">السجل</string>
+    <string name="task_execution_log_hint">يُحفظ كل تشغيل هنا كمحادثة مستقلة. انقر على أحد المداخل لفتحه؛ لا تظهر هذه المحادثات في قائمة المحادثات.</string>
     <string name="task_no_executions">لا توجد عمليات تشغيل بعد</string>
     <string name="task_no_executions_desc">شغّل هذه المهمة لإنشاء سجل تنفيذ.</string>
     <string name="task_running">قيد التشغيل…</string>

@@ -91,6 +91,7 @@
     <string name="task_empty_desc">创建任务，以立即或按计划运行提示词。</string>
     <string name="task_new_task">新建任务</string>
     <string name="task_execution_log">历史</string>
+    <string name="task_execution_log_hint">每次运行都会作为单独的对话保存在这里。点击条目即可打开；这些对话不会显示在聊天列表中。</string>
     <string name="task_no_executions">还没有运行过</string>
     <string name="task_no_executions_desc">运行此任务后，执行记录会显示在这里。</string>
     <string name="task_running">运行中…</string>

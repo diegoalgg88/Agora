@@ -25,6 +25,7 @@
     <string name="task_empty_desc">Tạo tác vụ để chạy prompt ngay hoặc theo lịch.</string>
     <string name="task_new_task">Tác vụ mới</string>
     <string name="task_execution_log">Lịch sử</string>
+    <string name="task_execution_log_hint">Mỗi lần chạy được lưu ở đây như một cuộc trò chuyện riêng. Chạm vào một mục để mở; những cuộc trò chuyện này không xuất hiện trong danh sách trò chuyện.</string>
     <string name="task_no_executions">Chưa có lần chạy nào</string>
     <string name="task_no_executions_desc">Chạy tác vụ này để tạo lịch sử thực thi.</string>
     <string name="task_running">Đang chạy…</string>

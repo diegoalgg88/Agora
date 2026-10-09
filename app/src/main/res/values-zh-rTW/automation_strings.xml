@@ -25,6 +25,7 @@
     <string name="task_empty_desc">建立任務，以立即或按排程執行提示詞。</string>
     <string name="task_new_task">新增任務</string>
     <string name="task_execution_log">歷史記錄</string>
+    <string name="task_execution_log_hint">每次執行都會作為單獨的對話保存在這裡。點擊條目即可打開；這些對話不會顯示在聊天列表中。</string>
     <string name="task_no_executions">尚無執行記錄</string>
     <string name="task_no_executions_desc">執行此任務後，執行記錄會顯示在這裡。</string>
     <string name="task_running">執行中…</string>

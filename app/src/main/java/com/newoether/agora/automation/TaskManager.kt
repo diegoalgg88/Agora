@@ -9,6 +9,7 @@ import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.model.Participant
 import com.newoether.agora.util.Constants
 import com.newoether.agora.util.DebugLog
+import java.time.ZoneId
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
@@ -122,8 +123,25 @@ class TaskManager(
 
     /** A scheduled occurrence delayed beyond this window is dropped (not made up). Prevents a
      *  "9am daily" from firing at 3am after the phone was off; a few-minute Doze lag still runs. */
-    private companion object {
+    internal companion object {
         const val MAX_OCCURRENCE_LATENCY_MS = 15L * 60_000L
+
+        /**
+         * Prepends the factual execution timestamp to the user's prompt, so unattended runs
+         * cannot misinfer "today" (a scheduled forecast asked for "the current date" and the
+         * model answered a 2025 date). Same factual-header pattern as the heartbeat prompt;
+         * [TaskEntity.prompt] itself is never persisted modified.
+         */
+        internal fun composeExecutionPrompt(
+            prompt: String,
+            at: Long = System.currentTimeMillis(),
+            zone: ZoneId = ZoneId.systemDefault(),
+        ): String {
+            val now = java.time.Instant.ofEpochMilli(at).atZone(zone)
+            // Locale-free ISO date/time: unambiguous for the model and deterministic in tests.
+            val header = "Fecha y hora de ejecución: ${now.toLocalDate()} ${now.toLocalTime()} ($zone)."
+            return "$header\n\n$prompt"
+        }
     }
 
     fun executionsForTask(taskId: String): Flow<List<ChatConversation>> =
@@ -465,7 +483,7 @@ class TaskManager(
 
         val result = engine.runOnceWithAutomationGuardsHeld(
             conversationId = conversationId,
-            userText = task.prompt,
+            userText = composeExecutionPrompt(task.prompt),
             modelId = task.modelId,
             systemPromptOverride = task.systemPrompt ?: "",
             foregroundServiceManagedExternally = foregroundServiceManagedExternally,

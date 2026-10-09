@@ -25,6 +25,7 @@
     <string name="task_empty_desc">Erstelle eine Aufgabe, um einen Prompt sofort oder nach Zeitplan auszuführen.</string>
     <string name="task_new_task">Neue Aufgabe</string>
     <string name="task_execution_log">Verlauf</string>
+    <string name="task_execution_log_hint">Jede Ausführung wird hier als eigene Unterhaltung gespeichert. Tippe auf einen Eintrag, um ihn zu öffnen; diese Unterhaltungen erscheinen nicht in der Chat-Liste.</string>
     <string name="task_no_executions">Noch keine Ausführungen</string>
     <string name="task_no_executions_desc">Führe diese Aufgabe aus, um einen Ausführungsverlauf anzulegen.</string>
     <string name="task_running">Wird ausgeführt…</string>

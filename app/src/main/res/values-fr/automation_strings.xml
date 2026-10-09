@@ -25,6 +25,7 @@
     <string name="task_empty_desc">Créez une tâche pour exécuter un prompt maintenant ou selon un planning.</string>
     <string name="task_new_task">Nouvelle tâche</string>
     <string name="task_execution_log">Historique</string>
+    <string name="task_execution_log_hint">Chaque exécution est enregistrée ici comme une conversation distincte. Touchez une entrée pour l’ouvrir ; ces conversations n’apparaissent pas dans la liste des discussions.</string>
     <string name="task_no_executions">Aucune exécution pour le moment</string>
     <string name="task_no_executions_desc">Exécutez cette tâche pour créer un historique d’exécution.</string>
     <string name="task_running">Exécution en cours…</string>

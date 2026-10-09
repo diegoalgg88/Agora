@@ -25,6 +25,7 @@
     <string name="task_empty_desc">프롬프트를 지금 또는 일정에 따라 실행할 작업을 만드세요.</string>
     <string name="task_new_task">새 작업</string>
     <string name="task_execution_log">기록</string>
+    <string name="task_execution_log_hint">각 실행은 여기에 별도의 대화로 저장됩니다. 항목을 탭하면 열립니다. 이 대화는 채팅 목록에 표시되지 않습니다.</string>
     <string name="task_no_executions">아직 실행 기록이 없습니다</string>
     <string name="task_no_executions_desc">이 작업을 실행하면 실행 기록이 생성됩니다.</string>
     <string name="task_running">실행 중…</string>

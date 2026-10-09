@@ -32,6 +32,8 @@ import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.data.local.TaskConfirmationEntity
 import com.newoether.agora.service.TaskPromptNotifier
+import com.newoether.agora.ui.chat.message.literalHtmlMarkdownAnnotator
+import com.mikepenz.markdown.m3.Markdown
 
 /**
  * Bottom-anchored rich confirmation card. Pure presentation: every action is a callback;
@@ -88,17 +90,29 @@ internal fun TaskConfirmationCard(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = row.bodyText,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = if (expanded) Int.MAX_VALUE else COLLAPSED_MAX_LINES,
-                overflow = TextOverflow.Ellipsis,
-                // No height cap: the collapsed state is bounded by maxLines and the expanded
-                // state by the Column's verticalScroll. A heightIn cap here clipped long results
-                // with no way to scroll to the rest.
-                onTextLayout = { layout -> if (!expanded) overflows = layout.hasVisualOverflow },
-            )
+            if (expanded) {
+                // Expanded renders the real markdown (tables, separators — the raw pipes the
+                // plain projection showed on the 2026-10-08 device report). Same minimal
+                // surface as TextFileViewer: library Markdown with the literal-HTML annotator,
+                // default M3 typography/padding/components; scrolling stays on the Column.
+                Markdown(
+                    content = row.bodyText,
+                    modifier = Modifier.fillMaxWidth(),
+                    annotator = literalHtmlMarkdownAnnotator,
+                )
+            } else {
+                Text(
+                    text = row.bodyText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = COLLAPSED_MAX_LINES,
+                    overflow = TextOverflow.Ellipsis,
+                    // No height cap: the collapsed state is bounded by maxLines and the expanded
+                    // state by the Column's verticalScroll. A heightIn cap here clipped long results
+                    // with no way to scroll to the rest.
+                    onTextLayout = { layout -> overflows = layout.hasVisualOverflow },
+                )
+            }
             if (expanded || overflows) {
                 TextButton(
                     onClick = { expanded = !expanded },

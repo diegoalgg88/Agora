@@ -142,8 +142,10 @@ class TaskManagerTest {
         coEvery { conversations.recoverConversationRuntime(any(), any()) } returns 0
         coEvery { conversations.getConversation("execution") } returns null
         coEvery { conversations.upsertConversation(any()) } returns Unit
+        // userText is any(): the engine receives the prompt composed with the factual
+        // execution-time header (composeExecutionPrompt), so exact matching is not stable.
         coEvery {
-            engine.runOnceWithAutomationGuardsHeld("execution", stored.prompt, stored.modelId, "", true, any(), "task")
+            engine.runOnceWithAutomationGuardsHeld("execution", any(), stored.modelId, "", true, any(), "task")
         } returns TaskExecutionEngine.Result.Busy()
         val manager = TaskManager(repository, conversations, engine, backgroundScope)
 
@@ -157,7 +159,7 @@ class TaskManagerTest {
             conversations.getConversation("execution")
             conversations.upsertConversation(any())
             engine.runOnceWithAutomationGuardsHeld(
-                "execution", stored.prompt, stored.modelId, "", true, any(), "task",
+                "execution", any(), stored.modelId, "", true, any(), "task",
             )
         }
     }

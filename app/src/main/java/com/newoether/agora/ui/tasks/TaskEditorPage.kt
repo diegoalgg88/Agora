@@ -366,6 +366,15 @@ internal fun TaskDetailPage(
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             )
+            // Execution conversations are deliberately excluded from the main chat list
+            // (ChatCoreDao filters taskId IS NOT NULL), so this log is their only home —
+            // device testing showed users looking for them in the list and finding nothing.
+            Text(
+                stringResource(R.string.task_execution_log_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(horizontal = 16.dp),
+            )
         }
         if (executionsLoaded && executions.isEmpty()) {
             item {

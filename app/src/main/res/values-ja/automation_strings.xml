@@ -25,6 +25,7 @@
     <string name="task_empty_desc">プロンプトを今すぐ、またはスケジュールで実行するタスクを作成します。</string>
     <string name="task_new_task">新しいタスク</string>
     <string name="task_execution_log">履歴</string>
+    <string name="task_execution_log_hint">各実行はここに個別の会話として保存されます。項目をタップすると開きます。これらの会話はチャット一覧には表示されません。</string>
     <string name="task_no_executions">実行履歴はまだありません</string>
     <string name="task_no_executions_desc">このタスクを実行すると、実行履歴が作成されます。</string>
     <string name="task_running">実行中…</string>
