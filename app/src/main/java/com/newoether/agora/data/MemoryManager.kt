@@ -38,6 +38,13 @@ class MemoryManager(context: Context) {
         val pinned: Boolean = false,
     )
 
+    /** Promotion candidate with its hit count — richer form used by the heartbeat prompt. */
+    data class MemoryPromotionCandidate(
+        val name: String,
+        val description: String,
+        val hitCount: Int,
+    )
+
     @Synchronized
     fun getActiveMemory(): String =
         if (activeMemoryFile.exists()) activeMemoryFile.readText() else ""
@@ -148,6 +155,25 @@ class MemoryManager(context: Context) {
                 MemoryFileInfo(name, meta[name].orEmpty(), false)
             } else null
         }.sortedByDescending { hits[it.name]?.toIntOrNull() ?: 0 }
+    }
+
+    /**
+     * Same candidates as [getPromotionCandidates], carrying the hit count so the heartbeat
+     * prompt can show how strongly reinforced each memory is (the model prefers pinning
+     * the highest-hit entries first).
+     */
+    @Synchronized
+    fun getPromotionCandidatesWithHits(minHits: Int = 5): List<MemoryPromotionCandidate> {
+        val hits = hitsStore.read()
+        val meta = metadata.read()
+        val pinned = pinnedStore.read()
+        return hits.mapNotNull { (name, countStr) ->
+            if (pinned[name] == "true") return@mapNotNull null
+            val count = countStr.toIntOrNull() ?: 0
+            if (count >= minHits) {
+                MemoryPromotionCandidate(name, meta[name].orEmpty(), count)
+            } else null
+        }.sortedByDescending { it.hitCount }
     }
 
     @Synchronized

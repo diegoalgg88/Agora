@@ -78,6 +78,9 @@ class HeartbeatSchedulerBusyPathTest {
         every { settings.heartbeatConversationId } returns MutableStateFlow(heartbeatConversationId)
         every { settings.heartbeatModel } returns MutableStateFlow(null)
         every { settings.heartbeatPrompt } returns MutableStateFlow("")
+        // buildPrompt reads the connected account list for the Email Account Status section;
+        // a relaxed StateFlow mock would explode on .value iteration.
+        every { settings.emailAccounts } returns MutableStateFlow(emptyList<com.newoether.agora.data.EmailAccount>())
         every { settings.taskConfirmationEnabled } returns MutableStateFlow(confirmationToggleOn)
         every { settings.taskConfirmationMode } returns MutableStateFlow(TaskConfirmationMode.PROMPT)
         every { settings.taskConfirmationCardStyle } returns
@@ -430,6 +433,7 @@ class HeartbeatSchedulerBusyPathTest {
         every { settings.heartbeatConversationId } returns MutableStateFlow(heartbeatConversationId)
         every { settings.heartbeatModel } returns MutableStateFlow(null)
         every { settings.heartbeatPrompt } returns MutableStateFlow("")
+        every { settings.emailAccounts } returns MutableStateFlow(emptyList<com.newoether.agora.data.EmailAccount>())
         every { settings.taskConfirmationEnabled } returns MutableStateFlow(confirmationToggleOn)
         every { settings.taskConfirmationMode } returns MutableStateFlow(mode)
         every { settings.taskConfirmationCardStyle } returns

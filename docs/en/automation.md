@@ -14,7 +14,9 @@ A Loop belongs to one conversation and starts another generation after a configu
 
 ## Heartbeat
 
-The Heartbeat runs a proactive check-in on a schedule: it collects what changed since the last run — pending Tasks and Loops, unread SMS, recent notifications, and the previous heartbeat result — and generates one summary message in its conversation.
+The Heartbeat runs a proactive check-in on a schedule: it collects what changed since the last run — pending Tasks and Loops, unread SMS, recent notifications, new emails, the current state of your email accounts, and the previous heartbeat results — and generates one summary message in its conversation.
+
+The last three heartbeat summaries are included in every run. This lets the assistant track trends instead of reacting only to what is new right now: it can notice that an issue it already raised is still unresolved, avoid repeating an alert it sent before, and detect persistent problems (for example, an email account whose unread count has not gone down since the last check). The per-account email status — unread count and last sync time — gives it a stable baseline to compare against, so a backlog that survives several checks gets flagged as "still pending" rather than silently accepted.
 
 Configure it under **Settings → Tools → Automation → Heartbeat**:
 

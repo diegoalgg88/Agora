@@ -85,20 +85,37 @@ snapshot and survive.
   (provider failure text is not a heartbeat result).
 - Index 0 renders under the "Most recent" label; the input list must be
   newest-first. Behavior pinned by `HeartbeatRecentResponsesTest`.
+- **Why the section exists (rationale):** the three summaries let the model
+  track trends across runs, avoid repeating an alert it already raised, and
+  detect persistent issues (e.g. "this account's unread count has not gone
+  down since the last check"). Without them, every heartbeat is stateless and
+  identical inputs produce identical, potentially re-alerted output. The
+  section's intro text states this purpose to the model directly.
 
 ## 7. Prompt structure (pure builder)
 
 Sections, in order, each omitted when empty: base prompt (custom user
 instructions or the default `DEFAULT_HEARTBEAT_PROMPT` — which forbids the model
 from rescheduling heartbeat), tasks & loops (due enabled tasks cap 10, active
-loops cap 5), memory promotion candidates, new SMS (cap 20), new notifications
-(cap 20, newest first), new emails (cap 20, newest first), previous results
-(cap 3), and — only when SMS/notifications/emails are present — a final `## Response Rule`
+loops cap 5), memory promotion candidates (with hit count, highest hits first —
+`getPromotionCandidatesWithHits` sorts, the builder does not re-sort), new SMS
+(cap 20), new notifications (cap 20, newest first), new emails (cap 20, newest
+first), email account status (per-account unread count + last sync, connected
+accounts only — the trend-detection baseline the previous-results rationale
+refers to), previous results (cap 3), and — only when SMS/notifications/emails
+are present — a final `## Response Rule`
 (never answer HEARTBEAT_OK when an incoming item is time-sensitive or needs action; the
 consume-on-success invariant means a wrong HEARTBEAT_OK loses the item). Tasks & loops also
 lists scheduled-but-not-due tasks (cap 10, with next run time) and is never emitted as a bare
 header; loops are read even when there are no tasks. Pending lists arrive as parameters; the scheduler owns the
 snapshot/remove lifecycle. Pinned by `HeartbeatPromptBuilderTest`.
+
+**Consume-vs-shown (shared limits):** the per-channel render caps live in
+`HeartbeatShownLimits` (SMS 20, notifications 20, emails 20) — one object used
+by BOTH the builder's render and the scheduler's snapshot cap. The scheduler
+captures its consume keys from the SAME capped, sorted lists it passes to the
+builder, so a backlog larger than the cap survives for later heartbeats instead
+of being silently dropped. Pinned by `HeartbeatPromptConsumeVsShownTest`.
 
 ## 8. Manual run ("Run now")
 

@@ -4,6 +4,7 @@ import com.newoether.agora.automation.HeartbeatScheduler
 import com.newoether.agora.automation.LoopManager
 import com.newoether.agora.automation.TaskExecutionEngine
 import com.newoether.agora.automation.TaskManager
+import com.newoether.agora.data.EmailAccount
 import com.newoether.agora.data.EmailPoller
 import com.newoether.agora.data.EmailStore
 import com.newoether.agora.data.NotificationStore
@@ -98,6 +99,9 @@ class HeartbeatRecentResponsesTest {
         every { settings.heartbeatConversationId } returns MutableStateFlow(heartbeatConversationId)
         every { settings.heartbeatModel } returns MutableStateFlow(null)
         every { settings.heartbeatPrompt } returns MutableStateFlow("")
+        // buildPrompt reads the connected account list for the Email Account Status section;
+        // a relaxed StateFlow mock would explode on .value iteration.
+        every { settings.emailAccounts } returns MutableStateFlow(emptyList<EmailAccount>())
         // Rich confirmations toggle OFF: this suite characterizes the pre-feature prompt,
         // so the staging path must stay inert here (a relaxed mock's StateFlow .value
         // does not produce a Boolean — it must be stubbed explicitly).

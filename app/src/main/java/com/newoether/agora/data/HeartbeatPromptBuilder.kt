@@ -6,6 +6,19 @@ import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.HeartbeatManager.Companion.DEFAULT_HEARTBEAT_PROMPT
 
 /**
+ * How many items of each pending channel the heartbeat prompt actually shows. The
+ * scheduler consumes EXACTLY this many keys (newest first) after a successful run —
+ * consume-vs-shown: an item the model never saw is never silently dropped from the
+ * pending queue. Single source of truth shared by the pure builder (render cap) and
+ * `HeartbeatScheduler` (snapshot cap), pinned by `HeartbeatPromptConsumeVsShownTest`.
+ */
+object HeartbeatShownLimits {
+    const val SMS = 20
+    const val NOTIFICATIONS = 20
+    const val EMAILS = 20
+}
+
+/**
  * Builds the prompt sent to the model during a heartbeat check.
  *
  * The prompt includes sections for:
@@ -15,10 +28,14 @@ import com.newoether.agora.data.HeartbeatManager.Companion.DEFAULT_HEARTBEAT_PRO
  * 4. New SMS (snapshot passed in — the caller removes it from the queue only after success)
  * 5. New notifications (snapshot passed in — same after-success consumption)
  * 6. New emails (snapshot passed in — same after-success consumption)
- * 7. Custom prompt (user-defined)
+ * 7. Email account status (per-account unread + last sync — trend detection across runs)
+ * 8. Custom prompt (user-defined)
+ * 9. Previous heartbeat results (last 3 — continuity: trend detection, no repeated alerts)
  *
  * Pending SMS/notification/email lists are parameters, not store lookups, so this builder
- * stays pure and unit-testable; the scheduler owns the snapshot/remove lifecycle.
+ * stays pure and unit-testable; the scheduler owns the snapshot/remove lifecycle. Each
+ * pending list is rendered newest-first up to [HeartbeatShownLimits] items, and the
+ * scheduler must cap its consume keys to the same limits (see [HeartbeatShownLimits]).
  */
 class HeartbeatPromptBuilder(
     private val taskManager: TaskManager,
@@ -37,6 +54,7 @@ class HeartbeatPromptBuilder(
         pendingNotifications: List<NotificationRecord> = emptyList(),
         pendingEmails: List<EmailPendingData> = emptyList(),
         recentResponses: List<String> = emptyList(),
+        emailStatuses: List<EmailAccountStatus> = emptyList(),
     ): String {
         val sections = mutableListOf<String>()
 
@@ -67,11 +85,15 @@ class HeartbeatPromptBuilder(
         val emailSection = buildEmailSection(pendingEmails)
         if (emailSection.isNotBlank()) sections.add(emailSection)
 
-        // Section 7: Previous Heartbeat Results (for continuity)
+        // Section 7: Email account status (trend detection — "still unread since last check")
+        val emailStatusSection = buildEmailStatusSection(emailStatuses)
+        if (emailStatusSection.isNotBlank()) sections.add(emailStatusSection)
+
+        // Section 8: Previous Heartbeat Results (for continuity)
         val previousSection = buildPreviousHeartbeatSection(recentResponses)
         if (previousSection.isNotBlank()) sections.add(previousSection)
 
-        // Section 8: decision rule, LAST so it is the freshest instruction. The base prompt (the
+        // Section 9: decision rule, LAST so it is the freshest instruction. The base prompt (the
         // default or the user's) only talks about memories/tasks/follow-ups, so a model reading
         // "nothing needs attention → HEARTBEAT_OK" followed by a list of incoming items had no
         // rule saying a overdue-payment SMS counts as "needs attention", and weaker models
@@ -143,13 +165,13 @@ class HeartbeatPromptBuilder(
     }
 
     private suspend fun buildPromotionCandidatesSection(): String {
-        val candidates = memoryManager.getPromotionCandidates()
+        val candidates = memoryManager.getPromotionCandidatesWithHits()
         if (candidates.isEmpty()) return ""
         val lines = mutableListOf("## Memory Promotion Candidates")
-        lines.add("The following memory files have been accessed frequently. Consider if any of this information should be promoted. Use the `pin_memory_file` tool to pin these memories so they are no longer suggested here.")
+        lines.add("The following memory files have been accessed frequently. Consider if any of this information should be promoted. Use the `pin_memory_file` tool to pin these memories so they are no longer suggested here. The hit count tells you how strongly reinforced each memory is — prefer pinning the highest-hit entries first.")
         for (c in candidates) {
             val descriptionText = if (c.description.isNotBlank()) ": ${c.description}" else ""
-            lines.add("- **${c.name}**$descriptionText")
+            lines.add("- **${c.name}** (hits: ${c.hitCount})$descriptionText")
         }
         return lines.joinToString("\n")
     }
@@ -159,7 +181,7 @@ class HeartbeatPromptBuilder(
 
         val lines = mutableListOf("## New SMS")
         lines.add("These SMS arrived since the last heartbeat. Summarise briefly; only flag items that genuinely need attention.")
-        for (msg in pendingSms.take(20)) {
+        for (msg in pendingSms.take(HeartbeatShownLimits.SMS)) {
             val sender = msg.address.ifBlank { "(unknown sender)" }
             val preview = msg.preview.ifBlank { "" }
             lines.add("- **$sender** (id: ${msg.id})${if (preview.isNotBlank()) ": $preview" else ""}")
@@ -173,7 +195,7 @@ class HeartbeatPromptBuilder(
         val lines = mutableListOf("## New Notifications")
         lines.add("These notifications arrived since the last heartbeat. Summarise briefly; only flag items that genuinely need attention.")
 
-        val sortedNotifications = pendingNotifications.sortedByDescending { it.postedAt }.take(20)
+        val sortedNotifications = pendingNotifications.sortedByDescending { it.postedAt }.take(HeartbeatShownLimits.NOTIFICATIONS)
         for (record in sortedNotifications) {
             val titleText = if (record.title.isNotBlank()) ": ${record.title}" else ""
             lines.add("- **${record.appLabel}**$titleText (id: ${record.id}): ${record.preview}")
@@ -187,7 +209,7 @@ class HeartbeatPromptBuilder(
         val lines = mutableListOf("## New Emails")
         lines.add("These emails arrived since the last heartbeat. Summarise briefly; only flag items that genuinely need attention.")
 
-        val sortedEmails = pendingEmails.sortedByDescending { it.dateEpochMs }.take(20)
+        val sortedEmails = pendingEmails.sortedByDescending { it.dateEpochMs }.take(HeartbeatShownLimits.EMAILS)
         for (email in sortedEmails) {
             val sender = email.fromAddress.ifBlank { "(unknown sender)" }
             val subject = email.subject.ifBlank { "(no subject)" }
@@ -204,11 +226,44 @@ class HeartbeatPromptBuilder(
      */
     private fun buildPreviousHeartbeatSection(recentResponses: List<String>): String {
         if (recentResponses.isEmpty()) return ""
-        val lines = mutableListOf("## Previous Heartbeat Results", "For context, here are your most recent heartbeat summaries:")
+        val lines = mutableListOf(
+            "## Previous Heartbeat Results",
+            "For context, here are your most recent heartbeat summaries. Use them to track trends, " +
+                "avoid repeating an alert you already raised, and detect persistent issues (for " +
+                "example, an account whose unread count has not gone down since the last check):",
+        )
         for ((i, response) in recentResponses.withIndex()) {
             val label = if (i == 0) "Most recent" else "${i + 1} heartbeats ago"
             lines.add("### $label\n$response")
         }
         return lines.joinToString("\n")
     }
+
+    /**
+     * Per-account email status. Unlike the pending (new-arrivals) sections, this runs on
+     * EVERY heartbeat with connected accounts — it gives the model a baseline to compare
+     * against the previous results above, so it can notice "this account has had the same
+     * unread count for three checks" instead of only reacting to brand-new mail.
+     */
+    private fun buildEmailStatusSection(statuses: List<EmailAccountStatus>): String {
+        if (statuses.isEmpty()) return ""
+        val lines = mutableListOf("## Email Account Status")
+        lines.add("Current state of each connected email account. Compare against the previous heartbeat results to detect persistent issues.")
+        for (status in statuses) {
+            val syncText = if (status.lastSyncEpochMs > 0) {
+                " (last sync: ${formatRunTime(status.lastSyncEpochMs)})"
+            } else {
+                " (never synced)"
+            }
+            lines.add("- **${status.email}**: ${status.unreadCount} unread$syncText")
+        }
+        return lines.joinToString("\n")
+    }
 }
+
+/** Per-account email status rendered into the `## Email Account Status` section. */
+data class EmailAccountStatus(
+    val email: String,
+    val unreadCount: Int,
+    val lastSyncEpochMs: Long,
+)

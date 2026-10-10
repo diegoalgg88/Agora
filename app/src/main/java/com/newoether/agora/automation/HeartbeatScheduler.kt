@@ -2,8 +2,10 @@ package com.newoether.agora.automation
 
 import android.content.Context
 import com.newoether.agora.data.EmailPoller
+import com.newoether.agora.data.EmailAccountStatus
 import com.newoether.agora.data.EmailStore
 import com.newoether.agora.data.HeartbeatManager
+import com.newoether.agora.data.HeartbeatShownLimits
 import com.newoether.agora.data.NotificationStore
 import com.newoether.agora.data.SmsPoller
 import com.newoether.agora.data.SmsStore
@@ -372,17 +374,37 @@ class HeartbeatScheduler(
 
     private suspend fun buildPrompt(heartbeatConversationId: String): HeartbeatSnapshot {
         val customPrompt = settingsRepository.heartbeatPrompt.value
+        // Consume-vs-shown: the builder renders only the newest HeartbeatShownLimits items
+        // per channel, so the snapshot the run consumes must be capped to the same items —
+        // otherwise a backlog > limit would be silently dropped from the queue without the
+        // model ever seeing it. Sort order matches the builder's render order exactly.
         val pendingSms = smsStore.getPendingSnapshot()
+            .sortedByDescending { it.date }
+            .take(HeartbeatShownLimits.SMS)
         val pendingNotifications = notificationStore.getPendingSnapshot()
+            .sortedByDescending { it.postedAt }
+            .take(HeartbeatShownLimits.NOTIFICATIONS)
         // Rows of an account that is no longer connected (removed, or dropped by a
         // replace-restore) are never delivered to the model.
+        val connectedAccounts = settingsRepository.emailAccounts.value
+        val connectedIds = connectedAccounts.map { it.id }.toSet()
         val pendingEmails = emailStore.getPendingSnapshot().let { pending ->
             if (pending.isEmpty()) {
                 pending
             } else {
-                val connectedIds = settingsRepository.emailAccounts.value.map { it.id }.toSet()
                 pending.filter { it.accountId in connectedIds }
             }
+        }.sortedByDescending { it.dateEpochMs }.take(HeartbeatShownLimits.EMAILS)
+
+        // Per-account status baseline: unread count + last sync for trend detection
+        // ("still unread since last check"). Only connected accounts; bounded by their count.
+        val emailStatuses = connectedAccounts.map { account ->
+            val state = emailStore.getSyncStateOnce(account.id)
+            EmailAccountStatus(
+                email = account.email,
+                unreadCount = state.unreadCount,
+                lastSyncEpochMs = state.lastSyncEpochMs,
+            )
         }
 
         // Bounded tail query: only final model responses, newest first. Never load the full
@@ -405,6 +427,7 @@ class HeartbeatScheduler(
                 pendingNotifications = pendingNotifications,
                 pendingEmails = pendingEmails,
                 recentResponses = recentResponses,
+                emailStatuses = emailStatuses,
             ),
             smsIds = pendingSms.map { it.id },
             notificationKeys = pendingNotifications.map { it.id },
