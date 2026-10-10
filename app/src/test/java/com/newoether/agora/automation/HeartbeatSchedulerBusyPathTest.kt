@@ -403,6 +403,63 @@ class HeartbeatSchedulerBusyPathTest {
         }
     }
 
+    // ── Supersession (anti-stacking) ──────────────────────────────────────────
+
+    @Test
+    fun actionableHeartbeatSupersedesPreviousPendingAndCancelsItsNotification() = runTest {
+        // The heartbeat is a repeat-poster into ONE conversation on a 60s cadence: the dedup
+        // key (modelMessageId) never repeats, so without supersession every actionable run
+        // stacked another PENDING row + heads-up — observed as a shade full of
+        // "Resultado del heartbeat" cards reporting the same alert at decreasing ages.
+        val store = stageCapturingStore()
+        coEvery {
+            store.supersedePending(
+                com.newoether.agora.data.local.TaskConfirmationSource.HEARTBEAT,
+                heartbeatConversationId,
+            )
+        } returns listOf(stagedRow("old-1"))
+        val promptNotifier = mockk<com.newoether.agora.service.TaskPromptNotifier>(relaxed = true)
+        every { promptNotifier.canPost() } returns true
+        schedulerWith(
+            engineResult = TaskExecutionEngine.Result.Success("msg-sup", "algo importante"),
+            inForeground = false,
+            confirmationToggleOn = true,
+            store = store,
+            promptNotifier = promptNotifier,
+        ).first.runHeartbeatNow()
+        coVerify(exactly = 1) {
+            store.supersedePending(
+                com.newoether.agora.data.local.TaskConfirmationSource.HEARTBEAT,
+                heartbeatConversationId,
+            )
+        }
+        coVerify(exactly = 1) { promptNotifier.cancel("old-1") }
+        coVerify(exactly = 1) { store.stage(any()) }
+    }
+
+    @Test
+    fun sentinelAndToggleOffPathsNeverSupersede() = runTest {
+        // A clean run (HEARTBEAT_OK) or a disabled toggle must never dismiss an alert the
+        // user has not acted on — supersession only happens on the staging path.
+        val sentinelStore = stageCapturingStore()
+        schedulerWith(
+            engineResult = TaskExecutionEngine.Result.Success("msg-s1", "HEARTBEAT_OK"),
+            inForeground = false,
+            confirmationToggleOn = true,
+            store = sentinelStore,
+        ).first.runHeartbeatNow()
+        coVerify(exactly = 0) { sentinelStore.supersedePending(any(), any()) }
+
+        val offStore = stageCapturingStore()
+        schedulerWith(
+            engineResult = TaskExecutionEngine.Result.Success("msg-s2", "algo importante"),
+            inForeground = false,
+            confirmationToggleOn = false,
+            store = offStore,
+        ).first.runHeartbeatNow()
+        coVerify(exactly = 0) { offStore.supersedePending(any(), any()) }
+    }
+
     // ── Test scaffolding for the confirmation-aware cases ────────────────────
 
     private fun stageCapturingStore(): TaskConfirmationStore =

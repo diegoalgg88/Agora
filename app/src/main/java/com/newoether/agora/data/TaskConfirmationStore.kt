@@ -134,6 +134,30 @@ class TaskConfirmationStore(
     }
 
     /**
+     * Supersession for repeat-posters (the heartbeat): transitions every PENDING row of
+     * (source, conversationId) to DISMISSED and returns the rows it won, so the caller can
+     * cancel their posted notifications. Rows resolved by another surface between the SELECT
+     * and the UPDATE are simply absent from the result (the transition carries the
+     * single-winner PENDING predicate). Reuses DISMISSED rather than a new status: the row
+     * is a dedup tombstone like any user-dismissed one, and no surface distinguishes them.
+     */
+    suspend fun supersedePending(
+        source: TaskConfirmationSource,
+        conversationId: String,
+    ): List<TaskConfirmationEntity> = withContext(Dispatchers.IO) {
+        database.withTransaction {
+            chatDao.selectPendingTaskConfirmations(source.name, conversationId)
+                .filter { row ->
+                    chatDao.transitionTaskConfirmation(
+                        id = row.id,
+                        fromStatus = TaskConfirmationStatus.PENDING.name,
+                        toStatus = TaskConfirmationStatus.DISMISSED.name,
+                    ) == 1
+                }
+        }
+    }
+
+    /**
      * PENDING rows with NO armed snooze; used to re-arm the deferred re-post alarms after
      * a reboot. Complement of [armedReminders]: the retry-post contract never touches
      * `remindAtEpochMs`, so those rows are invisible to the snooze query above. Safe for

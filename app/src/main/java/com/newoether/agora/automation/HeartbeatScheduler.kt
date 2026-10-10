@@ -345,6 +345,17 @@ class HeartbeatScheduler(
             val plainBody = TaskConfirmationStore.plainTextForConfirmation(actionable)
             // Markdown-only remainders ("###") collapse to empty; the store rejects blank bodies.
             if (plainBody.isBlank()) return
+            // The heartbeat is a repeat-poster into ONE conversation on a 60s cadence. The
+            // dedup key carries modelMessageId (unique per generation), so without supersession
+            // every actionable run stacked another PENDING row and another heads-up
+            // notification — observed as a shade full of "Resultado del heartbeat" cards
+            // reporting the same persistent alert at decreasing ages. One alert at a time:
+            // the new actionable result supersedes (auto-dismiss + notification cancel)
+            // everything HEARTBEAT-PENDING that came before it in this conversation. Alarms
+            // (snooze reminder / deferred re-post) need no cancel: their receivers re-read
+            // the row and no-op once it is no longer PENDING.
+            taskConfirmationStore.supersedePending(TaskConfirmationSource.HEARTBEAT, conversationId)
+                .forEach { taskPromptNotifier.cancel(it.id) }
             // PROMPT/AUTO branching lives in one place shared with tasks. Heartbeat specifics:
             // modelMessageId (not runId) is the dedup identity — Result.Success only exposes
             // (modelMessageId, text) and it is unique per generation; the durable title is the

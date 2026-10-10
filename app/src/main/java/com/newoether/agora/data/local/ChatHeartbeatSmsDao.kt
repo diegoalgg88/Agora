@@ -206,6 +206,25 @@ interface ChatHeartbeatSmsDao {
     )
     suspend fun clearTaskConfirmationReminderIfStillPending(id: String): Int
 
+    /**
+     * PENDING rows of one (sourceType, conversationId) pair, oldest first. Supersession
+     * read for repeat-posters (heartbeat); the status transition itself goes through
+     * [transitionTaskConfirmation] so the single-winner predicate still applies per row.
+     */
+    @Query(
+        """
+        SELECT * FROM task_confirmations
+        WHERE status = 'PENDING'
+          AND sourceType = :sourceType
+          AND conversationId = :conversationId
+        ORDER BY createdAtEpochMs ASC, id ASC
+        """,
+    )
+    suspend fun selectPendingTaskConfirmations(
+        sourceType: String,
+        conversationId: String,
+    ): List<TaskConfirmationEntity>
+
     /** Arms a snooze deadline. Only called by the store's snooze() inside a transaction. */
     @Query(
         """

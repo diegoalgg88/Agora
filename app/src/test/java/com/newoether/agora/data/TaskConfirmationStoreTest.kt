@@ -225,6 +225,44 @@ class TaskConfirmationStoreTest {
     }
 
     @Test
+    fun supersedePendingTransitionsEveryPendingRowOfThePair() = runTest {
+        // The heartbeat is a repeat-poster into ONE conversation: the previous alert must be
+        // superseded (not stacked) when a new actionable run stages.
+        val rows = listOf(row("a"), row("b"))
+        coEvery {
+            chatDao.selectPendingTaskConfirmations(TaskConfirmationSource.HEARTBEAT.name, "conv")
+        } returns rows
+        coEvery { chatDao.transitionTaskConfirmation(any(), any(), any()) } returns 1
+
+        val superseded = store.supersedePending(TaskConfirmationSource.HEARTBEAT, "conv")
+        assertEquals(listOf("a", "b"), superseded.map { it.id })
+        coVerify(exactly = 1) {
+            chatDao.transitionTaskConfirmation("a", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name)
+        }
+        coVerify(exactly = 1) {
+            chatDao.transitionTaskConfirmation("b", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name)
+        }
+    }
+
+    @Test
+    fun supersedePendingDropsRowsResolvedInTheRaceWindow() = runTest {
+        // The banner resolved row "b" after the SELECT: the single-winner predicate keeps it
+        // out of the caller's cancel list.
+        coEvery {
+            chatDao.selectPendingTaskConfirmations(TaskConfirmationSource.HEARTBEAT.name, "conv")
+        } returns listOf(row("a"), row("b"))
+        coEvery {
+            chatDao.transitionTaskConfirmation("a", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name)
+        } returns 1
+        coEvery {
+            chatDao.transitionTaskConfirmation("b", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name)
+        } returns 0
+
+        val superseded = store.supersedePending(TaskConfirmationSource.HEARTBEAT, "conv")
+        assertEquals(listOf("a"), superseded.map { it.id })
+    }
+
+    @Test
     fun cleanupOldDelegatesCutoff() = runTest {
         coEvery { chatDao.cleanupTaskConfirmations(any()) } returns 3
         assertEquals(3, store.cleanupOld(cutoffEpochMs = 5L))

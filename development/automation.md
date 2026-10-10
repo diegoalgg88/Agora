@@ -267,6 +267,27 @@ notification was already posted is a no-op (the receiver's still-pending /
 not-foreground / canPost guards) that simply re-arms. Pinned by
 `TaskConfirmationPostRetryContractTest.boot re-arms retry-post alarms`.
 
+### Supersession contract (heartbeat anti-stacking, 2026-10-10)
+The heartbeat is a repeat-poster into ONE conversation on a 60 s cadence. The dedup
+key carries `modelMessageId` (unique per generation), so a persistent actionable
+alert would otherwise stack one PENDING row + heads-up per tick (observed: a shade
+full of "Resultado del heartbeat" cards reporting the same unread-email alert at
+decreasing ages). Invariant: **at most one HEARTBEAT PENDING confirmation per
+conversation**. `HeartbeatScheduler.surfaceTaskConfirmation` calls
+`TaskConfirmationStore.supersedePending(HEARTBEAT, conversationId)` right before
+staging a new actionable result: every PENDING row of that (source, conversation)
+pair transitions to DISMISSED (single-winner predicate per row — rows resolved by
+the user in the race window are dropped) and the scheduler cancels each superseded
+row's posted notification (`TaskPromptNotifier.cancel`). Reuses DISMISSED, not a
+new status: a superseded row is an ordinary dedup tombstone and no surface
+distinguishes it. Supersession happens ONLY on the staging path — a HEARTBEAT_OK
+run, a blank body, or the toggle off never dismiss an alert the user has not
+acted on. Snooze/retry alarms need no explicit cancel: their receivers re-read the
+row and no-op once it is no longer PENDING. TASK/LOOP are deliberately NOT
+superseded: each conversation maps to one user-requested object, not a 60 s
+repeat-poster. Pinned by `TaskConfirmationStoreTest.supersede*` and
+`HeartbeatSchedulerBusyPathTest.actionableHeartbeatSupersedesPreviousPending…`.
+
 ### TASK result surfacing (F8)
 Scheduled tasks share the heartbeat's confirmation pipeline. After a successful
 `TaskManager` execution (both the WorkManager path and the recovery path), the
