@@ -93,11 +93,13 @@ Corregir los 8 hallazgos del inventario completo de notificaciones de Agora. Los
 
 - [x] **[F5-T1]** `development/automation.md` — §5: ID 1002 + deep-link + requestCode del heartbeat notifier; §snooze: bloque "Reboot re-arm is dual" con la desviación source-agnostic documentada.
 - [x] **[F5-T2]** Docs user-facing en/zh/zh-Hant — nota de fallo extendida: "tapping it opens the heartbeat conversation".
-- [ ] **[F5-T3]** Gate completo en dos comandos (patrón verificado):
-  ```
-  gradlew.bat -p build-logic test --no-daemon --max-workers=1
-  gradlew.bat :app:testFdroidDebugUnitTest :app:testPlayDebugUnitTest verifyKotlinFileSize --no-daemon --max-workers=1
-  ```
+- [x] **[F5-T3]** Gate completo en dos comandos (patrón verificado) — **VERDE 2026-10-10**: build-logic test (36s) + testFdroidDebugUnitTest + testPlayDebugUnitTest + verifyKotlinFileSize (BUILD SUCCESSFUL 8m 8s, 0 FAILED, 995 files / máx 1007).
+
+## ✅ Estado Final del Plan
+
+**COMPLETADO 11/11 (2026-10-10).** Commits en master local: `08945767` (F1), `5e744357` (F3), `37f131db` (F4+F5). F2-T1 verificado como no-op (el fix ya existía en `29fa7561`). Una desviación aprobada durante ejecución: F4-T1 usa query source-agnostic (`pendingWithoutSnooze`) en lugar del HEARTBEAT-only original.
+
+**Pendiente del usuario:** smoke on-device (S22 Ultra) de F1/F4 y autorización de push.
 
 ## ⚠️ Riesgos y Consideraciones
 
