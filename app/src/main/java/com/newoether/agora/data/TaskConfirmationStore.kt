@@ -133,6 +133,18 @@ class TaskConfirmationStore(
         chatDao.selectDueTaskConfirmations(Long.MAX_VALUE)
     }
 
+    /**
+     * PENDING rows with NO armed snooze; used to re-arm the deferred re-post alarms after
+     * a reboot. Complement of [armedReminders]: the retry-post contract never touches
+     * `remindAtEpochMs`, so those rows are invisible to the snooze query above. Safe for
+     * rows whose notification was already posted — the retry receiver re-reads the row
+     * and its still-pending / not-foreground / canPost guards make a redundant firing a
+     * no-op that simply re-arms.
+     */
+    suspend fun pendingWithoutSnooze(): List<TaskConfirmationEntity> = withContext(Dispatchers.IO) {
+        chatDao.selectPendingWithoutSnooze()
+    }
+
     suspend fun get(id: String): TaskConfirmationEntity? = withContext(Dispatchers.IO) {
         chatDao.getTaskConfirmation(id)
     }

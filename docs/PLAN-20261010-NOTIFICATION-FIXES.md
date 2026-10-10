@@ -87,15 +87,12 @@ Corregir los 8 hallazgos del inventario completo de notificaciones de Agora. Los
 
 ### Fase 4: BootReceiver re-arm de retry-post (H-N8)
 
-- [ ] **[F4-T1]** Re-arm de los retry alarms del heartbeat
-  - **Archivos:** `service/BootReceiver.kt:48-53` + `data/TaskConfirmationStore.kt` (nuevo query) + `service/TaskPromptNotifier.kt` (exponer lo que necesite el re-arm).
-  - **Acción:** hoy solo se re-arman snooze reminders vía `armedReminders()` (filtra `remindAtEpochMs != null`). Añadir query complementario de filas HEARTBEAT `PENDING` con retry armado (`remindAtEpochMs IS NULL AND status='PENDING' AND sourceType='HEARTBEAT'`) y re-llamar `schedulePostRetry(row.id)`. Sin migration (usa columnas existentes). Respeta el contrato P2: el retry jamás toca `remindAtEpochMs`.
-  - **Verificación:** test — tras `BOOT_COMPLETED` con una fila PENDING sin snooze, el re-arm invoca `schedulePostRetry`; con fila snoozeada, invoca `scheduleReminder` (ambos, no solo uno).
+- [x] **[F4-T1]** Re-arm de los retry alarms — **ejecutado 2026-10-10 con desviación aprobada**: el query es **source-agnostic** (`TaskConfirmationStore.pendingWithoutSnooze()` → DAO `selectPendingWithoutSnooze()`: PENDING con `remindAtEpochMs IS NULL`), no HEARTBEAT-only como el plan original. Motivo: el punto de arming (`stageAndNotifyTaskConfirmation`) es compartido por TASK/LOOP/HEARTBEAT y sin marker durable no se puede distinguir retry-armed de posted-normal; filtrar por HEARTBEAT dejaría stranded los retries de TASK/LOOP. Los guards del receiver (still-pending/not-foreground/canPost) hacen del re-arm redundante un no-op que re-arma. Pinnado por `TaskConfirmationPostRetryContractTest.boot re-arms retry-post alarms`.
 
 ### Fase 5: Docs + Gate
 
-- [ ] **[F5-T1]** `development/automation.md` — documentar el ID y deep-link del heartbeat notifier en §5 outcome semantics (hoy el contrato solo describe la notificación de fallo, no su ID/tap); documentar el re-arm de retry-post junto al snooze re-arm.
-- [ ] **[F5-T2]** Docs user-facing `docs/en/automation.md` + zh + zh-Hant — nota en Heartbeat: "tapping the failure alert opens the heartbeat conversation" (1 línea por idioma).
+- [x] **[F5-T1]** `development/automation.md` — §5: ID 1002 + deep-link + requestCode del heartbeat notifier; §snooze: bloque "Reboot re-arm is dual" con la desviación source-agnostic documentada.
+- [x] **[F5-T2]** Docs user-facing en/zh/zh-Hant — nota de fallo extendida: "tapping it opens the heartbeat conversation".
 - [ ] **[F5-T3]** Gate completo en dos comandos (patrón verificado):
   ```
   gradlew.bat -p build-logic test --no-daemon --max-workers=1

@@ -70,6 +70,16 @@ notification too: the heartbeat run passes `suppressTerminalNotification = true`
 that notification (unread marking and every other terminal effect are unchanged).
 Before this, every clean check posted "Agora responded: HEARTBEAT_OK" while backgrounded.
 
+The Failure push (`HeartbeatNotifier`) posts on the dedicated stable id 1002 —
+NEVER 1001 (that is `AutoBackupManager`'s; Android keys `notify` by
+(package, tag, id) and the channel does not isolate ids). Its tap deep-links into
+the heartbeat conversation via the device-verified extra pattern
+(`EXTRA_CONVERSATION_ID` + `agora://conversation/{id}`), and its PendingIntent
+carries its own requestCode (the notification id) — the bare 0 it used to share
+with AutoBackupManager would be `filterEquals`-identical post-deep-link and
+`FLAG_UPDATE_CURRENT` would let the two posters clobber each other. Pinned by
+`NotificationIdDeepLinkContractTest`.
+
 **Consume-on-success only** is the invariant: exactly the snapshot the AI saw is
 removed, and only on success. Items arriving during the call were never in the
 snapshot and survive.
@@ -245,6 +255,17 @@ dropped (the clear UPDATE carries the PENDING predicate and reports 0). The
 scheduler's tick calls it every 60 s — even when the heartbeat itself is not due —
 and re-posts only when backgrounded. With the daemon off there is no tick, but the snooze still comes back: the row stays PENDING, the banner re-shows it at its deadline, and the notification is re-posted by a one-shot inexact alarm (`TaskPromptNotifier.scheduleReminder`, fired into `TaskConfirmationReceiver.ACTION_REMIND`, re-armed by `BootReceiver`; the tick is only a backstop and both go through `postDueReminders`) (snooze is a
 convenience, not a contract). While snoozed, the banner hides the row and un-hides it on its own clock (`PendingTaskConfirmationsBanner`), not on the daemon tick; staging also never re-posts a re-staged row that is no longer PENDING.
+
+**Reboot re-arm is dual (2026-10-10):** `BootReceiver` re-arms BOTH alarm families
+after BOOT/MY_PACKAGE_REPLACED. The snooze reminders come from `armedReminders()`
+(filters `remindAtEpochMs IS NOT NULL`). The deferred re-post alarms (P2 retry)
+never touch `remindAtEpochMs`, so they are invisible to that query — they are
+re-armed from the complementary `pendingWithoutSnooze()` (PENDING rows with
+`remindAtEpochMs IS NULL`), source-agnostic because the retry arming point is
+shared across TASK/LOOP/HEARTBEAT; a redundant firing for a row whose
+notification was already posted is a no-op (the receiver's still-pending /
+not-foreground / canPost guards) that simply re-arms. Pinned by
+`TaskConfirmationPostRetryContractTest.boot re-arms retry-post alarms`.
 
 ### TASK result surfacing (F8)
 Scheduled tasks share the heartbeat's confirmation pipeline. After a successful

@@ -57,6 +57,25 @@ class TaskConfirmationPostRetryContractTest {
         assertTrue(surfacing.contains("if (!posted) {\n            notifier.schedulePostRetry(staged.id)\n        }"))
     }
 
+    @Test
+    fun `boot re-arms retry-post alarms via the complementary no-snooze query`() {
+        val boot = sourceFile("app/src/main/java/com/newoether/agora/service/BootReceiver.kt")
+        val store = sourceFile("app/src/main/java/com/newoether/agora/data/TaskConfirmationStore.kt")
+        val dao = sourceFile(
+            "app/src/main/java/com/newoether/agora/data/local/ChatHeartbeatSmsDao.kt",
+        )
+        // The store exposes the complementary query the snooze query cannot cover.
+        assertTrue(store.contains("suspend fun pendingWithoutSnooze()"))
+        assertTrue(dao.contains("suspend fun selectPendingWithoutSnooze()"))
+        assertTrue(dao.contains("remindAtEpochMs IS NULL"))
+        // BootReceiver re-arms retry-post from it, alongside the snooze re-arm.
+        assertTrue(boot.contains("pendingWithoutSnooze().forEach { row ->"))
+        assertTrue(boot.contains("schedulePostRetry(row.id)"))
+        // Snooze re-arm stays intact (both paths, not either/or).
+        assertTrue(boot.contains("armedReminders().forEach { row ->"))
+        assertTrue(boot.contains("scheduleReminder(row.id, it)"))
+    }
+
     private fun sourceFile(relativePath: String): String {
         var directory = File(requireNotNull(System.getProperty("user.dir"))).absoluteFile
         repeat(8) {

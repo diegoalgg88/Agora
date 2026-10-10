@@ -51,6 +51,17 @@ class BootReceiver : BroadcastReceiver() {
                                 }
                             }
                         }.onFailure { DebugLog.w("BootReceiver", "Failed to re-arm snooze reminders", it) }
+                        // Deferred re-post alarms (P2) die with the reboot too, but they never
+                        // touch remindAtEpochMs — armedReminders() cannot see them. Re-arm from
+                        // the complementary query. Source-agnostic by design: the retry arming
+                        // point is shared across TASK/LOOP/HEARTBEAT, and the receiver's
+                        // still-pending / not-foreground / canPost guards make a redundant
+                        // firing a no-op for rows whose notification was already posted.
+                        runCatching {
+                            container.taskConfirmationStore.pendingWithoutSnooze().forEach { row ->
+                                container.taskPromptNotifier.schedulePostRetry(row.id)
+                            }
+                        }.onFailure { DebugLog.w("BootReceiver", "Failed to re-arm retry-post alarms", it) }
                     } catch (e: Exception) {
                         DebugLog.e("BootReceiver", "Failed to re-arm automation alarms", e)
                     } finally {

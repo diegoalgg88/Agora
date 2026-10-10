@@ -29,7 +29,7 @@ Configure it under **Settings → Tools → Automation → Heartbeat**:
 - **Recent runs** — the last five outcomes with timestamps, and a **Run now** button for an immediate check-in.
 
 !!! note
-    Heartbeat failure logs record only the error text, never message content. If the app is in the background and a run fails, Agora posts a notification about it.
+    Heartbeat failure logs record only the error text, never message content. If the app is in the background and a run fails, Agora posts a notification about it; tapping it opens the heartbeat conversation so you can read the run log.
 
 ## SMS
 

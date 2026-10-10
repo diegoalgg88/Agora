@@ -180,6 +180,22 @@ interface ChatHeartbeatSmsDao {
     )
     suspend fun selectDueTaskConfirmations(now: Long): List<TaskConfirmationEntity>
 
+    /**
+     * PENDING rows with NO armed snooze. Used by BootReceiver to re-arm the deferred
+     * re-post alarms: `armedReminders()` filters on `remindAtEpochMs IS NOT NULL`, and
+     * the P2 retry-post contract deliberately never touches that field — so without this
+     * complementary query every pending retry-post alarm silently died on reboot.
+     */
+    @Query(
+        """
+        SELECT * FROM task_confirmations
+        WHERE status = 'PENDING'
+          AND remindAtEpochMs IS NULL
+        ORDER BY createdAtEpochMs ASC, id ASC
+        """,
+    )
+    suspend fun selectPendingWithoutSnooze(): List<TaskConfirmationEntity>
+
     /** Clears the snooze deadline only while the row is still PENDING; returns rows updated. */
     @Query(
         """
