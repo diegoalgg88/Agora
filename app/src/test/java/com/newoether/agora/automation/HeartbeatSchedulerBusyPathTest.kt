@@ -156,7 +156,7 @@ class HeartbeatSchedulerBusyPathTest {
             inForeground = false,
         )
         scheduler.runHeartbeatNow()
-        coVerify(exactly = 0) { notifier.sendHeartbeatNotification(any(), any()) }
+        coVerify(exactly = 0) { notifier.sendHeartbeatNotification(any(), any(), any()) }
     }
 
     @Test
@@ -187,14 +187,14 @@ class HeartbeatSchedulerBusyPathTest {
             inForeground = false,
         )
         backgrounded.runHeartbeatNow()
-        coVerify(exactly = 1) { bgNotifier.sendHeartbeatNotification(any(), any()) }
+        coVerify(exactly = 1) { bgNotifier.sendHeartbeatNotification(any(), any(), any()) }
 
         val (foreground, _, fgNotifier) = scheduler(
             engineResult = TaskExecutionEngine.Result.Failure("provider exploded"),
             inForeground = true,
         )
         foreground.runHeartbeatNow()
-        coVerify(exactly = 0) { fgNotifier.sendHeartbeatNotification(any(), any()) }
+        coVerify(exactly = 0) { fgNotifier.sendHeartbeatNotification(any(), any(), any()) }
     }
 
     @Test

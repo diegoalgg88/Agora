@@ -320,7 +320,7 @@ class HeartbeatScheduler(
 
         // Send push notification if backgrounded
         if (!appForegroundTracker.isInForeground && !success) {
-            sendHeartbeatNotification(resultText)
+            sendHeartbeatNotification(resultText, heartbeatConversationId)
         }
     }
 
@@ -460,8 +460,8 @@ class HeartbeatScheduler(
         return application.requireContainer().memoryManager
     }
 
-    private suspend fun sendHeartbeatNotification(message: String) {
-        heartbeatNotifier.sendHeartbeatNotification("Heartbeat Check", message)
+    private suspend fun sendHeartbeatNotification(message: String, conversationId: String) {
+        heartbeatNotifier.sendHeartbeatNotification("Heartbeat Check", message, conversationId)
     }
 
     /**
