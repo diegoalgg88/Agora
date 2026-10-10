@@ -47,3 +47,4 @@ memory_report.txt
 hs_err_pid*.log
 /tmp/
 /.cache/
+.zvec-grep/
