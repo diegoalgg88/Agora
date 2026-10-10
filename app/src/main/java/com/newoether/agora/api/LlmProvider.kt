@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 
 sealed class StreamEvent {
     data class TextChunk(val text: String) : StreamEvent()
@@ -159,6 +160,25 @@ data class ToolProperty(
     val description: String,
     val items: ToolProperty? = null
 )
+
+/**
+ * Serializes a [ToolProperty] as a provider schema object, recursing into nested `items`.
+ * A one-level serialization emits `items: {type: "array"}` without its own `items` for
+ * array-of-array parameters, which Gemini rejects with
+ * `properties[x].items.items: missing field` and drops the whole tool list.
+ * An `array` declared without element schema (possible from third-party MCP servers) gets a
+ * permissive string element so one sloppy declaration cannot fail the entire request.
+ */
+internal fun ToolProperty.toWireSchemaObject(): JsonObject {
+    val map = mutableMapOf<String, JsonElement>(
+        "type" to JsonPrimitive(type),
+        "description" to JsonPrimitive(description),
+    )
+    val elementSchema = items
+        ?: if (type.equals("array", ignoreCase = true)) ToolProperty(type = "string", description = "") else null
+    if (elementSchema != null) map["items"] = elementSchema.toWireSchemaObject()
+    return JsonObject(map)
+}
 
 @Serializable
 data class OpenAiChatRequest(

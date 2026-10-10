@@ -49,6 +49,14 @@ private fun extractThoughtTitle(content: String): String? =
     THOUGHT_TITLE_BOLD.find(content)?.groupValues?.get(1)
         ?: THOUGHT_TITLE_HEADING.find(content)?.groupValues?.get(1)
 
+/**
+ * Gemini 3.x models (including 3.5+) enforce function-call thought signatures, boolean thought
+ * parts in requests, and thinkingLevel-based thinking control. Single source of truth shared
+ * with [GeminiRequestValidator]; add new family markers here only.
+ */
+internal fun requiresGemini3ToolProtocol(modelName: String): Boolean =
+    modelName.contains("gemini-3", ignoreCase = true)
+
 private fun ChatMessage.isGeminiToolRoundCompatible(
     targetModel: String,
     targetProviderName: String,
@@ -135,11 +143,13 @@ internal data class ApiRequestContent(val role: String? = null, val parts: List<
 @Serializable
 internal data class ApiInlineData(val mimeType: String, val data: String)
 
+// Requests never carry a serialized `thought` field: Gemini 3 wire requires it to be a boolean
+// marker, and replaying streamed thought text back would violate that. Only `thoughtSignature`
+// travels on functionCall parts. (The response DTO keeps `thought` because the server does send it.)
 @Serializable
 internal data class ApiRequestPart(
     val text: String? = null,
     val inlineData: ApiInlineData? = null,
-    val thought: String? = null,
     @SerialName("thoughtSignature") val thoughtSignature: String? = null,
     val executableCode: ApiExecutableCode? = null,
     val codeExecutionResult: ApiCodeExecutionResult? = null,
@@ -411,9 +421,7 @@ class GeminiProvider(
         val baseUrl = config.baseUrl?.trimEnd('/')?.ifBlank { null } ?: defaultBaseUrl
         val cleanModelName = config.modelId.removePrefix("models/")
         
-        val requiresFunctionCallSignature =
-            cleanModelName.contains("gemini-3", ignoreCase = true) ||
-                cleanModelName.contains("gemini-3.5", ignoreCase = true)
+        val requiresFunctionCallSignature = requiresGemini3ToolProtocol(cleanModelName)
 
         fun buildApiContents(resolvedMessages: List<ChatMessage>): List<ApiRequestContent> {
             val validatedPath = adaptToolRoundsForProvider(
@@ -511,7 +519,7 @@ class GeminiProvider(
                     val file = File(imagePath)
                     if (file.exists()) {
                         val bytes = file.readBytes()
-                        val base64 = android.util.Base64.encodeToString(bytes, android.util.Base64.NO_WRAP)
+                        val base64 = java.util.Base64.getEncoder().encodeToString(bytes)
                         parts.add(ApiRequestPart(inlineData = ApiInlineData(mimeType = com.newoether.agora.api.util.imageMimeType(imagePath), data = base64)))
                     }
                 } catch (e: Exception) {
@@ -545,19 +553,7 @@ class GeminiProvider(
                         "type" to JsonPrimitive(td.function.parameters.type),
                         "properties" to JsonObject(
                             td.function.parameters.properties.mapValues { (_, prop) ->
-                                val propMap = mutableMapOf<String, kotlinx.serialization.json.JsonElement>(
-                                    "type" to JsonPrimitive(prop.type),
-                                    "description" to JsonPrimitive(prop.description)
-                                )
-                                if (prop.items != null) {
-                                    propMap["items"] = JsonObject(
-                                        mapOf(
-                                            "type" to JsonPrimitive(prop.items.type),
-                                            "description" to JsonPrimitive(prop.items.description)
-                                        )
-                                    )
-                                }
-                                JsonObject(propMap)
+                                prop.toWireSchemaObject()
                             }
                         ),
                         "required" to kotlinx.serialization.json.JsonArray(
@@ -574,7 +570,7 @@ class GeminiProvider(
         val thinkingConfig = if (!config.thinkingEnabled) {
             null
         } else when {
-            cleanModelName.contains("gemini-3", ignoreCase = true) || cleanModelName.contains("gemini-3.5", ignoreCase = true) -> {
+            requiresGemini3ToolProtocol(cleanModelName) -> {
                 ApiThinkingConfig(includeThoughts = true, thinkingLevel = ThinkingLevels.geminiLevel(config.thinkingLevel))
             }
             cleanModelName.contains("gemini-2.5", ignoreCase = true) -> {
@@ -927,7 +923,11 @@ class GeminiProvider(
         val models = decodeModelFetchResponse {
             json.decodeFromString<ModelListResponse>(responseText)
                 .models
-                .filter { it.supportedGenerationMethods.contains("generateContent") }
+                .filter {
+                    it.supportedGenerationMethods.any { method ->
+                        method == "generateContent" || method == "streamGenerateContent"
+                    }
+                }
                 .map { it.name.removePrefix("models/") }
         }
         if (models.isEmpty()) throw ModelFetchEmptyResultException()

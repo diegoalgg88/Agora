@@ -30,9 +30,7 @@ internal fun ApiGenerateContentRequest.requireValidWireFormat(modelName: String)
     val seenCallIds = mutableSetOf<String>()
     var pendingCalls = linkedMapOf<String, String>()
     var previousRole: String? = null
-    val requiresFunctionCallSignature =
-        modelName.contains("gemini-3", ignoreCase = true) ||
-            modelName.contains("gemini-3.5", ignoreCase = true)
+    val requiresFunctionCallSignature = requiresGemini3ToolProtocol(modelName)
 
     contents.forEachIndexed { contentIndex, content ->
         val location = "contents[$contentIndex]"
@@ -76,7 +74,6 @@ internal fun ApiGenerateContentRequest.requireValidWireFormat(modelName: String)
             val payloadCount = listOfNotNull(
                 part.text,
                 part.inlineData,
-                part.thought,
                 part.executableCode,
                 part.codeExecutionResult,
                 part.functionCall,
@@ -154,7 +151,6 @@ private fun ApiGenerateContentRequest.validateSystemInstruction(
                         it.inlineData,
                         it.functionCall,
                         it.functionResponse,
-                        it.thought,
                         it.thoughtSignature,
                         it.executableCode,
                         it.codeExecutionResult,
