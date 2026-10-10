@@ -235,8 +235,12 @@ class AutoBackupManager(
             val intent = Intent(context, MainActivity::class.java).apply {
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
             }
+            // RequestCode = the notification id, never a bare 0: the heartbeat failure alert
+            // now carries the same MainActivity target shape (no extras), so a shared 0
+            // would make the two PendingIntents filterEquals-identical and FLAG_UPDATE_CURRENT
+            // would let them clobber each other.
             val pending = PendingIntent.getActivity(
-                context, 0, intent,
+                context, NOTIFICATION_ID, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             )
 

@@ -66,11 +66,7 @@ Corregir los 8 hallazgos del inventario completo de notificaciones de Agora. Los
 
 ### Fase 2: Triple notificación de tarea programada (H-N6)
 
-- [ ] **[F2-T1]** Exponer `suppressTerminalNotification` en la variante con guards
-  - **Archivos:** `TaskExecutionEngine.kt` (`runOnceWithAutomationGuardsHeld`) + `TaskManager.kt` (call-site en `executeConversationLocked` / path de ejecución programada).
-  - **Acción:** mismo parámetro default-false que ya existe en `runOnce` (`HeartbeatScheduler.kt:266` lo usa); `TaskManager` pasa `true` para ejecuciones programadas de tasks/loops porque el resultado ya se notifica vía rich confirmations (F8). El FGS "Running task" (#3) NO se toca — es requisito de WorkManager.
-  - **Cuidado:** NO suprimir en el path manual "Run now" desde UI con la app en foreground (el usuario está mirando) — el guard existente `appForegroundTracker`/`suppressTerminalNotification` ya cubre solo background; mantener semántica: suprimir el terminal genérico SIEMPRE que la ejecución es automation-scheduled (el confirmation es el canal del resultado).
-  - **Verificación:** smoke device — tarea programada con app en background produce exactamente 2 notificaciones (FGS running + rich confirmation), 0 terminal genérico "Agora responded"; tests existentes del pipeline no regresionan (la terminal notification del chat foreground normal queda intacta — ahí no corre el TaskManager).
+- [x] **[F2-T1]** ~~Exponer `suppressTerminalNotification` en la variante con guards~~ — **NO-OP (2026-10-10):** ya implementado en commit `29fa7561` ("suppress the duplicate terminal notification for scheduled tasks and final loop cycles", 2026-10-08). Verificado: `TaskExecutionEngine.runOnceWithAutomationGuardsHeld:409` expone el param; `TaskManager:487` pasa `taskConfirmationsEnabled()`; `LoopManager:308-311` pasa `taskConfirmationsEnabled() && !claimed.active` (solo ciclo final). El hallazgo quedó obsoleto entre el diagnóstico del plan y su ejecución.
 
 ### Fase 3: Hardening de `send_notification` + tap de backup (H-N4 + H-N5 + H-N7)
 

@@ -6,6 +6,7 @@ import android.content.ContentValues
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.provider.CalendarContract
 import android.provider.AlarmClock
 import androidx.core.app.NotificationCompat
@@ -29,7 +30,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeParseException
 import java.util.Locale
 import java.util.TimeZone
-import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -59,10 +59,12 @@ class AssistantDeviceToolProvider(
 ) : ToolProvider {
 
     private val json = Json { ignoreUnknownKeys = true }
+
+    /** Live tool-notification ids, oldest first — backs the MAX_LIVE_ASSISTANT_NOTIFICATIONS cap. */
+    private val liveAssistantNotificationIds = ArrayDeque<Int>()
     // Notification IDs for the assistant channel, offset far above every other fixed ID in
-    // the app (foreground service = 1, heartbeat/auto-backup = 1001, live voice = 424) so a
+    // the app (foreground service = 1, auto-backup = 1001, heartbeat = 1002, live voice = 424) so a
     // posted notification can never replace or be replaced by an unrelated system one.
-    private val notificationIdCounter = AtomicInteger(0)
 
     override fun definitions(ctx: GenerationContext): List<ToolDefinition> = buildList {
         if (settingsRepository.assistantSetAlarmEnabled.value) add(SET_ALARM)
@@ -167,7 +169,7 @@ class AssistantDeviceToolProvider(
                 "get_location_from_ip" -> getLocationFromIp()
                 "get_local_time" -> getLocalTime()
                 "open_url" -> openUrl(arg("url"))
-                "send_notification" -> sendNotification(arg("title"), arg("message"))
+                "send_notification" -> sendNotification(arg("title"), arg("message"), arg("conversation_id"))
                 else -> errorJson("unknown_tool", name)
         }
     }
@@ -645,7 +647,7 @@ class AssistantDeviceToolProvider(
 
     // ── send_notification ──────────────────────────────────
 
-    private fun sendNotification(title: String?, message: String?): String {
+    private fun sendNotification(title: String?, message: String?, conversationId: String?): String {
         if (message.isNullOrBlank()) return errorJson("missing_message", "message is required")
         if (!NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             return errorJson(
@@ -656,8 +658,19 @@ class AssistantDeviceToolProvider(
         ensureNotificationChannel()
         val launchIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            // Optional deep-link: routes the tap into a conversation via the same
+            // device-verified extra pattern the app's own notifications use.
+            if (!conversationId.isNullOrBlank()) {
+                data = Uri.Builder()
+                    .scheme("agora")
+                    .authority("conversation")
+                    .appendPath(conversationId)
+                    .build()
+                putExtra(MainActivity.EXTRA_CONVERSATION_ID, conversationId)
+            }
         }
-        val notificationId = ASSISTANT_NOTIFICATION_ID_BASE + notificationIdCounter.incrementAndGet()
+        val notificationId = ASSISTANT_NOTIFICATION_ID_BASE +
+            (listOfNotNull(title, message).joinToString("|").hashCode() and 0x00ff_ffff)
         val pendingIntent = android.app.PendingIntent.getActivity(
             context,
             notificationId,
@@ -673,7 +686,18 @@ class AssistantDeviceToolProvider(
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
             .build()
-        NotificationManagerCompat.from(context).notify(notificationId, notification)
+        val manager = NotificationManagerCompat.from(context)
+        // Shade hygiene: the model can post in a loop; keep at most MAX_LIVE_ASSISTANT_NOTIFICATIONS
+        // alive, evicting the oldest posted (FIFO). Process-local by design — the cap prevents
+        // unbounded accumulation within a session, it is not a durable contract.
+        synchronized(liveAssistantNotificationIds) {
+            liveAssistantNotificationIds.add(notificationId)
+            while (liveAssistantNotificationIds.size > MAX_LIVE_ASSISTANT_NOTIFICATIONS) {
+                val evicted = liveAssistantNotificationIds.removeFirst()
+                runCatching { manager.cancel(evicted) }
+            }
+        }
+        manager.notify(notificationId, notification)
         return buildJsonObject {
             put("success", true)
             put("notification_id", notificationId)
@@ -713,6 +737,9 @@ class AssistantDeviceToolProvider(
         private const val DEFAULT_CALENDAR_RESULTS = 25
         private const val MAX_CALENDAR_RESULTS = 50
 
+
+        /** Shade-hygiene cap for live assistant tool notifications (FIFO eviction). */
+        private const val MAX_LIVE_ASSISTANT_NOTIFICATIONS = 20
         private val TOOL_NAMES = setOf(
             "set_alarm",
             "open_file",
@@ -890,6 +917,10 @@ class AssistantDeviceToolProvider(
                     properties = mapOf(
                         "title" to ToolProperty("string", "Notification title"),
                         "message" to ToolProperty("string", "Notification content/body"),
+                        "conversation_id" to ToolProperty(
+                            "string",
+                            "Optional: conversation id to open when the user taps the notification",
+                        ),
                     ),
                     required = listOf("message"),
                 ),

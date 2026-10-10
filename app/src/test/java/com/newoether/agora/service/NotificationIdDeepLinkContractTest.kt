@@ -73,6 +73,34 @@ class NotificationIdDeepLinkContractTest {
         )
     }
 
+    @Test
+    fun `send_notification tool keys ids by content and caps live notifications`() {
+        val provider = sourceFile("tool/AssistantDeviceToolProvider.kt")
+        // Content-keyed id: identical posts replace; survives process death (no per-process counter).
+        assertTrue(provider.contains("joinToString(\"|\").hashCode() and 0x00ff_ffff"))
+        assertFalse("the per-process counter must be gone", provider.contains("notificationIdCounter"))
+        // Shade hygiene: FIFO cap with explicit eviction of the oldest.
+        assertTrue(provider.contains("MAX_LIVE_ASSISTANT_NOTIFICATIONS"))
+        assertTrue(provider.contains("liveAssistantNotificationIds.removeFirst()"))
+        // Optional conversation deep-link param is exposed in the tool schema.
+        assertTrue(provider.contains("\"conversation_id\" to ToolProperty("))
+        assertTrue(provider.contains("putExtra(MainActivity.EXTRA_CONVERSATION_ID, conversationId)"))
+    }
+
+    @Test
+    fun `auto backup pending intent uses its own request code`() {
+        val backup = sourceFile("data/AutoBackupManager.kt")
+        val pendingIntentCall = backup.substringAfter("PendingIntent.getActivity(")
+        assertTrue(
+            "requestCode must be the notification id, not the bare 0 shared pre-fix",
+            pendingIntentCall.substringBefore(")").contains("NOTIFICATION_ID") || pendingIntentCall.contains("NOTIFICATION_ID, intent"),
+        )
+        assertFalse(
+            "no bare-0 getActivity requestCode may remain",
+            Regex("""PendingIntent\.getActivity\(\s*\w+,\s*0,""").containsMatchIn(backup),
+        )
+    }
+
     /** True when any PendingIntent.getActivity call still passes the literal 0 requestCode. */
     private fun pendingIntentsWithBareZeroRequestCode(source: String): Boolean =
         Regex("""PendingIntent\.getActivity\(\s*\w+,\s*0,""").containsMatchIn(source)
