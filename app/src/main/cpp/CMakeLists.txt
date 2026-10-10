@@ -65,7 +65,14 @@ if(TARGET llama-mtmd-debug)
     target_include_directories(llama-mtmd-debug PRIVATE ${LLAMA_CPP_DIR}/common ${LLAMA_CPP_DIR}/vendor)
 endif()
 
-target_compile_definitions(ggml-base PRIVATE GGML_COMMIT="unknown")
+# Replace (not duplicate) upstream's git-derived GGML_COMMIT so builds are
+# reproducible without a git checkout of the llama.cpp submodule (14c316cd).
+get_target_property(_ggml_defs ggml-base COMPILE_DEFINITIONS)
+if(_ggml_defs)
+    list(FILTER _ggml_defs EXCLUDE REGEX "GGML_COMMIT=.*")
+    list(APPEND _ggml_defs "GGML_COMMIT=\"unknown\"")
+    set_target_properties(ggml-base PROPERTIES COMPILE_DEFINITIONS "${_ggml_defs}")
+endif()
 
 # Build llama JNI wrapper
 add_library(agora_llama SHARED llama_jni.cpp llama_chat_jni.cpp)
