@@ -207,9 +207,15 @@ internal data class LiveSessionResumptionUpdate(
     val resumable: Boolean = false,
 )
 
-/** Normalizes a user-facing model id to the `models/<id>` form the setup frame requires. */
-internal fun normalizeLiveModelId(modelId: String): String =
-    modelId.trim().removePrefix("models/").takeIf { it.isNotEmpty() }?.let { "models/$it" } ?: modelId.trim()
+/** Normalizes a user-facing model id to the `models/<id>` form the setup frame requires.
+ *  Case-insensitive prefix strip: manually entered ids may carry "Models/" (observed in the
+ *  wild), which would otherwise produce a doubled "models/Models/…" wire name. */
+internal fun normalizeLiveModelId(modelId: String): String {
+    val cleaned = modelId.trim().let {
+        if (it.startsWith("models/", ignoreCase = true)) it.substring("models/".length) else it
+    }
+    return cleaned.takeIf { it.isNotEmpty() }?.let { "models/$it" } ?: modelId.trim()
+}
 
 /**
  * User-facing voice-sensitivity presets, mapped to the [LiveAutomaticActivityDetection] wire

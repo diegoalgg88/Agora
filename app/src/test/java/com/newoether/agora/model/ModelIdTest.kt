@@ -109,4 +109,16 @@ class ModelIdTest {
         val id = ModelId.parse("OpenAI:gpt-4")
         assertEquals("gpt-4", id.apiModelName)
     }
+
+    @Test
+    fun `apiModelName strips capital Models prefix from manual entry`() {
+        val id = ModelId.parse("Google:Models/gemini-3.1-flash-lite")
+        assertEquals("gemini-3.1-flash-lite", id.apiModelName)
+    }
+
+    @Test
+    fun `apiModelName trims surrounding whitespace`() {
+        val id = ModelId.parse("Google: gemini-3.1-flash-lite ")
+        assertEquals("gemini-3.1-flash-lite", id.apiModelName)
+    }
 }

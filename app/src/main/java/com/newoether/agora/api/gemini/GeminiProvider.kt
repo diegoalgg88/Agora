@@ -419,7 +419,9 @@ class GeminiProvider(
         config: ProviderConfig
     ): Flow<StreamEvent> = flow {
         val baseUrl = config.baseUrl?.trimEnd('/')?.ifBlank { null } ?: defaultBaseUrl
-        val cleanModelName = config.modelId.removePrefix("models/")
+        val cleanModelName = config.modelId.trim().let {
+            if (it.startsWith("models/", ignoreCase = true)) it.substring("models/".length) else it
+        }
         
         val requiresFunctionCallSignature = requiresGemini3ToolProtocol(cleanModelName)
 
@@ -923,11 +925,12 @@ class GeminiProvider(
         val models = decodeModelFetchResponse {
             json.decodeFromString<ModelListResponse>(responseText)
                 .models
-                .filter {
-                    it.supportedGenerationMethods.any { method ->
-                        method == "generateContent" || method == "streamGenerateContent"
-                    }
-                }
+                // "generateContent" is the only reliable chat-usable signal: Live-API-only
+                // models (gemini-*-live-*) reject the whole generateContent family over HTTP —
+                // observed 400 INVALID_ARGUMENT "only supports real-time bidirectional streaming
+                // via WebSocket" — so accepting "streamGenerateContent" here would only ever
+                // surface models the chat pipeline cannot call.
+                .filter { it.supportedGenerationMethods.contains("generateContent") }
                 .map { it.name.removePrefix("models/") }
         }
         if (models.isEmpty()) throw ModelFetchEmptyResultException()

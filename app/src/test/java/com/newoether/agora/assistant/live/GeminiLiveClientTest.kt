@@ -168,4 +168,20 @@ class GeminiLiveClientTest {
         val goingAway = events.filterIsInstance<LiveConnectionEvent.ServerGoingAway>().single()
         assertEquals(30L, goingAway.timeLeftSeconds)
     }
+
+    @Test
+    fun `normalizeLiveModelId strips a capitalized Models prefix from manual entry`() {
+        assertEquals(
+            "models/gemini-3.1-flash-live-preview",
+            normalizeLiveModelId("Models/gemini-3.1-flash-live-preview"),
+        )
+        assertEquals(
+            "models/gemini-3.1-flash-live-preview",
+            normalizeLiveModelId("models/gemini-3.1-flash-live-preview"),
+        )
+        assertEquals(
+            "models/gemini-3.1-flash-live-preview",
+            normalizeLiveModelId(" gemini-3.1-flash-live-preview "),
+        )
+    }
 }

@@ -45,6 +45,11 @@ data class ModelId(
 /**
  * Convenience — the "bare" model name without provider prefix, used for
  * API requests (Google's "models/gemini-2.5-flash" → "gemini-2.5-flash").
+ * The prefix strip is case-insensitive: manually entered model IDs arrive with
+ * either "models/" or "Models/" (observed in the wild), and a surviving prefix
+ * would double up in the request URL ("models/Models/…").
  */
 val ModelId.apiModelName: String
-    get() = modelName.removePrefix("models/")
+    get() = modelName.trim().let {
+        if (it.startsWith("models/", ignoreCase = true)) it.substring("models/".length) else it
+    }
