@@ -570,6 +570,12 @@ internal fun AssistantMessageContent(
                             opensDetailSheet = useThinkingSheet,
                             onBlockHeightChanged = setThoughtBlockHeight,
                         )
+                        TimelineMcpAppEntries(
+                            blockSegments = detailSegments,
+                            freshestToolCallId =
+                                detailSegments.lastOrNull { it.hasMcpAppPointer() }?.toolCallId,
+                            isStreaming = isStreaming,
+                        )
                     }
                 }
 

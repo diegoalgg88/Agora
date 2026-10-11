@@ -626,6 +626,9 @@ internal fun TimelineSegmentsContent(
     onGroupHeaderClick: ((List<Int>) -> Unit)? = null,
     onSegmentClick: (List<Int>) -> Unit
 ) {
+    // Freshest UI-pointer tool of this message: the only one eligible to auto-open, and only while
+    // the run streams. Everything else stays demand-driven (development/mcp.md §9.3).
+    val freshestMcpAppToolCallId = segments.lastOrNull { it.hasMcpAppPointer() }?.toolCallId
     Column(modifier = Modifier.fillMaxWidth()) {
         var detailIndex = 0
         var answerOffset = 0
@@ -775,6 +778,11 @@ internal fun TimelineSegmentsContent(
                             },
                             opensDetailSheet = opensDetailSheet,
                         )
+                        TimelineMcpAppEntries(
+                            blockSegments = blockSegments,
+                            freshestToolCallId = freshestMcpAppToolCallId,
+                            isStreaming = isStreaming,
+                        )
                         if (imageBoundary != null && imageDetailIndex != null) {
                             GeneratedImageThumbnail(
                                 segment = imageBoundary,
@@ -811,6 +819,11 @@ internal fun TimelineSegmentsContent(
                             cardAnimationKey = "$timelineKey:card",
                             segmentAppearanceRegistry = segmentAppearanceRegistry,
                             onClick = { onSegmentClick(listOf(currentDetailIndex)) },
+                        )
+                        TimelineMcpAppEntries(
+                            blockSegments = listOf(seg),
+                            freshestToolCallId = freshestMcpAppToolCallId,
+                            isStreaming = isStreaming,
                         )
                         if (seg.isImageGenerationSegment()) {
                             GeneratedImageThumbnail(

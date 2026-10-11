@@ -1,6 +1,7 @@
 package com.newoether.agora.ui.chat.message
 
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -13,11 +14,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.luminance
@@ -52,6 +54,9 @@ private const val MCP_APP_DEFAULT_HEIGHT_DP = 320
 private const val MCP_APP_MIN_HEIGHT_DP = 120
 private const val MCP_APP_MAX_HEIGHT_DP = 800
 
+/** Fixed height of an auto-opened view until the user expands it (keeps chat scrolling usable). */
+private const val MCP_APP_AUTO_OPEN_HEIGHT_DP = 240
+
 private sealed interface McpAppLoadState {
     data object Loading : McpAppLoadState
     data class Failed(val detail: String? = null) : McpAppLoadState
@@ -63,34 +68,106 @@ private class PendingMcpAppLink(
     val result: CompletableDeferred<Boolean>,
 )
 
+/** True when the segment is a SUCCEEDED tool whose persisted result carries a `ui://` pointer. */
+internal fun MessageSegment.hasMcpAppPointer(): Boolean =
+    type == "tool" &&
+        toolState == ToolExecutionStates.SUCCEEDED &&
+        toolUiServerId != null &&
+        toolUiResourceUri != null
+
 /**
- * Entry point shown in an MCP tool's detail when its persisted result carries a `ui://` pointer.
- * Nothing is fetched and no WebView exists until the user opens the view; closing it (or leaving
- * the composition) destroys the WebView. The plain result below stays the source of truth.
+ * Entry point for a tool whose persisted result carries a `ui://` pointer.
+ *
+ * Default (history, detail sheet): nothing is fetched and no WebView exists until the user opens the
+ * view; closing it (or leaving the composition) destroys the WebView. Open state is deliberately
+ * not saved across list recycling, so scrolling back never recreates a WebView on its own.
+ *
+ * [autoOpen] is true only for the freshest UI result of the actively streaming run: the view opens
+ * once, at a fixed short height (ephemeral server-side data such as a map `viz_id` is freshest right
+ * after the tool round), and the user can expand it to the app-driven height. [superseded] closes an
+ * untouched auto-opened view when a newer UI result of the same run replaces it (max one auto-open).
  */
 @Composable
-internal fun McpAppEntry(segment: MessageSegment, modifier: Modifier = Modifier) {
+internal fun McpAppEntry(
+    segment: MessageSegment,
+    modifier: Modifier = Modifier,
+    autoOpen: Boolean = false,
+    superseded: Boolean = false,
+) {
     val serverId = segment.toolUiServerId ?: return
     val resourceUri = segment.toolUiResourceUri ?: return
     if (segment.toolState != ToolExecutionStates.SUCCEEDED) return
     if (!remember { McpAppWebSupport.isSupported() }) return
-    var open by rememberSaveable(segment.toolCallId, resourceUri) { mutableStateOf(false) }
+    var open by remember(segment.toolCallId, resourceUri) { mutableStateOf(autoOpen) }
+    var fixedHeight by remember(segment.toolCallId, resourceUri) { mutableStateOf(autoOpen) }
+    var userToggled by remember(segment.toolCallId, resourceUri) { mutableStateOf(false) }
+    LaunchedEffect(superseded) {
+        if (superseded && !userToggled) open = false
+    }
     Column(modifier = modifier.fillMaxWidth()) {
         if (open) {
-            McpAppHost(segment = segment, serverId = serverId, resourceUri = resourceUri)
+            McpAppHost(
+                segment = segment,
+                serverId = serverId,
+                resourceUri = resourceUri,
+                fixedHeightDp = if (fixedHeight) MCP_APP_AUTO_OPEN_HEIGHT_DP else null,
+            )
         }
-        TextButton(onClick = { open = !open }) {
-            Text(
-                stringResource(
-                    if (open) R.string.mcp_app_close_view else R.string.mcp_app_open_view,
-                ),
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            TextButton(
+                onClick = {
+                    userToggled = true
+                    open = !open
+                },
+            ) {
+                Text(
+                    stringResource(
+                        if (open) R.string.mcp_app_close_view else R.string.mcp_app_open_view,
+                    ),
+                )
+            }
+            if (open && fixedHeight) {
+                TextButton(
+                    onClick = {
+                        userToggled = true
+                        fixedHeight = false
+                    },
+                ) { Text(stringResource(R.string.expand)) }
+            }
+        }
+    }
+}
+
+/**
+ * Demand-driven entries for every UI-pointer tool in a timeline block, shown directly under the
+ * block's card (no need to expand the group). Only the freshest pointer of an actively streaming
+ * run auto-opens.
+ */
+@Composable
+internal fun TimelineMcpAppEntries(
+    blockSegments: List<MessageSegment>,
+    freshestToolCallId: String?,
+    isStreaming: Boolean,
+) {
+    blockSegments.filter { it.hasMcpAppPointer() }.forEach { seg ->
+        val isFreshest = seg.toolCallId == freshestToolCallId
+        key(seg.toolCallId) {
+            McpAppEntry(
+                segment = seg,
+                autoOpen = isStreaming && isFreshest,
+                superseded = !isFreshest,
             )
         }
     }
 }
 
 @Composable
-private fun McpAppHost(segment: MessageSegment, serverId: String, resourceUri: String) {
+private fun McpAppHost(
+    segment: MessageSegment,
+    serverId: String,
+    resourceUri: String,
+    fixedHeightDp: Int?,
+) {
     val context = LocalContext.current
     val registry = remember(context) {
         (context.applicationContext as? AgoraApplication)?.containerIfAvailable()?.mcpRegistry
@@ -122,6 +199,7 @@ private fun McpAppHost(segment: MessageSegment, serverId: String, resourceUri: S
             serverId = serverId,
             resource = state.resource,
             registry = state.registry,
+            fixedHeightDp = fixedHeightDp,
         )
     }
 }
@@ -141,6 +219,7 @@ private fun McpAppWebContent(
     serverId: String,
     resource: McpUiResource,
     registry: McpRegistry,
+    fixedHeightDp: Int?,
 ) {
     val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
@@ -217,7 +296,7 @@ private fun McpAppWebContent(
                 factory = { session.webView },
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(heightDp.dp)
+                    .height((fixedHeightDp ?: heightDp).dp)
                     .clip(RoundedCornerShape(12.dp)),
             )
         }

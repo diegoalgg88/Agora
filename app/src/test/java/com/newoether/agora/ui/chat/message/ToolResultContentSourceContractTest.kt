@@ -211,6 +211,47 @@ class ToolResultContentSourceContractTest {
         assertFalse(completedSummary.contains("tool_waited_shell_job"))
     }
 
+    @Test
+    fun `Timeline tool blocks expose the MCP App entry without expanding the group`() {
+        val timeline = source(locateMainSourceRoot(), "MessageItemTimeline.kt")
+        val assistant = source(locateMainSourceRoot(), "AssistantMessageContent.kt")
+
+        // The expanded tool row must NOT host the entry directly (it lives under the block card
+        // instead, reachable without expanding the group).
+        val expandedToolRow = timeline
+            .substringAfter("} else if (seg.type == \"tool\") {")
+            .substringBefore("if (idx < segs.lastIndex) {")
+        assertTrue(expandedToolRow.contains("ToolSummaryText("))
+        assertFalse(expandedToolRow.contains("McpAppEntry("))
+
+        // Grouped and ungrouped timeline paths both render the entries under the block card.
+        val groupedPath = timeline
+            .substringAfter("CompactSegmentBlock(")
+            .substringBefore("if (imageBoundary != null && imageDetailIndex != null) {")
+        assertTrue(groupedPath.contains("TimelineMcpAppEntries("))
+        assertTrue(groupedPath.contains("blockSegments = blockSegments,"))
+        val ungroupedPath = timeline
+            .substringAfter("TimelineInfoSegmentCard(")
+            .substringBefore("if (seg.isImageGenerationSegment()) {")
+        assertTrue(ungroupedPath.contains("TimelineMcpAppEntries("))
+        assertTrue(ungroupedPath.contains("blockSegments = listOf(seg),"))
+
+        // The freshest UI-pointer tool of the message is the only auto-open candidate.
+        assertTrue(
+            timeline.contains(
+                "val freshestMcpAppToolCallId = segments.lastOrNull { it.hasMcpAppPointer() }?.toolCallId",
+            ),
+        )
+        assertTrue(timeline.contains("freshestToolCallId = freshestMcpAppToolCallId"))
+
+        // The auto-open gating itself lives in the shared entry composable.
+        val mcpAppView = source(locateMainSourceRoot(), "McpAppView.kt")
+        assertTrue(mcpAppView.contains("autoOpen = isStreaming && isFreshest"))
+
+        // The compact (non-timeline) presentation keeps the entries too.
+        assertTrue(assistant.contains("TimelineMcpAppEntries("))
+    }
+
     private fun source(root: File, name: String): String =
         File(root, "com/newoether/agora/ui/chat/message/$name")
             .readText()

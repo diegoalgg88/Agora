@@ -181,10 +181,17 @@ path already persisted.
 
 ### 9.3 Rendering and isolation
 
-- Rendering is user-initiated and demand-driven: `McpAppEntry` (in the MCP branch of
-  `ToolDetailContent`) shows an *Open interactive view* control only for a SUCCEEDED segment that
-  carries the pointer. No resource is read and no WebView exists until the user opens it; closing it or
-  leaving the composition destroys the WebView.
+- Rendering is demand-driven: `McpAppEntry` shows an *Open interactive view* control only for a
+  SUCCEEDED segment that carries the pointer. It is rendered in two surfaces: the MCP branch of
+  `ToolDetailContent` (detail sheet) and, inline in the chat timeline, directly under each tool block's
+  card (`TimelineMcpAppEntries`, no group expansion needed). Both reuse the same composable; no resource
+  is read and no WebView exists until the view opens; closing it or leaving the composition destroys the
+  WebView. Open state is not saved across list recycling, so scrolling back never recreates a WebView.
+- Auto-open applies only to the actively streaming run's freshest UI result: the view opens once, at a
+  fixed short height (240 dp) until the user taps *Expand* (then the app-driven 120-800 dp height
+  applies), because ephemeral server-side data (e.g. a map `viz_id`) is freshest right after the tool
+  round. At most one view auto-opens per message; a newer UI result closes an untouched older one. Every
+  other surface (history, older results, detail sheet) stays demand-driven.
 - A view is rendered only when WebView supports `WEB_MESSAGE_LISTENER` and `DOCUMENT_START_SCRIPT`
   (`McpAppWebSupport`). There is deliberately no weaker fallback bridge.
 - `McpAppWebSession` owns one WebView per document: the page is served by `shouldInterceptRequest` on a
