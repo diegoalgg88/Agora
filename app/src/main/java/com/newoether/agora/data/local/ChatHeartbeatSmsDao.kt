@@ -235,15 +235,41 @@ interface ChatHeartbeatSmsDao {
     )
     suspend fun armTaskConfirmationReminder(id: String, remindAtEpochMs: Long): Int
 
-    /** Single-winner status transition; returns 0 when the row was no longer [fromStatus]. */
+    /**
+     * Single-winner status transition; returns 0 when the row was no longer [fromStatus].
+     * `resolvedAtEpochMs` stamps the USER resolution moment (null on supersession — that is
+     * not a user resolution and must not feed the acknowledgement window).
+     */
     @Query(
         """
         UPDATE task_confirmations
-        SET status = :toStatus
+        SET status = :toStatus, resolvedAtEpochMs = :resolvedAtEpochMs
         WHERE id = :id AND status = :fromStatus
         """,
     )
-    suspend fun transitionTaskConfirmation(id: String, fromStatus: String, toStatus: String): Int
+    suspend fun transitionTaskConfirmation(
+        id: String,
+        fromStatus: String,
+        toStatus: String,
+        resolvedAtEpochMs: Long? = null,
+    ): Int
+
+    /**
+     * Bodies of recently USER-acknowledged HEARTBEAT confirmations, newest first — the
+     * acknowledgement feed for the heartbeat prompt's "Already Acknowledged" section.
+     * No index: the table is bounded by design (≤20 PENDING rows; tombstones 7-day-cleanup).
+     */
+    @Query(
+        """
+        SELECT bodyText FROM task_confirmations
+        WHERE sourceType = 'HEARTBEAT'
+          AND status = 'ACKNOWLEDGED'
+          AND resolvedAtEpochMs >= :sinceMs
+        ORDER BY resolvedAtEpochMs DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun selectRecentlyAcknowledgedBodies(sinceMs: Long, limit: Int): List<String>
 
     /**
      * Caps only PENDING rows. Resolved rows are dedup tombstones bounded by the 7-day cleanup;

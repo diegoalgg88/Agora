@@ -55,6 +55,7 @@ class HeartbeatPromptBuilder(
         pendingEmails: List<EmailPendingData> = emptyList(),
         recentResponses: List<String> = emptyList(),
         emailStatuses: List<EmailAccountStatus> = emptyList(),
+        acknowledgedBodies: List<String> = emptyList(),
     ): String {
         val sections = mutableListOf<String>()
 
@@ -92,6 +93,12 @@ class HeartbeatPromptBuilder(
         // Section 8: Previous Heartbeat Results (for continuity)
         val previousSection = buildPreviousHeartbeatSection(recentResponses)
         if (previousSection.isNotBlank()) sections.add(previousSection)
+
+        // Section 8b: Already Acknowledged — alerts the USER confirmed via the
+        // confirmation card. The model must not re-alert them within the window; this
+        // sits BEFORE the Response Rule so the decision rule is fresh on top of it.
+        val acknowledgedSection = buildAcknowledgedSection(acknowledgedBodies)
+        if (acknowledgedSection.isNotBlank()) sections.add(acknowledgedSection)
 
         // Section 9: decision rule, LAST so it is the freshest instruction. The base prompt (the
         // default or the user's) only talks about memories/tasks/follow-ups, so a model reading
@@ -235,6 +242,32 @@ class HeartbeatPromptBuilder(
         for ((i, response) in recentResponses.withIndex()) {
             val label = if (i == 0) "Most recent" else "${i + 1} heartbeats ago"
             lines.add("### $label\n$response")
+        }
+        return lines.joinToString("\n")
+    }
+
+    /**
+     * Alerts the USER confirmed (Confirmar) on the confirmation card within the
+     * acknowledgement window. This is the semantic payload of ACKNOWLEDGED: the user
+     * said "done, I handled it" — re-alerting the same alert within the window is noise
+     * (observed: the same unread-email alert restaged every 60 s tick). A material change
+     * (a NEW security event, a different sender, higher severity) is a new alert and
+     * must still surface. Deliberately BEFORE the Response Rule so the decision rule is
+     * the freshest instruction on top of this context.
+     */
+    private fun buildAcknowledgedSection(acknowledgedBodies: List<String>): String {
+        if (acknowledgedBodies.isEmpty()) return ""
+        val lines = mutableListOf("## Already Acknowledged")
+        lines.add(
+            "The user already confirmed (acknowledged) these recent alerts via the " +
+                "confirmation card — they are handled. Do NOT re-alert about the same " +
+                "condition while it stays materially unchanged; answer the " +
+                "${HeartbeatManager.HEARTBEAT_OK_SENTINEL} rule accordingly. A materially " +
+                "changed situation (a NEW event, a different sender, a higher severity) " +
+                "is a new alert and must still surface.",
+        )
+        for (body in acknowledgedBodies) {
+            lines.add("- ${body.take(120)}")
         }
         return lines.joinToString("\n")
     }

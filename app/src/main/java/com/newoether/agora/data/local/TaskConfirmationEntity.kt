@@ -42,6 +42,14 @@ data class TaskConfirmationEntity(
     val createdAtEpochMs: Long,
     /** Snooze deadline; null unless the user explicitly postponed this confirmation. */
     val remindAtEpochMs: Long? = null,
+    /**
+     * Timestamp of a USER resolution (Confirm or Dismiss). Feeds the heartbeat
+     * acknowledgement window ("Already Acknowledged" prompt section): an alert the user
+     * confirmed must not be re-alerted for the window. Deliberately NULL on superseded
+     * rows — supersession (anti-stacking) is not a user resolution and must not silence
+     * the alert. No value while PENDING.
+     */
+    val resolvedAtEpochMs: Long? = null,
     val status: String = TaskConfirmationStatus.PENDING.name,
 )
 

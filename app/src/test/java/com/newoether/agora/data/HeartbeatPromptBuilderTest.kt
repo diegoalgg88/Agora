@@ -269,4 +269,49 @@ class HeartbeatPromptBuilderTest {
         // Highest hits render first so the model can prefer pinning them.
         assertTrue(prompt.indexOf("high_hits.md") < prompt.indexOf("low_hits.md"))
     }
+
+    // ── Already Acknowledged (ack feed) ───────────────────────────────────────
+
+    @Test
+    fun `omits Already Acknowledged section when the feed is empty`() = runBlocking {
+        val prompt = builder().buildHeartbeatPrompt(customPrompt = "")
+        assertFalse("## Already Acknowledged" in prompt)
+    }
+
+    @Test
+    fun `acknowledged alerts render with the do-not-re-alert rule`() = runBlocking {
+        val prompt = builder().buildHeartbeatPrompt(
+            customPrompt = "",
+            acknowledgedBodies = listOf("Email sin leer en cuenta X (desde 3.5 h)"),
+        )
+        assertTrue("## Already Acknowledged" in prompt)
+        assertTrue("Email sin leer en cuenta X" in prompt)
+        assertTrue("Do NOT re-alert" in prompt)
+        // A materially changed situation must still surface.
+        assertTrue("materially" in prompt)
+    }
+
+    @Test
+    fun `acknowledged bodies truncate at 120 chars`() = runBlocking {
+        val longBody = "x".repeat(300)
+        val prompt = builder().buildHeartbeatPrompt(
+            customPrompt = "",
+            acknowledgedBodies = listOf(longBody),
+        )
+        assertTrue("x".repeat(120) in prompt)
+        assertFalse("x".repeat(121) in prompt)
+    }
+
+    @Test
+    fun `acknowledged section sits before the Response Rule when both are present`() = runBlocking {
+        val prompt = builder().buildHeartbeatPrompt(
+            customPrompt = "",
+            pendingSms = listOf(sms(1L, "+1555", "urgent bill")),
+            acknowledgedBodies = listOf("already handled alert"),
+        )
+        assertTrue("## Already Acknowledged" in prompt)
+        assertTrue("## Response Rule" in prompt)
+        // The decision rule must remain the LAST, freshest instruction.
+        assertTrue(prompt.indexOf("## Already Acknowledged") < prompt.indexOf("## Response Rule"))
+    }
 }

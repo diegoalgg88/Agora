@@ -169,6 +169,17 @@ class TaskConfirmationStore(
         chatDao.selectPendingWithoutSnooze()
     }
 
+    /**
+     * Acknowledgement feed: bodies of HEARTBEAT alerts the USER confirmed within the
+     * window, newest first. The scheduler owns the window/limit policy (24 h / 5) —
+     * the store stays a narrow accessor. A DISMISSED alert never appears here: the
+     * semantic difference between Confirmar and Descartar is exactly this feed.
+     */
+    suspend fun recentlyAcknowledgedBodies(sinceMs: Long, limit: Int): List<String> =
+        withContext(Dispatchers.IO) {
+            chatDao.selectRecentlyAcknowledgedBodies(sinceMs, limit)
+        }
+
     suspend fun get(id: String): TaskConfirmationEntity? = withContext(Dispatchers.IO) {
         chatDao.getTaskConfirmation(id)
     }
@@ -186,6 +197,9 @@ class TaskConfirmationStore(
                 id = id,
                 fromStatus = TaskConfirmationStatus.PENDING.name,
                 toStatus = target.name,
+                // Stamp the USER resolution moment in the same single-winner UPDATE —
+                // one decision, one transaction. Supersession passes no timestamp.
+                resolvedAtEpochMs = System.currentTimeMillis(),
             ) == 1
         }
 

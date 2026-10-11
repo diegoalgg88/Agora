@@ -29,6 +29,14 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 /** Markup/whitespace a model may wrap around the HEARTBEAT_OK marker; never content. */
+
+/** Acknowledgement window for the prompt's "Already Acknowledged" section: alerts the user
+ *  confirmed inside this window are not re-alerted unless materially changed. After it, a
+ *  still-live condition may legitimately re-surface — an ack must not silence it forever. */
+private const val ACK_WINDOW_MS = 24L * 60 * 60 * 1000
+
+/** Cap of acknowledged bodies fed into the prompt (newest first; bodies truncated at 120 chars). */
+private const val ACK_LIMIT = 5
 private val DECORATION_CHARS = charArrayOf('*', '_', '`', '"', '\'', ' ', '\n', '\r', '\t')
 
 /**
@@ -424,6 +432,16 @@ class HeartbeatScheduler(
             .getRecentFinalModelResponses(heartbeatConversationId, limit = 3)
             .map { it.text }
 
+        // Acknowledgement feed: HEARTBEAT alerts the USER confirmed within 24 h (max 5,
+        // newest first). Best-effort — a feed failure must never take the heartbeat down
+        // (same isolation as every other optional snapshot section).
+        val acknowledgedBodies = runCatching {
+            taskConfirmationStore.recentlyAcknowledgedBodies(
+                sinceMs = System.currentTimeMillis() - ACK_WINDOW_MS,
+                limit = ACK_LIMIT,
+            )
+        }.getOrDefault(emptyList())
+
         val builder = com.newoether.agora.data.HeartbeatPromptBuilder(
             taskManager = getTaskManager(),
             loopManager = getLoopManager(),
@@ -439,6 +457,7 @@ class HeartbeatScheduler(
                 pendingEmails = pendingEmails,
                 recentResponses = recentResponses,
                 emailStatuses = emailStatuses,
+                acknowledgedBodies = acknowledgedBodies,
             ),
             smsIds = pendingSms.map { it.id },
             notificationKeys = pendingNotifications.map { it.id },

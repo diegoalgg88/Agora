@@ -288,6 +288,43 @@ superseded: each conversation maps to one user-requested object, not a 60 s
 repeat-poster. Pinned by `TaskConfirmationStoreTest.supersede*` and
 `HeartbeatSchedulerBusyPathTest.actionableHeartbeatSupersedesPreviousPending…`.
 
+### View-cancels-notification hygiene (2026-10-10)
+The notification posts with `setAutoCancel(false)` (a tap that never reaches the
+activity must not silently consume the only shade entry), so opening the
+confirmation card used to leave the shade notification alive next to the live card
+(observed on-device). `TaskConfirmationActivity.load` cancels the notification
+(`taskPromptNotifier.cancel(id)`) once the row is confirmed still PENDING — the
+single landing point of BOTH entry paths (the chat banner's "Ver" and the
+notification's contentIntent). Viewing is NOT resolving: the durable row stays
+PENDING and the banner keeps offering Confirm/Dismiss/Snooze. A stale intent (row
+already resolved) finishes the activity without cancelling — an unrelated re-post
+must not be killed. Pinned by
+`TaskConfirmationViewCancelsNotificationSourceContractTest`.
+
+### Acknowledgement feed — the Confirmar/Descartar semantics (2026-10-10)
+Before this, ACKNOWLEDGED had no consumer: Confirmar and Descartar were
+functionally identical (both = terminal tombstone + notification cancel). Room v40
+adds `task_confirmations.resolvedAtEpochMs` (additive ALTER; nullable; no default)
+and gives Confirmar its real meaning. The single-winner consume transition stamps
+`resolvedAtEpochMs = now` in the SAME update (one decision, one transaction —
+`consume` passes the timestamp; supersession passes null by contrast: a superseded
+row is not a user resolution and must not silence an alert the user never saw).
+The scheduler then feeds
+`TaskConfirmationStore.recentlyAcknowledgedBodies(sinceMs = now − 24 h, limit = 5)`
+into the prompt builder's `acknowledgedBodies` parameter (best-effort — a feed
+failure never takes the heartbeat down), which renders the `## Already
+Acknowledged` section BEFORE the `## Response Rule` (the decision rule stays the
+freshest instruction): the model must not re-alert a confirmed alert while it
+stays materially unchanged; a NEW event / different sender / higher severity is a
+new alert and must still surface. DISMISSED rows never enter the feed — that is
+the entire semantic difference between the two buttons. After the 24 h window a
+still-live condition may legitimately re-surface: an ack must not silence a
+condition forever. Bodies are truncated to 120 chars (bounded prompt). Pinned by
+`TaskConfirmationStoreTest.consumeStamps…/supersessionNeverStamps…`,
+`HeartbeatPromptBuilderTest` (ack section suite), and
+`HeartbeatSchedulerBusyPathTest.heartbeatPromptCarriesTheAcknowledgementFeed/
+ackFeedFailureNeverTakesTheHeartbeatDown`.
+
 ### TASK result surfacing (F8)
 Scheduled tasks share the heartbeat's confirmation pipeline. After a successful
 `TaskManager` execution (both the WorkManager path and the recovery path), the

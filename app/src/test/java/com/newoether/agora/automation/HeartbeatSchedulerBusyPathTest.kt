@@ -460,6 +460,42 @@ class HeartbeatSchedulerBusyPathTest {
         coVerify(exactly = 0) { offStore.supersedePending(any(), any()) }
     }
 
+    // ── Acknowledgement feed wiring ───────────────────────────────────────────
+
+    @Test
+    fun heartbeatPromptCarriesTheAcknowledgementFeed() = runTest {
+        // The user confirmed an alert: the snapshot composer must query the ack feed
+        // (bounded: limit 5) so the next prompt lists it under "Already Acknowledged".
+        val store = stageCapturingStore()
+        coEvery { store.recentlyAcknowledgedBodies(any(), any()) } returns listOf("alerta manejada")
+        schedulerWith(
+            engineResult = TaskExecutionEngine.Result.Success("msg-ack", "HEARTBEAT_OK"),
+            inForeground = false,
+            confirmationToggleOn = true,
+            store = store,
+        ).first.runHeartbeatNow()
+        coVerify(exactly = 1) { store.recentlyAcknowledgedBodies(any(), eq(5)) }
+    }
+
+    @Test
+    fun ackFeedFailureNeverTakesTheHeartbeatDown() = runTest {
+        // Best-effort: a Room hiccup on the feed query must not fail the heartbeat run.
+        val store = stageCapturingStore()
+        coEvery { store.recentlyAcknowledgedBodies(any(), any()) } throws
+            RuntimeException("db locked")
+        val (scheduler, manager, _) = schedulerWith(
+            engineResult = TaskExecutionEngine.Result.Success("msg-ack2", "HEARTBEAT_OK"),
+            inForeground = false,
+            confirmationToggleOn = true,
+            store = store,
+        )
+        scheduler.runHeartbeatNow()
+        // The run completed (no exception propagated) and the engine still ran.
+        coVerify(exactly = 1) {
+            manager.recordHeartbeat(any(), any())
+        }
+    }
+
     // ── Test scaffolding for the confirmation-aware cases ────────────────────
 
     private fun stageCapturingStore(): TaskConfirmationStore =

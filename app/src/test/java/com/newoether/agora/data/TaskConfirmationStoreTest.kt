@@ -165,12 +165,12 @@ class TaskConfirmationStoreTest {
     @Test
     fun acknowledgeIsSingleWinnerViaPendingPredicate() = runTest {
         coEvery {
-            chatDao.transitionTaskConfirmation("r1", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.ACKNOWLEDGED.name)
+            chatDao.transitionTaskConfirmation("r1", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.ACKNOWLEDGED.name, any())
         } returns 1
         assertTrue(store.acknowledge("r1"))
 
         coEvery {
-            chatDao.transitionTaskConfirmation("r2", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.ACKNOWLEDGED.name)
+            chatDao.transitionTaskConfirmation("r2", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.ACKNOWLEDGED.name, any())
         } returns 0
         assertFalse(store.acknowledge("r2"))
     }
@@ -178,11 +178,11 @@ class TaskConfirmationStoreTest {
     @Test
     fun dismissUsesTransitionToo() = runTest {
         coEvery {
-            chatDao.transitionTaskConfirmation(any(), any(), any())
+            chatDao.transitionTaskConfirmation(any(), any(), any(), any())
         } returns 1
         assertTrue(store.dismiss("r1"))
         coVerify(exactly = 1) {
-            chatDao.transitionTaskConfirmation("r1", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name)
+            chatDao.transitionTaskConfirmation("r1", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name, any())
         }
     }
 
@@ -232,15 +232,15 @@ class TaskConfirmationStoreTest {
         coEvery {
             chatDao.selectPendingTaskConfirmations(TaskConfirmationSource.HEARTBEAT.name, "conv")
         } returns rows
-        coEvery { chatDao.transitionTaskConfirmation(any(), any(), any()) } returns 1
+        coEvery { chatDao.transitionTaskConfirmation(any(), any(), any(), any()) } returns 1
 
         val superseded = store.supersedePending(TaskConfirmationSource.HEARTBEAT, "conv")
         assertEquals(listOf("a", "b"), superseded.map { it.id })
         coVerify(exactly = 1) {
-            chatDao.transitionTaskConfirmation("a", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name)
+            chatDao.transitionTaskConfirmation("a", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name, null)
         }
         coVerify(exactly = 1) {
-            chatDao.transitionTaskConfirmation("b", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name)
+            chatDao.transitionTaskConfirmation("b", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name, null)
         }
     }
 
@@ -252,14 +252,76 @@ class TaskConfirmationStoreTest {
             chatDao.selectPendingTaskConfirmations(TaskConfirmationSource.HEARTBEAT.name, "conv")
         } returns listOf(row("a"), row("b"))
         coEvery {
-            chatDao.transitionTaskConfirmation("a", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name)
+            chatDao.transitionTaskConfirmation("a", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name, null)
         } returns 1
         coEvery {
-            chatDao.transitionTaskConfirmation("b", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name)
+            chatDao.transitionTaskConfirmation("b", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name, null)
         } returns 0
 
         val superseded = store.supersedePending(TaskConfirmationSource.HEARTBEAT, "conv")
         assertEquals(listOf("a"), superseded.map { it.id })
+    }
+
+    // ── Acknowledgement timestamp + feed ──────────────────────────────────────
+
+    @Test
+    fun consumeStampsTheUserResolutionMoment() = runTest {
+        // Confirm and Dismiss are USER resolutions: the single-winner UPDATE must stamp
+        // resolvedAtEpochMs in the same transition — one decision, one transaction.
+        coEvery {
+            chatDao.transitionTaskConfirmation("a", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.ACKNOWLEDGED.name, any())
+        } returns 1
+        assertTrue(store.acknowledge("a"))
+        coVerify(exactly = 1) {
+            chatDao.transitionTaskConfirmation(
+                "a",
+                TaskConfirmationStatus.PENDING.name,
+                TaskConfirmationStatus.ACKNOWLEDGED.name,
+                withArg { assertNotNull(it) },
+            )
+        }
+
+        coEvery {
+            chatDao.transitionTaskConfirmation("b", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name, any())
+        } returns 1
+        assertTrue(store.dismiss("b"))
+        coVerify(exactly = 1) {
+            chatDao.transitionTaskConfirmation(
+                "b",
+                TaskConfirmationStatus.PENDING.name,
+                TaskConfirmationStatus.DISMISSED.name,
+                withArg { assertNotNull(it) },
+            )
+        }
+    }
+
+    @Test
+    fun supersessionNeverStampsTheResolutionMoment() = runTest {
+        // A superseded row is NOT a user resolution: it must not feed the ack window or it
+        // would silence the alert without the user ever seeing it.
+        coEvery {
+            chatDao.selectPendingTaskConfirmations(TaskConfirmationSource.HEARTBEAT.name, "conv")
+        } returns listOf(row("a"))
+        coEvery {
+            chatDao.transitionTaskConfirmation("a", TaskConfirmationStatus.PENDING.name, TaskConfirmationStatus.DISMISSED.name, null)
+        } returns 1
+        store.supersedePending(TaskConfirmationSource.HEARTBEAT, "conv")
+        coVerify(exactly = 1) {
+            chatDao.transitionTaskConfirmation(
+                "a",
+                TaskConfirmationStatus.PENDING.name,
+                TaskConfirmationStatus.DISMISSED.name,
+                // Literal null: the supersession path never stamps the resolution moment.
+                null,
+            )
+        }
+    }
+
+    @Test
+    fun recentlyAcknowledgedBodiesDelegatesWindowAndLimit() = runTest {
+        coEvery { chatDao.selectRecentlyAcknowledgedBodies(sinceMs = 100L, limit = 5) } returns
+            listOf("alert one", "alert two")
+        assertEquals(listOf("alert one", "alert two"), store.recentlyAcknowledgedBodies(100L, 5))
     }
 
     @Test

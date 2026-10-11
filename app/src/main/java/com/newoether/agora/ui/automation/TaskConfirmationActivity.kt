@@ -117,6 +117,13 @@ class TaskConfirmationActivity : ComponentActivity() {
                 finishIfNothingShown()
                 return@launch
             }
+            // The shade entry has done its job the moment the card opens; cancel it so it
+            // cannot linger as a zombie while the user already has the live card in front
+            // (observed: card open + shade notification both alive for the same row).
+            // The row itself stays PENDING — viewing is not resolving, and the chat banner
+            // keeps offering Confirm/Dismiss/Snooze. Both entry paths (banner "Ver" and the
+            // notification's contentIntent) land here, so this is the single cancel point.
+            container.taskPromptNotifier.cancel(id)
             rowState.value = current
         }
     }
