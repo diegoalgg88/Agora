@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">Đăng nhập OAuth</string>
+    <string name="mcp_oauth_client_id">OAuth Client ID (tùy chọn)</string>
+    <string name="mcp_oauth_client_id_desc">Chỉ cần khi máy chủ không hỗ trợ đăng ký client tự động.</string>
+    <string name="mcp_oauth_scope">Phạm vi OAuth (tùy chọn)</string>
+    <string name="mcp_oauth_scope_desc">Phân tách bằng dấu cách. Để trống để dùng mặc định của máy chủ.</string>
+    <string name="mcp_oauth_signed_in">Đã đăng nhập</string>
+    <string name="mcp_oauth_signed_out">Chưa đăng nhập</string>
+    <string name="mcp_oauth_required">Cần đăng nhập</string>
+    <string name="mcp_oauth_sign_in">Đăng nhập</string>
+    <string name="mcp_oauth_sign_out">Đăng xuất</string>
+    <string name="mcp_oauth_save_first">Hãy lưu cài đặt máy chủ trước khi đăng nhập.</string>
+</resources>

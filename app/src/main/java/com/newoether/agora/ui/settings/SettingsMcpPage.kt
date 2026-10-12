@@ -145,6 +145,7 @@ fun SettingsMcpPage(
                 },
                 onRefresh = { viewModel.refreshMcpServer(target.id) },
                 showDocFab = showDocFab,
+                viewModel = viewModel,
             )
         } else {
             val scrollState = rememberScrollState()
@@ -407,7 +408,7 @@ fun SettingsMcpPage(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 popularMcpServers.forEach { popularServer ->
-                    val isAuthRequired = popularServer.requiresAuth
+                    val isAuthRequired = popularServer.requiresAuth && !popularServer.oauth
                     Surface(
                         onClick = {
                             showAddServerSheet = false
@@ -472,6 +473,7 @@ private fun McpServerEditor(
     onSave: (McpServerConfig) -> Unit,
     onRefresh: () -> Unit,
     showDocFab: Boolean,
+    viewModel: ChatViewModel,
 ) {
     var draft by remember(initial.id) { mutableStateOf(initial) }
     var headerRows by remember(initial.id) {
@@ -648,6 +650,10 @@ private fun McpServerEditor(
                         )
                     }
                 },
+            )
+            McpOAuthGroup(
+                viewModel = viewModel, draft = draft, saved = initial, isNew = isNew,
+                snapshot = snapshot, onDraftChange = { draft = it },
             )
             if (!isNew) {
                 SettingsGroup(
@@ -933,7 +939,7 @@ private fun McpStatusIcon(status: McpConnectionStatus) {
 }
 
 @Composable
-private fun McpLabeledField(
+internal fun McpLabeledField(
     label: String,
     value: String,
     onValueChange: (String) -> Unit,

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">Connexion OAuth</string>
+    <string name="mcp_oauth_client_id">ID client OAuth (facultatif)</string>
+    <string name="mcp_oauth_client_id_desc">Nécessaire uniquement si le serveur ne prend pas en charge l\'enregistrement automatique des clients.</string>
+    <string name="mcp_oauth_scope">Portée OAuth (facultatif)</string>
+    <string name="mcp_oauth_scope_desc">Séparées par des espaces. Laissez vide pour utiliser la valeur par défaut du serveur.</string>
+    <string name="mcp_oauth_signed_in">Connecté</string>
+    <string name="mcp_oauth_signed_out">Non connecté</string>
+    <string name="mcp_oauth_required">Connexion requise</string>
+    <string name="mcp_oauth_sign_in">Se connecter</string>
+    <string name="mcp_oauth_sign_out">Se déconnecter</string>
+    <string name="mcp_oauth_save_first">Enregistrez les paramètres du serveur avant de vous connecter.</string>
+</resources>

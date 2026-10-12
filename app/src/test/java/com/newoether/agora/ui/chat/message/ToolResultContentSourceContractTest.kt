@@ -252,6 +252,65 @@ class ToolResultContentSourceContractTest {
         assertTrue(assistant.contains("TimelineMcpAppEntries("))
     }
 
+    @Test
+    fun `MCP App view relayout reaches the page and drags belong to the app content`() {
+        val root = locateMainSourceRoot()
+        val session = File(root, "com/newoether/agora/mcp/ui/McpAppWebSession.kt")
+            .readText()
+            .replace("\r\n", "\n")
+
+        // Container size changes dispatch a standard window resize so self-measuring apps
+        // (e.g. Mapbox GL) can re-measure after auto-open height, expand, or list relayout.
+        assertTrue(session.contains("val webView: WebView = object : WebView(context) {"))
+        assertTrue(session.contains("override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int)"))
+        assertTrue(session.contains("if (w != ow || h != oh) dispatchViewportResize()"))
+        assertTrue(session.contains("override fun onPageFinished(view: WebView?, url: String?)"))
+        assertTrue(
+            session.contains(
+                "webView.evaluateJavascript(\"window.dispatchEvent(new Event('resize'))\", null)",
+            ),
+        )
+
+        // One-finger drags pan the app content instead of scrolling the chat list.
+        assertTrue(session.contains("webView.setOnTouchListener { view, _ ->"))
+        assertTrue(session.contains("view.parent?.requestDisallowInterceptTouchEvent(true)"))
+
+        // The app document never loads into an unmeasured (0x0) host view: percent-height CSS
+        // resolves against the layout viewport frozen at load time, so a 0-sized load would
+        // collapse such apps to 0 height permanently.
+        assertTrue(session.contains("if (webView.width > 0 && webView.height > 0) {"))
+        assertTrue(session.contains("webView.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {"))
+        assertTrue(session.contains("if (right - left > 0 && bottom - top > 0) {"))
+    }
+
+    @Test
+    fun `MCP render-ref markers are stripped at display time only`() {
+        val root = locateMainSourceRoot()
+        val markdown = source(root, "MessageItemMarkdown.kt")
+
+        // Display-only cleanup: the marker regex is applied in toRenderableMarkdownText and
+        // must never write back to durable message text.
+        assertTrue(markdown.contains("val cleaned = stripMcpRenderRefMarkers(this)"))
+        assertTrue(markdown.contains("private val MCP_RENDER_REF_MARKER ="))
+        assertTrue(markdown.contains("if (!text.contains(\"_RENDER_REF]]\")) return text"))
+    }
+
+    @Test
+    fun `render-ref markers disappear from renderable markdown without touching other content`() {
+        val input =
+            "Ruta lista.\n\n[[MAPBOX_RENDER_REF]] mapbox://inline/payload?data=abc\n\nMás texto."
+        val rendered = input.toRenderableMarkdownText()
+
+        assertTrue(rendered.contains("Ruta lista."))
+        assertTrue(rendered.contains("Más texto."))
+        assertFalse(rendered.contains("MAPBOX_RENDER_REF"))
+        assertFalse(rendered.contains("mapbox://inline/payload"))
+
+        // Similar-looking brackets that are not render refs are kept.
+        val plain = "Notas: [[TODO_NOTES]] quedan visibles."
+        assertTrue(plain.toRenderableMarkdownText().contains("[[TODO_NOTES]]"))
+    }
+
     private fun source(root: File, name: String): String =
         File(root, "com/newoether/agora/ui/chat/message/$name")
             .readText()

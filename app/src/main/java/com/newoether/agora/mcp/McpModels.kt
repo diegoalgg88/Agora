@@ -93,6 +93,8 @@ data class McpServerSnapshot(
     val error: String? = null,
     val lastSyncedAt: Long? = null,
     val resources: List<McpRemoteResource> = emptyList(),
+    /** ERROR cause: the server demands OAuth sign-in; retrying cannot help without user action. */
+    val authRequired: Boolean = false,
 )
 
 data class McpImagePayload(

@@ -300,6 +300,7 @@ class ChatViewModel(
     fun refreshMcpServer(serverId: String) = mcpRegistry.refresh(serverId)
 
     fun refreshMcpServersOnPageEntry() = mcpRegistry.refreshOnPageEntry()
+    internal val mcpOAuth get() = mcpRegistry.oauth // MCP sign-in; outside the generation pipeline
 
     override fun onCleared() {
         super.onCleared()

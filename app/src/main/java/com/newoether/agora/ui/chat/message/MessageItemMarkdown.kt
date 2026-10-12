@@ -404,9 +404,10 @@ private fun LazyMarkdownSuccessWithSpacing(
 }
 
 internal fun String.toRenderableMarkdownText(parseInlineDollarMath: Boolean = false): String {
-    val spans = parseLatexSpans(this, parseInlineDollarMath)
+    val cleaned = stripMcpRenderRefMarkers(this)
+    val spans = parseLatexSpans(cleaned, parseInlineDollarMath)
     val markdown = if (spans.all { !it.isLatex }) {
-        this
+        cleaned
     } else {
         spans.joinToString("") { span ->
             if (span.isLatex) latexToMarkdown(span.content, span.display)
@@ -414,6 +415,26 @@ internal fun String.toRenderableMarkdownText(parseInlineDollarMath: Boolean = fa
         }
     }
     return markdown.escapeForMarkdown()
+}
+
+/**
+ * Render-reference markers some MCP servers instruct the model to emit next to an interactive
+ * view (e.g. Mapbox's `[[MAPBOX_RENDER_REF]] <uri>`). They are transport for the server-side
+ * renderer, not content for the reader, so lines that carry nothing else are dropped at display
+ * time only — the durable message text is never modified.
+ */
+private val MCP_RENDER_REF_MARKER = Regex("\\[\\[[A-Z][A-Z0-9_]*_RENDER_REF\\]\\](?:[ \\t]+\\S+)?")
+
+private fun stripMcpRenderRefMarkers(text: String): String {
+    if (!text.contains("_RENDER_REF]]")) return text
+    return buildString {
+        text.lines().forEachIndexed { index, line ->
+            val cleaned = MCP_RENDER_REF_MARKER.replace(line, "")
+            if (cleaned.isBlank() && !line.isBlank()) return@forEachIndexed
+            if (index > 0) append('\n')
+            append(cleaned)
+        }
+    }
 }
 
 internal fun String.escapeForMarkdown(): String = escapeDollarForMarkdown()

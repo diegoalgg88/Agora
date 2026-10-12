@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">OAuth 登录</string>
+    <string name="mcp_oauth_client_id">OAuth 客户端 ID(可选)</string>
+    <string name="mcp_oauth_client_id_desc">仅当服务器不支持自动注册客户端时才需要。</string>
+    <string name="mcp_oauth_scope">OAuth 权限范围(可选)</string>
+    <string name="mcp_oauth_scope_desc">以空格分隔。留空则使用服务器默认值。</string>
+    <string name="mcp_oauth_signed_in">已登录</string>
+    <string name="mcp_oauth_signed_out">未登录</string>
+    <string name="mcp_oauth_required">需要登录</string>
+    <string name="mcp_oauth_sign_in">登录</string>
+    <string name="mcp_oauth_sign_out">退出登录</string>
+    <string name="mcp_oauth_save_first">请先保存服务器设置,再登录。</string>
+</resources>

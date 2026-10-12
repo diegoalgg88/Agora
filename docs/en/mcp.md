@@ -22,6 +22,15 @@ The **Popular Servers** section lists a curated catalog of well-known public MCP
 
 Some entries require an API key (for example Jina AI, Tavily, SERPAPI, Composio, OpenWeather). Enter the key when prompted; it is stored with the same protections as other secrets. Servers you add from the catalog behave exactly like manually added servers: enable, disable, edit, or delete them at any time.
 
+## Sign In with OAuth
+
+Some servers (for example Notion, Linear, and Sentry in the Popular Servers list) protect their tools with OAuth instead of an API key. Add the server normally, without an Authorization header. When it reports **Sign-in required**, open the server editor and tap **Sign in**: Agora opens your browser, you approve access, and you are returned to the app, which then connects and lists the tools.
+
+- Agora registers itself with the server automatically. If the server does not support that, the editor asks for an **OAuth Client ID** that you create in the service's developer settings; an **OAuth scope** can be set the same way.
+- Save the server before signing in; sign-in always uses the saved settings.
+- **Sign out** removes the tokens from this device. Tokens are renewed in the background and stored with the same protections as other secrets. They stay on the device: they are never included in exports or backups, so sign in again after restoring on a new device.
+- If you add your own `Authorization` header, OAuth is not used for that server.
+
 ## Connection and Tool Discovery
 
 An enabled server connects in the background. Its status is shown as **Idle**, **Connecting**, **Connected**, or **Connection error**. Use **Reconnect** from the server menu or editor to retry discovery.

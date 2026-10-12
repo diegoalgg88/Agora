@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">Login OAuth</string>
+    <string name="mcp_oauth_client_id">ID do cliente OAuth (opcional)</string>
+    <string name="mcp_oauth_client_id_desc">Necessário apenas quando o servidor não oferece suporte ao registro automático de clientes.</string>
+    <string name="mcp_oauth_scope">Escopo OAuth (opcional)</string>
+    <string name="mcp_oauth_scope_desc">Separados por espaço. Deixe vazio para usar o padrão do servidor.</string>
+    <string name="mcp_oauth_signed_in">Conectado</string>
+    <string name="mcp_oauth_signed_out">Não conectado</string>
+    <string name="mcp_oauth_required">Login necessário</string>
+    <string name="mcp_oauth_sign_in">Entrar</string>
+    <string name="mcp_oauth_sign_out">Sair</string>
+    <string name="mcp_oauth_save_first">Salve as configurações do servidor antes de entrar.</string>
+</resources>

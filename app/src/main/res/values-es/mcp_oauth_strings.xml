@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">Inicio de sesión OAuth</string>
+    <string name="mcp_oauth_client_id">ID de cliente OAuth (opcional)</string>
+    <string name="mcp_oauth_client_id_desc">Solo es necesario si el servidor no admite el registro automático de clientes.</string>
+    <string name="mcp_oauth_scope">Ámbito OAuth (opcional)</string>
+    <string name="mcp_oauth_scope_desc">Separados por espacios. Déjalo vacío para usar el valor predeterminado del servidor.</string>
+    <string name="mcp_oauth_signed_in">Sesión iniciada</string>
+    <string name="mcp_oauth_signed_out">Sin iniciar sesión</string>
+    <string name="mcp_oauth_required">Se requiere iniciar sesión</string>
+    <string name="mcp_oauth_sign_in">Iniciar sesión</string>
+    <string name="mcp_oauth_sign_out">Cerrar sesión</string>
+    <string name="mcp_oauth_save_first">Guarda la configuración del servidor antes de iniciar sesión.</string>
+</resources>

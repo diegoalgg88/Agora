@@ -4,6 +4,7 @@ import android.content.Context
 import android.graphics.Color
 import android.net.Uri
 import android.os.Message
+import android.view.View
 import android.view.ViewGroup
 import android.webkit.ConsoleMessage
 import android.webkit.GeolocationPermissions
@@ -71,14 +72,55 @@ internal class McpAppWebSession(
     @Volatile
     private var closed = false
 
-    val webView: WebView = WebView(context)
+    /**
+     * Subclass so container size changes reach the page: apps that measure themselves at first
+     * layout (e.g. Mapbox GL) otherwise keep a stale canvas size when the host view is later
+     * resized (auto-open height, expand, list relayout). Dispatching a standard window resize
+     * is a no-op for apps that ignore it.
+     */
+    val webView: WebView = object : WebView(context) {
+        override fun onSizeChanged(w: Int, h: Int, ow: Int, oh: Int) {
+            super.onSizeChanged(w, h, ow, oh)
+            if (w != ow || h != oh) dispatchViewportResize()
+        }
+    }
 
     init {
         configure()
     }
 
     fun start() {
-        if (!closed) webView.loadUrl(pageUrl)
+        if (closed) return
+        if (webView.width > 0 && webView.height > 0) {
+            webView.loadUrl(pageUrl)
+            return
+        }
+        // The document must not load while the host view is still unmeasured: apps using
+        // percent-height CSS (html/body 100%) resolve against the layout viewport frozen at
+        // load time, so a 0-sized load collapses them to 0 height for good (observed with the
+        // Mapbox GL app: map container stays 0px while innerHeight reports the real size).
+        webView.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View?,
+                left: Int,
+                top: Int,
+                right: Int,
+                bottom: Int,
+                oldLeft: Int,
+                oldTop: Int,
+                oldRight: Int,
+                oldBottom: Int,
+            ) {
+                if (closed) {
+                    v?.removeOnLayoutChangeListener(this)
+                    return
+                }
+                if (right - left > 0 && bottom - top > 0) {
+                    v?.removeOnLayoutChangeListener(this)
+                    if (!closed) webView.loadUrl(pageUrl)
+                }
+            }
+        })
     }
 
     /** Best-effort teardown request, then the WebView is destroyed. Idempotent. */
@@ -90,6 +132,11 @@ internal class McpAppWebSession(
         webView.stopLoading()
         (webView.parent as? ViewGroup)?.removeView(webView)
         webView.destroy()
+    }
+
+    private fun dispatchViewportResize() {
+        if (closed) return
+        webView.evaluateJavascript("window.dispatchEvent(new Event('resize'))", null)
     }
 
     private fun configure() {
@@ -107,6 +154,14 @@ internal class McpAppWebSession(
         }
         webView.setBackgroundColor(Color.TRANSPARENT)
         webView.overScrollMode = WebView.OVER_SCROLL_NEVER
+
+        // While the view is open, one-finger drags belong to the app content (e.g. panning a
+        // map), not to the chat list; scrolling past it still works by touching outside the
+        // view or using the close control.
+        webView.setOnTouchListener { view, _ ->
+            view.parent?.requestDisallowInterceptTouchEvent(true)
+            false
+        }
 
         webView.webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(
@@ -143,6 +198,12 @@ internal class McpAppWebSession(
                 DebugLog.w(TAG, "render process gone (crashed=${detail?.didCrash()})")
                 onRenderProcessGone()
                 return true
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                // The page usually initializes before the host view reaches its final size;
+                // re-announce the viewport so self-measuring apps can lay out correctly.
+                dispatchViewportResize()
             }
         }
 

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">تسجيل الدخول عبر OAuth</string>
+    <string name="mcp_oauth_client_id">معرّف عميل OAuth (اختياري)</string>
+    <string name="mcp_oauth_client_id_desc">مطلوب فقط عندما لا يدعم الخادم تسجيل العملاء تلقائيًا.</string>
+    <string name="mcp_oauth_scope">نطاق OAuth (اختياري)</string>
+    <string name="mcp_oauth_scope_desc">مفصولة بمسافات. اتركه فارغًا لاستخدام الإعداد الافتراضي للخادم.</string>
+    <string name="mcp_oauth_signed_in">تم تسجيل الدخول</string>
+    <string name="mcp_oauth_signed_out">لم يتم تسجيل الدخول</string>
+    <string name="mcp_oauth_required">تسجيل الدخول مطلوب</string>
+    <string name="mcp_oauth_sign_in">تسجيل الدخول</string>
+    <string name="mcp_oauth_sign_out">تسجيل الخروج</string>
+    <string name="mcp_oauth_save_first">احفظ إعدادات الخادم قبل تسجيل الدخول.</string>
+</resources>

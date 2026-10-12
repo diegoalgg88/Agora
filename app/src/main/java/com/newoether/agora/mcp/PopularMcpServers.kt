@@ -10,6 +10,8 @@ data class PopularMcpServer(
     val description: String,
     val headers: Map<String, String> = emptyMap(),
     val requiresAuth: Boolean = false,
+    /** Authenticates through MCP OAuth (browser sign-in), so no header is prefilled. */
+    val oauth: Boolean = false,
 )
 
 /**
@@ -104,6 +106,24 @@ val popularMcpServers = listOf(
         description = "150+ apps (Gmail, Slack, GitHub, Notion, Linear, etc.) via single MCP",
         headers = mapOf("x-api-key" to ""),
         requiresAuth = true,
+    ),
+    PopularMcpServer(
+        name = "Notion",
+        url = "https://mcp.notion.com/mcp",
+        description = "Search and edit your Notion workspace (OAuth sign-in)",
+        oauth = true,
+    ),
+    PopularMcpServer(
+        name = "Linear",
+        url = "https://mcp.linear.app/mcp",
+        description = "Issues, projects, and cycles in Linear (OAuth sign-in)",
+        oauth = true,
+    ),
+    PopularMcpServer(
+        name = "Sentry",
+        url = "https://mcp.sentry.dev/mcp",
+        description = "Errors and performance issues from Sentry (OAuth sign-in)",
+        oauth = true,
     ),
     PopularMcpServer(
         name = "OpenWeather",

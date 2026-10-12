@@ -56,6 +56,14 @@ data class McpServerConfig(
     val headers: Map<String, String> = emptyMap(),
     /** Raw MCP tool names disabled for this server. New tools stay enabled by default. */
     val disabledTools: Set<String> = emptySet(),
+    /**
+     * Optional pre-registered OAuth client id for servers without dynamic client registration.
+     * Public (PKCE) client: no secret. Tokens themselves never live in this config — they are
+     * device-local secrets in the MCP OAuth store, so a token refresh never rebuilds the runtime.
+     */
+    val oauthClientId: String = "",
+    /** Optional OAuth scope override; blank uses the server's challenge / advertised scopes. */
+    val oauthScope: String = "",
 )
 
 @Serializable

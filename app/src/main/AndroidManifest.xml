@@ -70,6 +70,24 @@
             </intent-filter>
         </activity>
 
+        <!-- MCP OAuth redirect (RFC 8252 private-use scheme). Exported because the browser
+             delivers it; the manager validates state/PKCE, so a foreign link cannot sign anyone in. -->
+        <activity
+            android:name=".mcp.oauth.McpOAuthCallbackActivity"
+            android:exported="true"
+            android:noHistory="true"
+            android:excludeFromRecents="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data android:scheme="com.newoether.agora" />
+            </intent-filter>
+        </activity>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"

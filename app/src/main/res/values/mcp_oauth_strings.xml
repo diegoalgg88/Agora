@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">OAuth sign-in</string>
+    <string name="mcp_oauth_client_id">OAuth Client ID (optional)</string>
+    <string name="mcp_oauth_client_id_desc">Only needed when the server does not support automatic client registration.</string>
+    <string name="mcp_oauth_scope">OAuth scope (optional)</string>
+    <string name="mcp_oauth_scope_desc">Space-separated. Leave empty to use the server default.</string>
+    <string name="mcp_oauth_signed_in">Signed in</string>
+    <string name="mcp_oauth_signed_out">Not signed in</string>
+    <string name="mcp_oauth_required">Sign-in required</string>
+    <string name="mcp_oauth_sign_in">Sign in</string>
+    <string name="mcp_oauth_sign_out">Sign out</string>
+    <string name="mcp_oauth_save_first">Save the server settings before signing in.</string>
+</resources>

@@ -1,6 +1,8 @@
 package com.newoether.agora.mcp
 
 import com.newoether.agora.data.McpTransportType
+import com.newoether.agora.mcp.oauth.McpAuthProvider
+import com.newoether.agora.mcp.oauth.McpAuthRequiredException
 import com.newoether.agora.util.Constants
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -25,6 +27,7 @@ internal class McpProtocolClient(
     customHeaders: Map<String, String>,
     transportType: McpTransportType,
     private val clientVersion: String = "unknown",
+    auth: McpAuthProvider? = null,
 ) : AutoCloseable {
     companion object {
         private const val STREAMABLE_HTTP_PROTOCOL_VERSION = "2025-11-25"
@@ -50,6 +53,7 @@ internal class McpProtocolClient(
         endpoint = endpoint,
         customHeaders = customHeaders,
         protocolVersion = protocolVersion,
+        auth = auth,
     )
     private val ids = AtomicLong(0)
     private val mutex = Mutex()
@@ -204,6 +208,11 @@ internal class McpProtocolClient(
             try {
                 initializeLocked(transport.ensureReady())
                 return
+            } catch (error: McpAuthRequiredException) {
+                // Only a sign-in can fix this; older protocol versions would fail identically.
+                initialized = false
+                initializedGeneration = null
+                throw error
             } catch (error: IOException) {
                 if (index == candidates.lastIndex) throw error
                 // Any negotiation failure on an intermediate candidate advances the descent;

@@ -2,6 +2,9 @@ package com.newoether.agora.mcp
 
 import com.newoether.agora.api.HttpClient
 import com.newoether.agora.data.McpTransportType
+import com.newoether.agora.mcp.oauth.McpAuthProvider
+import com.newoether.agora.mcp.oauth.McpAuthRequiredException
+import com.newoether.agora.mcp.oauth.parseBearerChallenge
 import com.newoether.agora.util.Constants
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
@@ -67,16 +70,19 @@ internal fun createMcpClientTransport(
     endpoint: String,
     customHeaders: Map<String, String>,
     protocolVersion: String,
+    auth: McpAuthProvider? = null,
 ): McpClientTransport = when (type) {
     McpTransportType.STREAMABLE_HTTP -> StreamableHttpMcpTransport(
         endpoint = endpoint,
         customHeaders = customHeaders,
         protocolVersion = protocolVersion,
+        auth = auth,
     )
     McpTransportType.SSE -> LegacySseMcpTransport(
         endpoint = endpoint,
         customHeaders = customHeaders,
         protocolVersion = protocolVersion,
+        auth = auth,
     )
 }
 
@@ -138,10 +144,50 @@ private fun Request.Builder.applyMcpHeaders(headers: Map<String, String>) = appl
     headers.forEach { (name, value) -> header(name, value) }
 }
 
-private fun guardMcpCredentials(endpoint: String, headers: Map<String, String>) {
+/** OAuth Bearer wins over any configured header of the same name (the registry never mixes them). */
+private fun Request.Builder.applyMcpAuthorization(authorization: String?) = apply {
+    authorization?.let { header("Authorization", it) }
+}
+
+/**
+ * Runs one authenticated request. A 401/403 Bearer challenge surfaces as [McpAuthRequiredException];
+ * the provider gets exactly one chance to repair credentials (refresh) before it propagates.
+ */
+private suspend fun <T> withMcpAuthRetry(
+    auth: McpAuthProvider?,
+    block: suspend (authorization: String?) -> T,
+): T {
+    var retried = false
+    while (true) {
+        val authorization = auth?.authorizationHeader()
+        try {
+            return block(authorization)
+        } catch (error: McpAuthRequiredException) {
+            if (auth == null || retried || !auth.onRejected(error.challenge, authorization)) throw error
+            retried = true
+        }
+    }
+}
+
+/** Throws [McpAuthRequiredException] for an OAuth challenge; other failures are left to the caller. */
+private fun failOnAuthChallenge(response: Response, auth: McpAuthProvider?) {
+    if (auth == null || (response.code != 401 && response.code != 403)) return
+    val challenge = parseBearerChallenge(response.headers("WWW-Authenticate")) ?: return
+    if (response.code == 403 && !challenge.insufficientScope) return
+    throw McpAuthRequiredException(
+        challenge,
+        if (response.code == 403) "Additional permissions required" else "Sign-in required",
+    )
+}
+
+private fun guardMcpCredentials(
+    endpoint: String,
+    headers: Map<String, String>,
+    bearer: Boolean = false,
+) {
     HttpClient.guardCleartextCredentials(
         endpoint,
-        if (headers.isEmpty()) {
+        if (headers.isEmpty() && !bearer) {
             emptyMap()
         } else {
             // Header names are user-defined, so conservatively treat every non-empty set as
@@ -187,6 +233,7 @@ private class StreamableHttpMcpTransport(
     endpoint: String,
     customHeaders: Map<String, String>,
     protocolVersion: String,
+    private val auth: McpAuthProvider? = null,
 ) : McpClientTransport {
     @Volatile
     private var protocolVersion: String = protocolVersion
@@ -221,13 +268,25 @@ private class StreamableHttpMcpTransport(
         callTimeoutMillis: Long,
     ): JsonObject? {
         check(!closed) { "MCP transport is closed" }
-        guardMcpCredentials(endpoint.toString(), headers)
+        return withMcpAuthRetry(auth) { authorization ->
+            sendOnce(envelope, expectResponse, callTimeoutMillis, authorization)
+        }
+    }
+
+    private suspend fun sendOnce(
+        envelope: JsonObject,
+        expectResponse: Boolean,
+        callTimeoutMillis: Long,
+        authorization: String?,
+    ): JsonObject? {
+        guardMcpCredentials(endpoint.toString(), headers, bearer = authorization != null)
         val request = Request.Builder()
             .url(endpoint)
             .header("Accept", "application/json, text/event-stream")
             .header("Content-Type", "application/json")
             .header("MCP-Protocol-Version", protocolVersion)
             .applyMcpHeaders(headers)
+            .applyMcpAuthorization(authorization)
             .apply { sessionId?.let { header("Mcp-Session-Id", it) } }
             .post(envelope.toString().toRequestBody(JSON_MEDIA_TYPE))
             .build()
@@ -236,6 +295,7 @@ private class StreamableHttpMcpTransport(
         }
         return withContext(Dispatchers.IO) {
             call.awaitResponse(activeCalls).use { response ->
+                failOnAuthChallenge(response, auth)
                 if ((response.code == 404 || response.code == 410) && sessionId != null) {
                     throw McpSessionExpiredException()
                 }
@@ -287,6 +347,7 @@ private class LegacySseMcpTransport(
     endpoint: String,
     customHeaders: Map<String, String>,
     protocolVersion: String,
+    private val auth: McpAuthProvider? = null,
 ) : McpClientTransport {
     @Volatile
     private var protocolVersion: String = protocolVersion
@@ -459,16 +520,33 @@ private class LegacySseMcpTransport(
         return created
     }
 
-    private fun runEventStream(active: Connection) {
+    private suspend fun runEventStream(active: Connection) {
         var terminalError: Throwable? = null
         try {
-            guardMcpCredentials(streamEndpoint.toString(), headers)
+            withMcpAuthRetry(auth) { authorization -> streamOnce(active, authorization) }
+        } catch (error: CancellationException) {
+            terminalError = error
+            throw error
+        } catch (error: Throwable) {
+            terminalError = error
+        } finally {
+            finishConnection(
+                active,
+                terminalError ?: McpSessionExpiredException("MCP SSE stream ended"),
+            )
+        }
+    }
+
+    private fun streamOnce(active: Connection, authorization: String?) {
+        run {
+            guardMcpCredentials(streamEndpoint.toString(), headers, bearer = authorization != null)
             val request = Request.Builder()
                 .url(streamEndpoint)
                 .header("Accept", "text/event-stream")
                 .header("Cache-Control", "no-cache")
                 .header("MCP-Protocol-Version", protocolVersion)
                 .applyMcpHeaders(headers)
+                .applyMcpAuthorization(authorization)
                 .get()
                 .build()
             val call = streamClient.newCall(request)
@@ -480,6 +558,7 @@ private class LegacySseMcpTransport(
                 }
             }
             call.execute().use { response ->
+                failOnAuthChallenge(response, auth)
                 if (!response.isSuccessful) throw mcpHttpException(response)
                 if (!response.header("Content-Type").orEmpty().contains("text/event-stream", true)) {
                     throw IOException("MCP SSE endpoint did not return text/event-stream")
@@ -492,18 +571,7 @@ private class LegacySseMcpTransport(
                     }
                 }
                 parser.finish()?.let { event -> dispatchEvent(active, event) }
-                terminalError = McpSessionExpiredException("MCP SSE stream ended")
             }
-        } catch (error: CancellationException) {
-            terminalError = error
-            throw error
-        } catch (error: Throwable) {
-            terminalError = error
-        } finally {
-            finishConnection(
-                active,
-                terminalError ?: McpSessionExpiredException("MCP SSE stream ended"),
-            )
         }
     }
 
@@ -540,13 +608,25 @@ private class LegacySseMcpTransport(
         envelope: JsonObject,
         callTimeoutMillis: Long,
     ): JsonObject? {
-        guardMcpCredentials(endpoint.toString(), headers)
+        return withMcpAuthRetry(auth) { authorization ->
+            postEnvelopeOnce(endpoint, envelope, callTimeoutMillis, authorization)
+        }
+    }
+
+    private suspend fun postEnvelopeOnce(
+        endpoint: HttpUrl,
+        envelope: JsonObject,
+        callTimeoutMillis: Long,
+        authorization: String?,
+    ): JsonObject? {
+        guardMcpCredentials(endpoint.toString(), headers, bearer = authorization != null)
         val request = Request.Builder()
             .url(endpoint)
             .header("Accept", "application/json, text/event-stream")
             .header("Content-Type", "application/json")
             .header("MCP-Protocol-Version", protocolVersion)
             .applyMcpHeaders(headers)
+            .applyMcpAuthorization(authorization)
             .post(envelope.toString().toRequestBody(JSON_MEDIA_TYPE))
             .build()
         val call = postClient.newCall(request).also {
@@ -554,6 +634,7 @@ private class LegacySseMcpTransport(
         }
         return withContext(Dispatchers.IO) {
             call.awaitResponse(activePostCalls).use { response ->
+                failOnAuthChallenge(response, auth)
                 if (response.code == 404 || response.code == 410) {
                     throw McpSessionExpiredException()
                 }

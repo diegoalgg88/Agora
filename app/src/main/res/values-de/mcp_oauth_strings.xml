@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">OAuth-Anmeldung</string>
+    <string name="mcp_oauth_client_id">OAuth-Client-ID (optional)</string>
+    <string name="mcp_oauth_client_id_desc">Nur nötig, wenn der Server keine automatische Client-Registrierung unterstützt.</string>
+    <string name="mcp_oauth_scope">OAuth-Scope (optional)</string>
+    <string name="mcp_oauth_scope_desc">Durch Leerzeichen getrennt. Leer lassen, um den Serverstandard zu verwenden.</string>
+    <string name="mcp_oauth_signed_in">Angemeldet</string>
+    <string name="mcp_oauth_signed_out">Nicht angemeldet</string>
+    <string name="mcp_oauth_required">Anmeldung erforderlich</string>
+    <string name="mcp_oauth_sign_in">Anmelden</string>
+    <string name="mcp_oauth_sign_out">Abmelden</string>
+    <string name="mcp_oauth_save_first">Speichere die Servereinstellungen, bevor du dich anmeldest.</string>
+</resources>

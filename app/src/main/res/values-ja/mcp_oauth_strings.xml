@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">OAuth サインイン</string>
+    <string name="mcp_oauth_client_id">OAuth クライアント ID(任意)</string>
+    <string name="mcp_oauth_client_id_desc">サーバーがクライアントの自動登録に対応していない場合にのみ必要です。</string>
+    <string name="mcp_oauth_scope">OAuth スコープ(任意)</string>
+    <string name="mcp_oauth_scope_desc">スペース区切り。空欄の場合はサーバーの既定値を使用します。</string>
+    <string name="mcp_oauth_signed_in">サインイン済み</string>
+    <string name="mcp_oauth_signed_out">未サインイン</string>
+    <string name="mcp_oauth_required">サインインが必要です</string>
+    <string name="mcp_oauth_sign_in">サインイン</string>
+    <string name="mcp_oauth_sign_out">サインアウト</string>
+    <string name="mcp_oauth_save_first">サインインする前にサーバー設定を保存してください。</string>
+</resources>

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">Вход через OAuth</string>
+    <string name="mcp_oauth_client_id">OAuth Client ID (необязательно)</string>
+    <string name="mcp_oauth_client_id_desc">Нужен, только если сервер не поддерживает автоматическую регистрацию клиентов.</string>
+    <string name="mcp_oauth_scope">Область OAuth (необязательно)</string>
+    <string name="mcp_oauth_scope_desc">Через пробел. Оставьте пустым, чтобы использовать значение сервера по умолчанию.</string>
+    <string name="mcp_oauth_signed_in">Вход выполнен</string>
+    <string name="mcp_oauth_signed_out">Вход не выполнен</string>
+    <string name="mcp_oauth_required">Требуется вход</string>
+    <string name="mcp_oauth_sign_in">Войти</string>
+    <string name="mcp_oauth_sign_out">Выйти</string>
+    <string name="mcp_oauth_save_first">Сохраните настройки сервера перед входом.</string>
+</resources>

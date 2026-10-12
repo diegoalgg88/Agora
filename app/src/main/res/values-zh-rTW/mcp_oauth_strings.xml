@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="mcp_oauth_title">OAuth 登入</string>
+    <string name="mcp_oauth_client_id">OAuth 用戶端 ID(選填)</string>
+    <string name="mcp_oauth_client_id_desc">僅在伺服器不支援自動註冊用戶端時才需要。</string>
+    <string name="mcp_oauth_scope">OAuth 權限範圍(選填)</string>
+    <string name="mcp_oauth_scope_desc">以空格分隔。留空則使用伺服器預設值。</string>
+    <string name="mcp_oauth_signed_in">已登入</string>
+    <string name="mcp_oauth_signed_out">未登入</string>
+    <string name="mcp_oauth_required">需要登入</string>
+    <string name="mcp_oauth_sign_in">登入</string>
+    <string name="mcp_oauth_sign_out">登出</string>
+    <string name="mcp_oauth_save_first">請先儲存伺服器設定,再登入。</string>
+</resources>

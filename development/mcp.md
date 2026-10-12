@@ -49,7 +49,7 @@ local tools as an MCP server.
   rejected, duplicates collapse case-insensitively, and non-ASCII names or control-character
   values never reach the request.
 - The shared cleartext-credential guard applies to every transport request: an Authorization-style
-  header over plain HTTP is refused.
+  header (or an OAuth Bearer token, section 10) over plain HTTP is refused for non-local hosts.
 - Server URLs must be http or https with a host and no userinfo or fragment
   (`McpRegistry.normalizeEndpoint`).
 
@@ -249,3 +249,74 @@ refusals, URL policy), `McpAppBridgeShimTest` (the `MessageEvent.source` rule), 
 (`resources/list` parsing, capability gate), `GenerationToolUiReferenceTest` and `MessageSegmentUiReferenceTest` (durable
 pointer). WebView isolation and the `window.parent` shim require device validation and are not claimed
 by compilation alone.
+
+## 10. OAuth (MCP authorization)
+
+Agora signs in to protected remote servers with the MCP authorization flow: authorization code +
+PKCE `S256`, RFC 9728 Protected Resource Metadata, RFC 8414 / OIDC discovery, RFC 7591 dynamic client
+registration, and the RFC 8707 `resource` parameter. Code lives in `mcp/oauth/`; the transports only
+consume an `McpAuthProvider`.
+
+### 10.1 Ownership
+
+- `McpOAuthManager` (owned by `McpRegistry.oauth`) is the only component that talks to authorization
+  servers, reads or writes credentials, and runs the interactive flow. It never owns connection state:
+  it reports `onResult(serverId, error?)` and the registry decides (`refresh(serverId)` on success;
+  an `authRequired` ERROR snapshot on failure).
+- `McpOAuthClient` is stateless network I/O (discovery, registration, code exchange, refresh) with
+  bounded timeouts and 256 KiB response bodies. `McpOAuthProtocol.kt` holds the pure rules (challenge
+  parsing, candidate URLs, PKCE, redirect parsing, metadata validation) and is unit-tested without Android.
+- A runtime gets an auth provider only when the user configured no `Authorization` header of their own
+  (`McpRegistry.authFor`); static headers always win and OAuth stays inert.
+
+### 10.2 Transport behavior
+
+- Both transports add `Authorization: Bearer` from `McpAuthProvider.authorizationHeader()` before every
+  request (the legacy SSE GET stream included). A 401 — or a 403 `insufficient_scope` — carrying a
+  `WWW-Authenticate: Bearer` challenge becomes `McpAuthRequiredException`; any other 401 stays a plain
+  HTTP error. `onRejected` runs at most once per request (refresh, or "another request already
+  refreshed"); a second rejection propagates.
+- `McpAuthRequiredException` is never swallowed by protocol-version negotiation. The registry marks the
+  snapshot `ERROR` with `authRequired = true` and stops the backoff loop: only sign-in, sign-out,
+  Reconnect or page-entry refresh start a new attempt.
+- A Bearer token over cleartext HTTP is refused for non-local hosts by the shared credential guard.
+
+### 10.3 Flow and security rules
+
+- Discovery order: `resource_metadata` from the challenge, then `/.well-known/oauth-protected-resource`
+  (path-specific first), then the authorization server's RFC 8414 and OIDC documents. Servers without
+  any metadata fall back to `/authorize`, `/token`, `/register` on their origin only after a challenge
+  was observed. Advertised `resource` must cover the server URL; `issuer` must match the requested
+  issuer; every OAuth endpoint must be https (http only for local/LAN hosts); PKCE `S256` must be
+  advertised (metadata-less legacy defaults are exempt).
+- The resource identifier is the canonical server URL (lowercase scheme/host, default port and trailing
+  slash dropped, query and fragment removed — query parameters may carry API keys).
+- The redirect is the private-use URI `com.newoether.agora:/oauth/mcp`, received by
+  `McpOAuthCallbackActivity`, which only forwards it. The manager requires exact scheme and path, a
+  known single-use `state` (10-minute TTL, one pending request per server, consumed before anything
+  else can fail), a matching RFC 9207 `iss` when present or announced, an unchanged server URL, and
+  the PKCE verifier.
+- Client resolution: configured `oauthClientId` (public client) → previously registered client →
+  dynamic registration. A server with none of them reports that a Client ID is required.
+- Refresh is serialized per server and compare-and-set against the stored refresh token, so a
+  concurrent sign-out or re-sign-in is never overwritten. `invalid_grant` clears the tokens (client
+  registration is kept); a transient network error propagates and the connection loop backs off.
+
+### 10.4 Persistence and portability
+
+- Tokens, client registrations and pending requests are one `SecretCrypto`-encrypted DataStore value
+  (`MCP_OAUTH_JSON`, `McpOAuthStore`), written only through `DataStore.edit`. They are device-local:
+  never part of the portable settings allowlist, native backup or the secrets category. An unreadable
+  value fails closed to "signed out".
+- `McpServerConfig` carries only `oauthClientId` and `oauthScope` (not secrets). Tokens are kept out
+  of the config on purpose: a token refresh must never change the config that gates runtime rebuilds.
+- Credentials are tied to the canonical resource; changing the server URL makes them unusable.
+  They are deleted when a server with a live runtime disappears from settings (`McpRegistry.reconcile`).
+  The startup empty emission has no runtimes and therefore never deletes anything.
+
+### 10.5 Tests
+
+`McpOAuthProtocolTest` covers challenge parsing, canonical resource, candidate URLs, the RFC 7636
+vector, authorization URL, redirect acceptance, metadata validation and token expiry. Browser
+hand-off, the redirect activity and real authorization servers require device validation and are not
+claimed by compilation alone.

@@ -5,6 +5,9 @@ import android.content.pm.PackageManager
 import android.os.Build
 import com.newoether.agora.data.McpServerConfig
 import com.newoether.agora.data.repository.SettingsRepository
+import com.newoether.agora.mcp.oauth.McpAuthProvider
+import com.newoether.agora.mcp.oauth.McpAuthRequiredException
+import com.newoether.agora.mcp.oauth.McpOAuthManager
 import com.newoether.agora.tool.ToolExecutionResult
 import com.newoether.agora.tool.ToolImageStore
 import com.newoether.agora.util.DebugLog
@@ -155,6 +158,14 @@ class McpRegistry(
     private val _snapshots = MutableStateFlow<Map<String, McpServerSnapshot>>(emptyMap())
     val snapshots: StateFlow<Map<String, McpServerSnapshot>> = _snapshots.asStateFlow()
 
+    /** OAuth credentials and sign-in flow. Reports outcomes back through [onOAuthResult]. */
+    internal val oauth = McpOAuthManager(
+        context = context,
+        scope = scope,
+        serverConfig = ::currentConfig,
+        onResult = ::onOAuthResult,
+    )
+
     init {
         scope.launch(workDispatcher) {
             settings.mcpServers.collect(::reconcile)
@@ -217,6 +228,40 @@ class McpRegistry(
             ?: return ToolExecutionResult("MCP server is not enabled", isError = true)
         return runCall(runtime, remoteName, arguments)
     }
+
+    /**
+     * Sign-in finished (or signed out): success rebuilds the runtime so it connects with the new
+     * credentials; failure is published on the existing runtime's snapshot for the editor to show.
+     */
+    private fun onOAuthResult(serverId: String, error: String?) {
+        if (error == null) {
+            refresh(serverId)
+            return
+        }
+        synchronized(lock) {
+            if (runtimes[serverId] == null) return
+            val previous = snapshots.value[serverId]
+            putSnapshotLocked(
+                McpServerSnapshot(
+                    serverId = serverId,
+                    status = McpConnectionStatus.ERROR,
+                    tools = previous?.tools.orEmpty(),
+                    resources = previous?.resources.orEmpty(),
+                    error = error,
+                    lastSyncedAt = previous?.lastSyncedAt,
+                    authRequired = true,
+                ),
+            )
+        }
+    }
+
+    /** OAuth is used only when the user did not configure their own Authorization header. */
+    private fun authFor(config: McpServerConfig): McpAuthProvider? =
+        if (config.headers.keys.any { it.trim().equals("authorization", ignoreCase = true) }) {
+            null
+        } else {
+            oauth.sessionFor(config)
+        }
 
     private fun clearUiResourceCache(serverId: String) {
         synchronized(lock) {
@@ -332,7 +377,7 @@ class McpRegistry(
             throw e
         } catch (e: Exception) {
             markError(runtime, e)
-            scheduleRetry(runtime)
+            if (e !is McpAuthRequiredException) scheduleRetry(runtime)
             ToolExecutionResult(
                 text = "MCP tool '$remoteName' failed: ${userMessage(e)}",
                 isError = true,
@@ -342,9 +387,11 @@ class McpRegistry(
 
     private fun reconcile(configs: List<McpServerConfig>) {
         val desiredIds = configs.mapTo(mutableSetOf(), McpServerConfig::id)
+        val removedIds = mutableListOf<String>()
         val runtimesToClose = synchronized(lock) {
             buildList {
                 runtimes.keys.filter { it !in desiredIds }.forEach { id ->
+                    removedIds += id
                     pendingBuilds.remove(id)
                     runtimes.remove(id)?.let(::add)
                 }
@@ -367,6 +414,11 @@ class McpRegistry(
         }
         runtimesToClose.forEach(Runtime::close)
         runtimesToClose.forEach { clearUiResourceCache(it.config.id) }
+        // Only ids that had a live runtime and vanished from settings; the initial empty emission
+        // at startup has no runtimes, so it can never wipe stored credentials.
+        if (removedIds.isNotEmpty()) {
+            scope.launch(workDispatcher) { removedIds.forEach { oauth.forget(it) } }
+        }
         configs.filter { it.enabled && it.url.isNotBlank() }.forEach { config ->
             rebuildRuntime(config, McpRuntimeRefreshReason.RECONCILE)
         }
@@ -423,6 +475,7 @@ class McpRegistry(
                     customHeaders = config.headers,
                     transportType = config.transport,
                     clientVersion = clientVersion,
+                    auth = authFor(config),
                 ),
             )
         } catch (e: IllegalArgumentException) {
@@ -480,6 +533,8 @@ class McpRegistry(
                 throw e
             } catch (e: Exception) {
                 markError(runtime, e)
+                // Backoff cannot fix a missing sign-in; sign-in (or Reconnect) rebuilds the runtime.
+                if (e is McpAuthRequiredException) return@launch
                 delay(retryMs)
                 retryMs = min(MAX_RETRY_MS, retryMs * 2)
             }
@@ -608,6 +663,7 @@ class McpRegistry(
                     resources = previous?.resources.orEmpty(),
                     error = userMessage(error),
                     lastSyncedAt = previous?.lastSyncedAt,
+                    authRequired = error is McpAuthRequiredException,
                 ),
             )
             true
