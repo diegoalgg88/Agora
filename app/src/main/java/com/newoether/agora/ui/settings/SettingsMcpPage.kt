@@ -413,13 +413,13 @@ fun SettingsMcpPage(
                         onClick = {
                             showAddServerSheet = false
                             if (isAuthRequired) {
-                                // Prefill editor with auth header field
+                                // Prefill editor with the catalog's auth header field
                                 editorRoute = McpEditorRoute(
                                     initial = McpServerConfig(
                                         id = UUID.randomUUID().toString(),
                                         name = popularServer.name,
                                         url = popularServer.url,
-                                        headers = mapOf("Authorization" to ""),
+                                        headers = popularServer.headers,
                                     ),
                                     isNew = true,
                                 )

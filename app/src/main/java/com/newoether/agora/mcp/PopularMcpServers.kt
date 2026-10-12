@@ -53,6 +53,7 @@ val popularMcpServers = listOf(
         name = "Jina AI",
         url = "https://mcp.jina.ai/v1",
         description = "Convert URLs to markdown, web search, image search",
+        headers = mapOf("Authorization" to ""),
         requiresAuth = true,
     ),
     PopularMcpServer(
@@ -88,10 +89,10 @@ val popularMcpServers = listOf(
     PopularMcpServer(
         name = "Tavily",
         url = "https://mcp.tavily.com/mcp/",
-        description = "Web search, extract, crawl, and research. Works keyless for search/extract; " +
-            "add your tvly- API key as Authorization: Bearer for higher limits and all tools",
-        headers = mapOf("Authorization" to "Bearer "),
+        description = "Web search, extract, crawl, and research. OAuth sign-in, or add your " +
+            "tvly- API key as Authorization: Bearer in the editor for higher limits",
         requiresAuth = true,
+        oauth = true,
     ),
     PopularMcpServer(
         name = "SERPAPI",
@@ -102,9 +103,10 @@ val popularMcpServers = listOf(
     ),
     PopularMcpServer(
         name = "Composio",
-        url = "https://backend.composio.dev/tool_router/trs_lh-L2MDIOwDZ/mcp",
-        description = "150+ apps (Gmail, Slack, GitHub, Notion, Linear, etc.) via single MCP",
-        headers = mapOf("x-api-key" to ""),
+        url = "https://connect.composio.dev/mcp",
+        description = "150+ apps (Gmail, Slack, GitHub, Notion, Linear, etc.) via single MCP; " +
+            "consumer API key (ck-) from the Composio Connect dashboard",
+        headers = mapOf("x-consumer-api-key" to ""),
         requiresAuth = true,
     ),
     PopularMcpServer(
@@ -131,6 +133,13 @@ val popularMcpServers = listOf(
         description = "Weather data for agents: sign up at agents.openweathermap.org to get your " +
             "data key (also via the sign_up tool); browse feeds keyless, fetch data with your key",
         headers = mapOf("Authorization" to "Bearer "),
+        requiresAuth = true,
+    ),
+    PopularMcpServer(
+        name = "Exa",
+        url = "https://mcp.exa.ai/mcp?exaApiKey=",
+        description = "Web search, page reading, and research agent. Paste your Exa API key " +
+            "after exaApiKey= in the URL (works keyless with rate limits)",
         requiresAuth = true,
     ),
 )
