@@ -14,6 +14,7 @@ import android.webkit.PermissionRequest
 import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
+import android.webkit.WebResourceError
 import android.webkit.WebResourceResponse
 import android.webkit.WebSettings
 import android.webkit.WebView
@@ -30,6 +31,19 @@ import java.io.ByteArrayInputStream
 
 private const val TAG = "McpApp"
 private const val MAX_LOGGED_CONSOLE_CHARS = 300
+private const val MAX_LOGGED_REFS = 20
+private const val RENDER_PROBE_DELAY_MS = 3000L
+private const val MAX_PROBE_CHARS = 800
+private const val RENDER_PROBE_JS = """(function(){
+  var cs = [].slice.call(document.querySelectorAll('canvas')).map(function(e){
+    var r = e.getBoundingClientRect(), s = getComputedStyle(e), g = null, lost = 'nogl';
+    try { g = e.getContext('webgl2') || e.getContext('webgl'); if (g) lost = g.isContextLost(); } catch (x) {}
+    return {w:e.width,h:e.height,cw:Math.round(r.width),ch:Math.round(r.height),disp:s.display,vis:s.visibility,op:s.opacity,lost:lost};
+  });
+  return JSON.stringify({iw:innerWidth,ih:innerHeight,dpr:devicePixelRatio,body:[document.body.clientWidth,document.body.clientHeight],gl:typeof mapboxgl,canvases:cs});
+})()"""
+private val EXTERNAL_REF = Regex("""(?:src|href)\s*=\s*["'](https?://[^"']+)["']""")
+private val BRIDGE_METHOD = Regex(""""method"\s*:\s*"([^"]+)"""")
 
 /**
  * The features the isolation model depends on. Without both, the host never renders a view and the
@@ -72,6 +86,9 @@ internal class McpAppWebSession(
     @Volatile
     private var closed = false
 
+    /** Debug builds only: enables the post-load render probe (see [probeRenderState]). */
+    private var debugProbe = false
+
     /**
      * Subclass so container size changes reach the page: apps that measure themselves at first
      * layout (e.g. Mapbox GL) otherwise keep a stale canvas size when the host view is later
@@ -87,6 +104,28 @@ internal class McpAppWebSession(
 
     init {
         configure()
+        logDiagnostics(context)
+    }
+
+    /**
+     * Debug-build-only visibility into a view that renders blank without any console error:
+     * the CSP actually applied, the external resources the document references, and (below) the
+     * bridge methods the view sends. Also turns on remote WebView inspection (chrome://inspect).
+     * Release builds stay silent: [DebugLog] is a no-op there and inspection is never enabled.
+     */
+    private fun logDiagnostics(context: Context) {
+        val debuggable =
+            (context.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0
+        if (!debuggable) return
+        debugProbe = true
+        WebView.setWebContentsDebuggingEnabled(true)
+        DebugLog.d(TAG, "csp=${pageHeaders["Content-Security-Policy"]}")
+        val external = EXTERNAL_REF.findAll(resource.html)
+            .map { loggableUrl(it.groupValues[1]) }
+            .distinct()
+            .take(MAX_LOGGED_REFS)
+            .toList()
+        DebugLog.d(TAG, "html bytes=${pageBytes.size} externalRefs=$external")
     }
 
     fun start() {
@@ -139,6 +178,18 @@ internal class McpAppWebSession(
         webView.evaluateJavascript("window.dispatchEvent(new Event('resize'))", null)
     }
 
+    /**
+     * Debug-only: logs geometry and WebGL state of every canvas (sizes, visibility, context lost)
+     * so a map that fetches tiles but shows nothing can be told apart as a 0-size canvas, a lost
+     * GL context, or a compositing problem in the host. No page content or URLs are read.
+     */
+    private fun probeRenderState() {
+        if (closed) return
+        webView.evaluateJavascript(RENDER_PROBE_JS) { result ->
+            DebugLog.d(TAG, "probe view=${webView.width}x${webView.height} page=${result.orEmpty().take(MAX_PROBE_CHARS)}")
+        }
+    }
+
     private fun configure() {
         webView.settings.apply {
             javaScriptEnabled = true
@@ -180,6 +231,7 @@ internal class McpAppWebSession(
                     )
                 }
                 return if (McpAppSandbox.isRequestAllowed(url, origin, resource.uiMeta)) {
+                    DebugLog.d(TAG, "allowed request ${loggableUrl(url)}")
                     null
                 } else {
                     blocked(url)
@@ -190,6 +242,26 @@ internal class McpAppWebSession(
                 view: WebView?,
                 request: WebResourceRequest?,
             ): Boolean = true
+
+            // Status codes of sub-resources the page was allowed to fetch (e.g. a 403 from a
+            // URL-restricted Mapbox token): invisible to the console and to the allow-list.
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                errorResponse: WebResourceResponse?,
+            ) {
+                val url = request?.url?.toString() ?: return
+                DebugLog.w(TAG, "http ${errorResponse?.statusCode} ${loggableUrl(url)}")
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest?,
+                error: WebResourceError?,
+            ) {
+                val url = request?.url?.toString() ?: return
+                DebugLog.w(TAG, "net error ${error?.errorCode} ${error?.description} ${loggableUrl(url)}")
+            }
 
             override fun onRenderProcessGone(
                 view: WebView?,
@@ -204,6 +276,10 @@ internal class McpAppWebSession(
                 // The page usually initializes before the host view reaches its final size;
                 // re-announce the viewport so self-measuring apps can lay out correctly.
                 dispatchViewportResize()
+                if (debugProbe) {
+                    // Let the map finish its first frames before sampling its state.
+                    view?.postDelayed({ probeRenderState() }, RENDER_PROBE_DELAY_MS)
+                }
             }
         }
 
@@ -289,6 +365,8 @@ internal class McpAppWebSession(
         if (closed || !isMainFrame) return
         if ("${sourceOrigin.scheme}://${sourceOrigin.host}" != origin) return
         val data = message.data ?: return
+        // Method name only: payloads may carry tool results or user data.
+        DebugLog.d(TAG, "view -> host method=${BRIDGE_METHOD.find(data)?.groupValues?.get(1)}")
         reply = replyProxy
         scope.launch {
             val outgoing = router.handle(data)
