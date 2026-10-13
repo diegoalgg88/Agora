@@ -697,6 +697,8 @@
     <string name="embedding_custom_model_desc">输入提供商支持的任意模型名称</string>
     <string name="embedding_batch_size">批次大小</string>
     <string name="embedding_batch_size_desc">每次请求缓存的消息数（1-100）</string>
+    <string name="embedding_expected_dimensions">预期维度（可选）</string>
+    <string name="embedding_expected_dimensions_desc">模型必须返回的向量大小（例如 1536）。留空则跳过验证和请求字段。</string>
     <string name="local_model_ready">模型已导入。</string>
     <string name="import_model">导入模型 (.gguf)</string>
     <string name="importing_model">导入中...</string>

@@ -12,30 +12,37 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 @Serializable
-private data class EmbeddingRequest(
+internal data class EmbeddingRequest(
     val input: String,
-    val model: String
+    val model: String,
+    val dimensions: Int? = null
 )
 
 @Serializable
-private data class BatchEmbeddingRequest(
+internal data class BatchEmbeddingRequest(
     val input: List<String>,
-    val model: String
+    val model: String,
+    val dimensions: Int? = null
 )
 
 object EmbeddingClient {
 
-    private val json = Json { ignoreUnknownKeys = true }
+    // explicitNulls=false keeps "dimensions" out of the request body unless the caller set it:
+    // OpenAI-compatible endpoints reject unknown/null fields on some server implementations.
+    internal val json = Json { ignoreUnknownKeys = true; explicitNulls = false }
 
     suspend fun computeEmbedding(
         text: String,
         apiKey: String,
         model: String = "text-embedding-3-small",
-        baseUrl: String = "https://api.openai.com/v1"
+        baseUrl: String = "https://api.openai.com/v1",
+        dimensions: Int? = null
     ): FloatArray? = withContext(Dispatchers.IO) {
         try {
             val url = "$baseUrl/embeddings"
-            val body = json.encodeToString(EmbeddingRequest(input = text, model = model))
+            val body = json.encodeToString(
+                EmbeddingRequest(input = text, model = model, dimensions = dimensions)
+            )
             val headers = buildMap {
                 put("Content-Type", "application/json")
                 if (apiKey.isNotBlank()) put("Authorization", "Bearer $apiKey")
@@ -59,12 +66,15 @@ object EmbeddingClient {
         texts: List<String>,
         apiKey: String,
         model: String = "text-embedding-3-small",
-        baseUrl: String = "https://api.openai.com/v1"
+        baseUrl: String = "https://api.openai.com/v1",
+        dimensions: Int? = null
     ): List<FloatArray?> = withContext(Dispatchers.IO) {
         if (texts.isEmpty()) return@withContext emptyList()
         try {
             val url = "$baseUrl/embeddings"
-            val body = json.encodeToString(BatchEmbeddingRequest(input = texts, model = model))
+            val body = json.encodeToString(
+                BatchEmbeddingRequest(input = texts, model = model, dimensions = dimensions)
+            )
             val headers = buildMap {
                 put("Content-Type", "application/json")
                 if (apiKey.isNotBlank()) put("Authorization", "Bearer $apiKey")

@@ -667,6 +667,8 @@
     <string name="embedding_custom_model_desc">プロバイダーがサポートする任意のモデル名を入力</string>
     <string name="embedding_batch_size">バッチサイズ</string>
     <string name="embedding_batch_size_desc">リクエストごとにキャッシュするメッセージ数（1-100）</string>
+    <string name="embedding_expected_dimensions">期待する次元数（任意）</string>
+    <string name="embedding_expected_dimensions_desc">モデルが返すベクトルの次元数（例: 1536）。空欄の場合は検証とリクエストフィールドを省略します。</string>
     <string name="local_model_ready">モデルをインポートしました。</string>
     <string name="import_model">モデルをインポート（.gguf）</string>
     <string name="importing_model">インポート中...</string>

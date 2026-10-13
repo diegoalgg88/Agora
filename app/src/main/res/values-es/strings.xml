@@ -667,6 +667,8 @@
     <string name="embedding_custom_model_desc">Introduce cualquier nombre de modelo compatible con el proveedor</string>
     <string name="embedding_batch_size">Tamaño de lote</string>
     <string name="embedding_batch_size_desc">Mensajes a almacenar en caché por solicitud (1-100)</string>
+    <string name="embedding_expected_dimensions">Dimensiones esperadas (opcional)</string>
+    <string name="embedding_expected_dimensions_desc">Tamaño del vector que el modelo debe devolver (p. ej. 1536). Déjalo vacío para omitir la validación y el campo de la solicitud.</string>
     <string name="local_model_ready">Modelo importado.</string>
     <string name="import_model">Importar modelo (.gguf)</string>
     <string name="importing_model">Importando...</string>

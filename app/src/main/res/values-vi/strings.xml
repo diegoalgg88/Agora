@@ -670,6 +670,8 @@
     <string name="embedding_custom_model_desc">Nhập bất kỳ tên mô hình nào được nhà cung cấp hỗ trợ</string>
     <string name="embedding_batch_size">Kích thước lô (Batch Size)</string>
     <string name="embedding_batch_size_desc">Số tin nhắn cần lưu bộ nhớ đệm cho mỗi yêu cầu (1-100)</string>
+    <string name="embedding_expected_dimensions">Kích thước dự kiến (tùy chọn)</string>
+    <string name="embedding_expected_dimensions_desc">Kích thước vectơ mà mô hình phải trả về (vd. 1536). Để trống để bỏ qua xác thực và trường yêu cầu.</string>
     <string name="local_model_ready">Đã nhập mô hình.</string>
     <string name="import_model">Nhập mô hình (.gguf)</string>
     <string name="importing_model">Đang nhập...</string>

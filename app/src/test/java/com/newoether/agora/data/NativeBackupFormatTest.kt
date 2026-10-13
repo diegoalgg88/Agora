@@ -132,6 +132,34 @@ class NativeBackupFormatTest {
     }
 
     @Test
+    fun embeddingModelConfig_expectedDimensions_roundTripsAndLegacyJsonStillDecodes() {
+        val withDimensions = EmbeddingModelConfig(
+            name = "remote",
+            type = EmbeddingModelType.REMOTE,
+            remoteModelName = "text-embedding-3-small",
+            expectedDimensions = 1536,
+        )
+        val encodedWith = Json.encodeToString(withDimensions)
+        val decodedWith = Json.decodeFromString<EmbeddingModelConfig>(encodedWith)
+        assertEquals(1536, decodedWith.expectedDimensions)
+
+        // Pre-expectedDimensions backup/config JSON lacks the key entirely.
+        val legacyJson =
+            """{"name":"legacy","type":"REMOTE","remoteModelName":"embed","remoteBaseUrl":"","remoteApiKey":"","localFilePath":"","batchSize":8}"""
+        val decodedLegacy = Json.decodeFromString<EmbeddingModelConfig>(legacyJson)
+        assertEquals("legacy", decodedLegacy.name)
+        assertNull(decodedLegacy.expectedDimensions)
+
+        val withoutDimensions = EmbeddingModelConfig(
+            name = "null-dim",
+            type = EmbeddingModelType.REMOTE,
+            remoteModelName = "embed",
+        )
+        val encodedWithout = Json.encodeToString(withoutDimensions)
+        assertFalse(encodedWithout.contains("expectedDimensions"))
+    }
+
+    @Test
     fun importedConversation_neverRestoresUnreadDeviceState() {
         val restored = sanitizeImportedConversation(
             conversation = ChatEntity(

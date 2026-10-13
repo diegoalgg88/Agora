@@ -667,6 +667,8 @@
     <string name="embedding_custom_model_desc">أدخل أي اسم نموذج يدعمه المزوّد</string>
     <string name="embedding_batch_size">حجم الدُفعة</string>
     <string name="embedding_batch_size_desc">الرسائل المراد تخزينها مؤقتًا لكل طلب (1-100)</string>
+    <string name="embedding_expected_dimensions">الأبعاد المتوقعة (اختياري)</string>
+    <string name="embedding_expected_dimensions_desc">حجم المتجه الذي يجب أن يرجعه النموذج (مثل 1536). اتركه فارغًا لتخطي التحقق وحقل الطلب.</string>
     <string name="local_model_ready">تم استيراد النموذج.</string>
     <string name="import_model">استيراد نموذج (.gguf)</string>
     <string name="importing_model">جارٍ الاستيراد...</string>

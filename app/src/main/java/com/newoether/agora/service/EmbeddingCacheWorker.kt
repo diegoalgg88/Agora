@@ -55,6 +55,23 @@ internal fun shouldReuseReconciledEmbedding(
         (existingFingerprint == null || existingFingerprint == expectedFingerprint)
 }
 
+/**
+ * Fails closed on misdimensioned batches at the point of generation, before any durable write:
+ * every entry must be non-null and non-empty, the whole batch must share one dimension, and that
+ * dimension must equal [expectedDimensions] when the model declares one. A mismatch is a
+ * permanent configuration error (wrong model or wrong declared dimension), not transient work.
+ */
+internal fun validateEmbeddingBatch(
+    embeddings: List<FloatArray?>,
+    expectedDimensions: Int?,
+): Boolean {
+    val first = embeddings.firstOrNull() ?: return false
+    if (first.isEmpty()) return false
+    val dimension = first.size
+    if (expectedDimensions != null && dimension != expectedDimensions) return false
+    return embeddings.all { it != null && it.size == dimension }
+}
+
 internal fun embeddingCacheScheduleDecision(
     states: List<WorkInfo.State>,
 ): EmbeddingCacheScheduleDecision {
@@ -347,9 +364,20 @@ class EmbeddingCacheWorker(
                 apiKey = apiKey,
                 model = model.remoteModelName,
                 baseUrl = baseUrl,
+                dimensions = model.expectedDimensions,
             )
         }
         if (embeddings.size != candidates.size) return false
+        if (!validateEmbeddingBatch(embeddings, model.expectedDimensions)) {
+            // A misdimensioned batch is a permanent configuration error (wrong model or wrong
+            // declared dimension). Fail the work visibly instead of persisting vectors that
+            // every later search would skip at query time.
+            val actual = embeddings.firstOrNull { it != null }?.size
+            throw IllegalStateException(
+                "Embedding dimension mismatch: expected ${model.expectedDimensions ?: "consistent batch"}, " +
+                    "got ${actual ?: "empty"}"
+            )
+        }
         candidates.forEachIndexed { index, candidate ->
             val embedding = embeddings[index] ?: return false
             database.commitSemanticEmbedding(

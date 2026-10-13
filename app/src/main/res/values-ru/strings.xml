@@ -667,6 +667,8 @@
     <string name="embedding_custom_model_desc">Введите любое имя модели, поддерживаемое провайдером</string>
     <string name="embedding_batch_size">Размер пакета</string>
     <string name="embedding_batch_size_desc">Сообщений для кэширования за запрос (1-100)</string>
+    <string name="embedding_expected_dimensions">Ожидаемая размерность (необязательно)</string>
+    <string name="embedding_expected_dimensions_desc">Размер вектора, который должна вернуть модель (напр. 1536). Оставьте пустым, чтобы пропустить проверку и поле запроса.</string>
     <string name="local_model_ready">Модель импортирована.</string>
     <string name="import_model">Импортировать модель (.gguf)</string>
     <string name="importing_model">Импорт...</string>

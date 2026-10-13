@@ -39,6 +39,7 @@ internal class RemoteEmbeddingDialogState(providerCount: Int) {
     var baseUrl by mutableStateOf("")
     val apiKeys = mutableStateListOf(*Array(providerCount) { "" })
     var batchSize by mutableStateOf("8")
+    var expectedDimensions by mutableStateOf("")
     var showModelDropdown by mutableStateOf(false)
     var isCustomModel by mutableStateOf(false)
     var testStatus by mutableStateOf<String?>(null)
@@ -53,6 +54,7 @@ internal class RemoteEmbeddingDialogState(providerCount: Int) {
         for (i in apiKeys.indices) apiKeys[i] = ""
         if (apiKeys.isNotEmpty()) apiKeys[0] = openAiKey
         batchSize = "8"
+        expectedDimensions = ""
         isCustomModel = false
         testStatus = null
         isTesting = false
@@ -257,6 +259,17 @@ internal fun AddRemoteEmbeddingDialog(
                     shape = RoundedCornerShape(16.dp),
                     modifier = Modifier.fillMaxWidth()
                 )
+                Spacer(modifier = Modifier.height(12.dp))
+                // Expected dimensions (optional, remote-only)
+                OutlinedTextField(
+                    value = state.expectedDimensions,
+                    onValueChange = { state.expectedDimensions = it.filter { c -> c.isDigit() } },
+                    label = { Text(stringResource(R.string.embedding_expected_dimensions)) },
+                    supportingText = { Text(stringResource(R.string.embedding_expected_dimensions_desc)) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(16.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
                 state.testStatus?.let { status ->
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
@@ -287,7 +300,8 @@ internal fun AddRemoteEmbeddingDialog(
                                     remoteModelName = finalModel,
                                     remoteBaseUrl = state.baseUrl,
                                     remoteApiKey = state.apiKeys[state.selectedProviderIdx],
-                                    batchSize = state.batchSize.toIntOrNull() ?: 8
+                                    batchSize = state.batchSize.toIntOrNull() ?: 8,
+                                    expectedDimensions = state.expectedDimensions.toIntOrNull()
                                 )
                             )
                             onDismiss()

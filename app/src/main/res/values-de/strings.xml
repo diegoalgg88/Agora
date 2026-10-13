@@ -667,6 +667,8 @@
     <string name="embedding_custom_model_desc">Beliebigen vom Anbieter unterstützten Modellnamen eingeben</string>
     <string name="embedding_batch_size">Stapelgröße</string>
     <string name="embedding_batch_size_desc">Nachrichten, die pro Anfrage zwischengespeichert werden (1-100)</string>
+    <string name="embedding_expected_dimensions">Erwartete Dimensionen (optional)</string>
+    <string name="embedding_expected_dimensions_desc">Vektorgröße, die das Modell zurückgeben muss (z. B. 1536). Leer lassen, um Validierung und Anfragefeld zu überspringen.</string>
     <string name="local_model_ready">Modell importiert.</string>
     <string name="import_model">Modell importieren (.gguf)</string>
     <string name="importing_model">Importieren...</string>

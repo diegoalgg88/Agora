@@ -667,6 +667,8 @@
     <string name="embedding_custom_model_desc">제공자가 지원하는 모델 이름을 입력하세요</string>
     <string name="embedding_batch_size">배치 크기</string>
     <string name="embedding_batch_size_desc">요청당 캐시할 메시지 수(1-100)</string>
+    <string name="embedding_expected_dimensions">예상 차원(선택)</string>
+    <string name="embedding_expected_dimensions_desc">모델이 반환해야 할 벡터 크기(예: 1536). 비워 두면 검증과 요청 필드를 생략합니다.</string>
     <string name="local_model_ready">모델을 가져왔습니다.</string>
     <string name="import_model">모델 가져오기(.gguf)</string>
     <string name="importing_model">가져오는 중...</string>

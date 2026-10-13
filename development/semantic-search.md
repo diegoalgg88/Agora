@@ -43,6 +43,12 @@ count or total cached text.
 | BoundedSemanticEmbeddingSelector | Vector validation, page-by-page scoring, strict threshold, bounded top-K, stable ranking. | Room access, Provider calls, message visibility policy, or cache mutation. |
 | RagToolProvider | Query embedding, selector orchestration, final bounded message expansion, tool result projection. | Full-corpus materialization or a second ranking implementation. |
 
+`MAX_EMBEDDING_TEXT_LENGTH` (`Constants.kt`, currently 8000) is load-bearing in `semanticSourceFingerprint`
+(`SemanticIndexLedger.kt`) and in the generation-time text truncation (`EmbeddingCacheWorker.kt`). Changing
+it invalidates every stored source fingerprint and silently re-truncates different text windows, forcing a
+full reconcile of all models. Treat it as immutable post-release; any change requires a deliberate schema
+revision plus a documented reindex, never a silent constant bump.
+
 ## 4. Failure and concurrency behavior
 
 - A malformed cache row cannot fail the whole search.

@@ -720,6 +720,8 @@
     <string name="embedding_custom_model_desc">Enter any model name supported by the provider</string>
     <string name="embedding_batch_size">Batch Size</string>
     <string name="embedding_batch_size_desc">Messages to cache per request (1-100)</string>
+    <string name="embedding_expected_dimensions">Expected dimensions (optional)</string>
+    <string name="embedding_expected_dimensions_desc">Vector size the model must return (e.g. 1536). Leave empty to skip validation and the request field.</string>
     <string name="local_model_ready">Model imported</string>
     <string name="import_model">Import Model (.gguf)</string>
     <string name="importing_model">Importing...</string>
