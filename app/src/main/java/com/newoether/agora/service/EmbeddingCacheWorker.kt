@@ -375,7 +375,7 @@ class EmbeddingCacheWorker(
             val actual = embeddings.firstOrNull { it != null }?.size
             throw IllegalStateException(
                 "Embedding dimension mismatch: expected ${model.expectedDimensions ?: "consistent batch"}, " +
-                    "got ${actual ?: "empty"}"
+                    "got ${actual ?: "empty batch (all requests failed — see HttpClient error body)"}"
             )
         }
         candidates.forEachIndexed { index, candidate ->

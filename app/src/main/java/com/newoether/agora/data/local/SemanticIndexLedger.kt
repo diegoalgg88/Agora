@@ -186,7 +186,7 @@ interface SemanticIndexDao {
         LEFT JOIN semantic_index_work w ON w.messageId = m.id AND w.modelId = :modelId
         WHERE c.taskId IS NULL
           AND m.participant IN ('USER', 'MODEL')
-          AND m.text != ''
+          AND TRIM(m.text, ' ' || char(9) || char(10) || char(13)) != ''
           AND m.id NOT LIKE 'tool_%'
           AND m.id NOT LIKE 'result_%'
           AND m.id NOT LIKE 'compact_%'
@@ -211,7 +211,7 @@ interface SemanticIndexDao {
         LEFT JOIN semantic_index_work w ON w.messageId = m.id AND w.modelId = :modelId
         WHERE c.taskId IS NULL
           AND m.participant IN ('USER', 'MODEL')
-          AND m.text != ''
+          AND TRIM(m.text, ' ' || char(9) || char(10) || char(13)) != ''
           AND m.id NOT LIKE 'tool_%'
           AND m.id NOT LIKE 'result_%'
           AND m.id NOT LIKE 'compact_%'
@@ -231,7 +231,7 @@ interface SemanticIndexDao {
         WHERE m.id = :messageId
           AND c.taskId IS NULL
           AND m.participant IN ('USER', 'MODEL')
-          AND m.text != ''
+          AND TRIM(m.text, ' ' || char(9) || char(10) || char(13)) != ''
           AND m.id NOT LIKE 'tool_%'
           AND m.id NOT LIKE 'result_%'
           AND m.id NOT LIKE 'compact_%'

@@ -476,7 +476,13 @@ object HttpClient {
         return response.use {
             if (it.isSuccessful) it.body.string()
             else {
-                DebugLog.e("HttpClient", "POST failed status=${it.code}")
+                // The error body is the only clue for server-side rejections (e.g. embedding
+                // endpoints rejecting blank inputs with 400). Status alone is not diagnosable.
+                val errorBody = runCatching { it.body.string() }.getOrDefault("")
+                DebugLog.e(
+                    "HttpClient",
+                    "POST failed status=${it.code} body=${errorBody.take(500)}",
+                )
                 null
             }
         }
