@@ -449,6 +449,30 @@ scaling, compression, frame extraction, PDF rendering, file text read, or additi
 Provider file reads, Base64, JSON serialization, and upload remain request encoding after accepted
 input and are not attachment import work.
 
+Attachment routing is decided by the resolved MIME type alone (`FileValidator.routeForMimeType`);
+file names and extensions never override it. `image/*` is an image, `video/*` a video,
+`application/pdf` a PDF, and `text/*` plus the explicit `application/*` allow-list (JSON, XML,
+YAML including `x-yaml`, TOML, JavaScript, TypeScript, shell, Python, SQL, NDJSON, XHTML, and
+`ld+json`) is bounded text. Every other or unknown MIME is a Local Sandbox file when the Sandbox
+flavor and setting accept it, and is rejected with the localized unsupported-file message otherwise;
+Office documents such as DOCX and XLSX therefore require the Sandbox. A source file whose platform
+MIME is generic (`application/octet-stream`, null) or misleading (a `.ts` file reported as
+`video/mp2t`) follows that MIME. Extending the allow-list is additive and stays MIME-only;
+introducing an extension fallback is a contract change that must also replace the MIME-only routing
+test. Ordinary-file text import reads at most `MAX_FILE_CONTENT_READ_LENGTH` characters and does not
+verify that the bytes are text.
+
+PDF import is visual-only: Agora embeds no PDF text-layer extractor, and selected pages are rendered
+as JPEG images through `PdfRenderer`. Pages render in ascending order. The draft's `selectedPages`
+after import keeps naming the rendered image indexes (`0..n-1`), so import additionally records
+`SelectedAttachment.sourcePages` (the original zero-based indexes, in image order) and Send copies
+them to `AttachmentItem.pageNumbers` as one-based source page numbers. Both are null whenever the
+sorted in-range selection cannot be proven to map one-to-one onto the rendered images; consumers
+then fall back instead of mislabeling pages. Both fields are optional additive data, so existing
+drafts, Room rows, and `.agora` archives remain readable. The all-page selection preview renders
+every page of the PDF, because the preview call passes the page count as its limit. A text-only
+model receives PDF content only through image transcription (`message-generation.md` §9.5).
+
 Each attachment tile has one canonical fixed-64-dp presentation Crossfade with a 200 ms duration.
 Its keyed states include a neutral initial frame, unavailable, import loading/failure, ready
 file/PDF/video placeholder, and Coil media loading/success/error. The thumbnail, placeholder, scrim,

@@ -16,7 +16,6 @@ object FileValidator {
     enum class Error {
         UNKNOWN_TYPE,
         UNSUPPORTED_TYPE,
-        TOO_LARGE
     }
 
     private val MIME_WHITELIST = setOf(
@@ -24,9 +23,21 @@ object FileValidator {
         "application/json",
         "application/xml",
         "application/yaml",
-        "application/pdf"
+        // Common source/config types that platforms report outside text/*.
+        "application/x-yaml",
+        "application/toml",
+        "application/x-toml",
+        "application/javascript",
+        "application/x-javascript",
+        "application/typescript",
+        "application/x-typescript",
+        "application/x-sh",
+        "application/x-python",
+        "application/sql",
+        "application/x-ndjson",
+        "application/xhtml+xml",
+        "application/ld+json",
     )
-    data class Result(val valid: Boolean, val error: Error? = null, val mimeType: String? = null)
 
     fun routeForMimeType(mimeType: String?): AttachmentRoute = when {
         mimeType?.startsWith("image/") == true -> AttachmentRoute.IMAGE
@@ -36,37 +47,6 @@ object FileValidator {
             mimeType.startsWith(allowed)
         } -> AttachmentRoute.TEXT
         else -> AttachmentRoute.LOCAL_SANDBOX
-    }
-
-    fun validate(context: Context, uri: Uri): Result {
-        val mimeType = try {
-            context.contentResolver.getType(uri)
-        } catch (_: Exception) { null }
-
-        if (mimeType == null)
-            return Result(false, Error.UNKNOWN_TYPE, null)
-
-        val allowed = MIME_WHITELIST.any { mimeType.startsWith(it) } ||
-                      mimeType in MIME_WHITELIST
-        if (!allowed)
-            return Result(false, Error.UNSUPPORTED_TYPE, mimeType)
-
-        val fileSize = try {
-            val cursor = context.contentResolver.query(
-                uri, arrayOf(OpenableColumns.SIZE), null, null, null
-            )
-            cursor?.use {
-                if (it.moveToFirst()) {
-                    val idx = it.getColumnIndex(OpenableColumns.SIZE)
-                    if (idx >= 0) it.getLong(idx) else null
-                } else null
-            }
-        } catch (_: Exception) { null }
-
-        if (fileSize != null && fileSize > AttachmentFiles.MAX_ATTACHMENT_BYTES)
-            return Result(false, Error.TOO_LARGE, mimeType)
-
-        return Result(true, mimeType = mimeType)
     }
 
     fun resolveMimeType(context: Context, uriString: String): String? {
@@ -107,7 +87,6 @@ object FileValidator {
         return when (error) {
             Error.UNKNOWN_TYPE -> context.getString(com.newoether.agora.R.string.file_unknown_type)
             Error.UNSUPPORTED_TYPE -> context.getString(com.newoether.agora.R.string.file_unsupported_type, mimeType ?: "?")
-            Error.TOO_LARGE -> context.getString(com.newoether.agora.R.string.file_too_large)
         }
     }
 }

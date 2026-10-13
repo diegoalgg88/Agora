@@ -156,6 +156,35 @@ class GenerationRequestBuilderProviderDisplayTest {
     }
 
     @Test
+    fun `image transcription requires a resolvable transcription model before stripping images`() = runTest {
+        val fixture = RequestBuilderFixture(
+            providerName = Constants.PROVIDER_OPENAI,
+            lowContextModeEnabled = false,
+        )
+        every { fixture.settings.imageTranscriptionEnabled } returns MutableStateFlow(true)
+        every { fixture.settings.imageTranscriptionEnabledModels } returns
+            MutableStateFlow(setOf(fixture.modelId))
+
+        // Switch and per-model opt-in are on but no transcription model is configured. Enabling
+        // the flag here would set includeImages = false while the transcription stage performs
+        // nothing, silently dropping image and PDF content from the request.
+        val withoutModel = fixture.builder.captureContextProjectionSnapshot(
+            conversationId = "conversation",
+            modelId = fixture.modelId,
+        )
+        assertFalse(withoutModel.context.imageTranscriptionEnabled)
+
+        every { fixture.settings.imageTranscriptionModel } returns
+            MutableStateFlow("${Constants.PROVIDER_OPENAI}:vision-model")
+        val withModel = fixture.builder.captureContextProjectionSnapshot(
+            conversationId = "conversation",
+            modelId = fixture.modelId,
+        )
+        assertTrue(withModel.context.imageTranscriptionEnabled)
+        assertEquals("vision-model", withModel.context.transcriptionModelId)
+    }
+
+    @Test
     fun `remote and ollama ignore a true low context conversation override`() = runTest {
         listOf(Constants.PROVIDER_OPENAI, Constants.PROVIDER_OLLAMA).forEach { providerName ->
             val fixture = RequestBuilderFixture(

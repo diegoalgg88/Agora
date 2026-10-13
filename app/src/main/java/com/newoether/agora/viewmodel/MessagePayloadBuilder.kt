@@ -98,6 +98,9 @@ internal class MessagePayloadBuilder {
                         mimeType = attachment.mimeType ?: "application/pdf",
                         imageIndex = imageIndex,
                         pageCount = pages.size,
+                        pageNumbers = attachment.sourcePages
+                            ?.takeIf { it.size == pages.size }
+                            ?.map { it + 1 },
                         fileSize = attachment.fileSize,
                     )
                 }

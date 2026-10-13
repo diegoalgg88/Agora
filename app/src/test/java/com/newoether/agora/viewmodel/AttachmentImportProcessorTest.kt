@@ -279,6 +279,7 @@ class AttachmentImportProcessorTest {
         assertEquals(setOf(1, 3), selectedPages)
         assertEquals(pages, pdf.attachment.preRenderedPaths)
         assertEquals(setOf(0, 1), pdf.attachment.selectedPages)
+        assertEquals(listOf(1, 3), pdf.attachment.sourcePages)
         assertEquals(pages, pdf.createdPaths)
     }
 

@@ -50,7 +50,9 @@ class TranscriptionManager(
     data class TranscriptionTarget(
         val messageId: String,
         val imagePath: String,
-        val metaItemIndex: Int
+        val metaItemIndex: Int,
+        /** 1-based source page for PDF pages when known; null otherwise. */
+        val pageNumber: Int? = null,
     )
 
     /**
@@ -93,7 +95,14 @@ class TranscriptionManager(
                         if (offset !in msg.images.indices) break
                         val imagePath = msg.images[offset]
                         if (isLatest || item.transcription.isNullOrEmpty()) {
-                            targets.add(TranscriptionTarget(msg.id, imagePath, index))
+                            targets.add(
+                                TranscriptionTarget(
+                                    msg.id,
+                                    imagePath,
+                                    index,
+                                    if (imageType == "pdf") item.pageNumbers?.getOrNull(i) else null,
+                                ),
+                            )
                         }
                     }
                 }
@@ -281,7 +290,7 @@ class TranscriptionManager(
         )
         val placeholder = conversations.getMessage(modelMessageId)
         val parentId = placeholder?.parentId
-        val results = mutableMapOf<String, MutableList<Pair<Int, String>>>()
+        val results = mutableMapOf<String, MutableList<Triple<Int, Int?, String>>>()
         val transcriptionSegments = mutableListOf<MessageSegment>()
         var processed = 0
         val total = targets.size
@@ -360,7 +369,7 @@ class TranscriptionManager(
             val text = transcription.toString().trim()
             transcriptionSegments[transcriptionSegments.lastIndex] = currentSegment.copy(content = text)
             results.getOrPut(target.messageId) { mutableListOf() }
-                .add(target.metaItemIndex to text)
+                .add(Triple(target.metaItemIndex, target.pageNumber, text))
             processed++
         }
 
@@ -372,11 +381,12 @@ class TranscriptionManager(
                     try { Json.decodeFromString<AttachmentMeta>(it) } catch (_: Exception) { null }
                 } ?: AttachmentMeta()
                 val items = meta.items.toMutableList()
-                val grouped: Map<Int, List<String>> = updates.groupBy { it.first }.mapValues { e -> e.value.map { it.second } }
+                val grouped: Map<Int, List<Pair<Int?, String>>> = updates.groupBy { it.first }
+                    .mapValues { e -> e.value.map { it.second to it.third } }
                 for ((index, texts) in grouped) {
                     if (index in items.indices) {
-                        val joined = if (texts.size == 1) texts.first()
-                        else texts.mapIndexed { i, t -> "[Page ${i + 1}]\n$t" }.joinToString("\n\n")
+                        val joined = if (texts.size == 1) texts.first().second
+                        else texts.mapIndexed { i, (page, t) -> "[Page ${page ?: (i + 1)}]\n$t" }.joinToString("\n\n")
                         items[index] = items[index].copy(transcription = joined)
                     }
                 }

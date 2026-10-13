@@ -221,6 +221,28 @@ class AttachmentFoundationTest {
     }
 
     @Test
+    fun commonSourceAndConfigMimeTypesRouteAsText() {
+        listOf(
+            "text/x-python",
+            "text/yaml",
+            "application/x-yaml",
+            "application/javascript",
+            "application/typescript",
+            "application/toml",
+            "application/x-sh",
+            "application/sql",
+        ).forEach { mime ->
+            assertEquals(mime, FileValidator.AttachmentRoute.TEXT, FileValidator.routeForMimeType(mime))
+        }
+        assertEquals(
+            FileValidator.AttachmentRoute.LOCAL_SANDBOX,
+            FileValidator.routeForMimeType(
+                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            ),
+        )
+    }
+
+    @Test
     fun mimeRoutingUsesMimeOnly() {
         assertEquals(FileValidator.AttachmentRoute.IMAGE, FileValidator.routeForMimeType("image/png"))
         assertEquals(FileValidator.AttachmentRoute.VIDEO, FileValidator.routeForMimeType("video/mp4"))

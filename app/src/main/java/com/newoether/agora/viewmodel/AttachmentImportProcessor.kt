@@ -144,6 +144,7 @@ internal class AttachmentImportProcessor(
                             preRenderedPaths = null,
                             localPath = target.absolutePath,
                             pageCount = pageCount,
+                            sourcePages = null,
                             videoDurationMs = videoDurationMs,
                             importState = AttachmentImportState.PROCESSING,
                             preparedText = null,
@@ -302,11 +303,26 @@ internal class AttachmentImportProcessor(
         return ProcessResult.Ready(
             attachment = attachment.copy(
                 selectedPages = pages.indices.toSet(),
+                sourcePages = pdfSourcePages(attachment, pages.size),
                 preRenderedPaths = pages,
                 importState = AttachmentImportState.READY,
             ),
             createdPaths = pages,
         )
+    }
+
+    /**
+     * Original zero-based indexes of the rendered pages. The renderer emits selected pages in
+     * ascending order, so the sorted in-range selection maps 1:1 onto the images; anything that
+     * cannot be proven to match fails closed to null instead of mislabeling pages.
+     */
+    private fun pdfSourcePages(attachment: SelectedAttachment, renderedCount: Int): List<Int>? {
+        val total = attachment.pageCount
+        val indexes = attachment.selectedPages
+            ?.filter { total == null || it in 0 until total }
+            ?.sorted()
+            ?: (0 until renderedCount).toList()
+        return indexes.takeIf { it.size == renderedCount }
     }
 
     private fun processFile(

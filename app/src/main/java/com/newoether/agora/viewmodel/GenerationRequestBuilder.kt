@@ -483,7 +483,12 @@ class GenerationRequestBuilder(
             // or parallel-conversation generation must not inherit another conversation's model.
             imageTranscriptionEnabled =
                 settings.imageTranscriptionEnabled.value &&
-                    settings.imageTranscriptionEnabledModels.value.contains(modelId),
+                    settings.imageTranscriptionEnabledModels.value.contains(modelId) &&
+                    // Same precondition GenerationTranscriptionStage enforces: without a resolvable
+                    // transcription model nothing can describe the images, and enabling the flag
+                    // would strip them from the request (includeImages = false) with no text
+                    // replacement, silently dropping the attachment content.
+                    resolveTranscriptionModelId(transcriptionModel).isNotBlank(),
             imageTranscriptionModel = transcriptionModel,
             imageTranscriptionBatchSize = settings.imageTranscriptionBatchSize.value,
             imageTranscriptionPrompt = settings.imageTranscriptionPrompt.value,

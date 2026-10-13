@@ -1209,6 +1209,28 @@ presentation. Only a message already classified as rolled out receives the legac
 rule never inserts the in-progress row into Provider history, token accounting, Compact input, or
 retained-message calculation.
 
+### 9.5 Attachment text and image-transcription projection
+
+Provider projection renders ordinary attachment text as `--- File: <name> ---` followed by the
+stored text. A Local Sandbox attachment projects only an instruction naming its sandbox path; its
+bytes are never inlined.
+
+Image transcription covers every Provider-visible image path: image attachments, PDF pages, and
+video frames. It is enabled for one generation only when all three conditions hold: the global
+`imageTranscriptionEnabled` switch is on, the generation's own model ID is in
+`imageTranscriptionEnabledModels`, and the configured transcription model resolves to a nonblank
+model ID. The predicate is evaluated once when the `GenerationContext` is built, and that single flag
+drives the transcription stage, projection with stored transcriptions, `includeImages = false`, and
+the tool-image transcriber. A state in which images are withheld from the request but no stage can
+describe them is forbidden, because it silently drops attachment content. Agora does not detect
+Provider vision capability: a model outside `imageTranscriptionEnabledModels` receives raw images,
+and a text-only model then fails at the Provider.
+
+Stored PDF transcriptions join the pages with `[Page N]`, where N is the one-based source page from
+`AttachmentItem.pageNumbers`. Only rows without source numbers (legacy attachments, or a selection
+that could not be mapped) fall back to the ordinal position among the transcribed pages. A single
+transcribed page is stored without a label.
+
 ## 10. Concurrency and failure-safety principles
 
 1. **Single process authority.** Only the conversation mailbox/reducer accepts lifecycle

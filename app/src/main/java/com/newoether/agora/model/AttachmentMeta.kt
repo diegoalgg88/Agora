@@ -59,6 +59,8 @@ data class AttachmentItem(
     @SerialName("mime_type") val mimeType: String? = null,
     @SerialName("image_index") val imageIndex: Int? = null,
     @SerialName("page_count") val pageCount: Int? = null,
+    /** 1-based source page numbers of a PDF's rendered pages, in image order; null when unknown. */
+    @SerialName("page_numbers") val pageNumbers: List<Int>? = null,
     val warning: String? = null,
     @SerialName("text_content") val textContent: String? = null,
     @SerialName("transcription") val transcription: String? = null,
@@ -87,6 +89,8 @@ data class SelectedAttachment(
     val fileSize: Long? = null,
     val processedFrames: List<String>? = null,
     val selectedPages: Set<Int>? = null,
+    /** 0-based source page indexes actually rendered, in image order; set by PDF import. */
+    val sourcePages: List<Int>? = null,
     val preRenderedPaths: List<String>? = null,
     val localPath: String? = null,  // copied into storage owned by [storage] at pick time
     val storage: AttachmentStorage = AttachmentStorage.APP_PRIVATE,
