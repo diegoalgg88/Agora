@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.map
 
 internal const val DEFAULT_CONTEXT_COMPACT_ENABLED = true
 internal const val DEFAULT_CONTEXT_COMPACT_RETAIN_COUNT = 0
+internal const val DEFAULT_CONTEXT_COMPACT_PRESERVE_SYSTEM_PROMPT = true
 internal const val DEFAULT_CONTEXT_COMPACT_THRESHOLD_PERCENT = 90
 internal val CONTEXT_COMPACT_THRESHOLD_PERCENT_RANGE = 50..100
 internal const val DEFAULT_LOCAL_MODEL_IDLE_RETENTION_MINUTES = 5
@@ -111,6 +112,10 @@ class SettingsManager(val context: Context) {
     }
     val contextCompactRetainCount: Flow<Int> = context.dataStore.data.map {
         it[CONTEXT_COMPACT_RETAIN_COUNT] ?: DEFAULT_CONTEXT_COMPACT_RETAIN_COUNT
+    }
+    val contextCompactPreserveSystemPrompt: Flow<Boolean> = context.dataStore.data.map {
+        it[CONTEXT_COMPACT_PRESERVE_SYSTEM_PROMPT]
+            ?: DEFAULT_CONTEXT_COMPACT_PRESERVE_SYSTEM_PROMPT
     }
     val contextCompactThresholdPercent: Flow<Int> = context.dataStore.data.map {
         it[CONTEXT_COMPACT_THRESHOLD_PERCENT]
@@ -631,6 +636,9 @@ class SettingsManager(val context: Context) {
     suspend fun saveContextCompactRetainCount(count: Int) {
         require(count >= 0)
         context.dataStore.edit { it[CONTEXT_COMPACT_RETAIN_COUNT] = count }
+    }
+    suspend fun saveContextCompactPreserveSystemPrompt(enabled: Boolean) {
+        context.dataStore.edit { it[CONTEXT_COMPACT_PRESERVE_SYSTEM_PROMPT] = enabled }
     }
 
     suspend fun saveContextCompactThresholdPercent(percent: Int) {

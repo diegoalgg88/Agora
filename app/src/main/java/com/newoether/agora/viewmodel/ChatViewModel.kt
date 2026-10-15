@@ -651,7 +651,7 @@ class ChatViewModel(
         currentModel = { currentActiveModel.value },
         configuredPrompt = { settings.contextCompactPrompt.value },
         configuredRetainCount = { settings.contextCompactRetainCount.value },
-        compactManual = { request -> generationController.compactManual(request) },
+        configuredPreserveSystemPrompt = { settings.contextCompactPreserveSystemPrompt.value }, compactManual = { request -> generationController.compactManual(request) },
         failureMessage = { result -> compactFailureMessage(appContext, result) },
         onFailure = { message -> emitSnackbar(message) },
     )

@@ -26,6 +26,8 @@ internal val CONTEXT_COMPACT_ENABLED = booleanPreferencesKey("context_compact_en
 internal val CONTEXT_COMPACT_MODEL = stringPreferencesKey("context_compact_model")
 internal val CONTEXT_COMPACT_PROMPT = stringPreferencesKey("context_compact_prompt")
 internal val CONTEXT_COMPACT_RETAIN_COUNT = intPreferencesKey("context_compact_retain_count")
+internal val CONTEXT_COMPACT_PRESERVE_SYSTEM_PROMPT =
+    booleanPreferencesKey("context_compact_preserve_system_prompt")
 internal val CONTEXT_COMPACT_THRESHOLD_PERCENT = intPreferencesKey("context_compact_threshold_percent")
 internal val CODE_EXECUTION_ENABLED = booleanPreferencesKey("code_execution_enabled")
 internal val GOOGLE_SEARCH_ENABLED = booleanPreferencesKey("google_search_enabled")

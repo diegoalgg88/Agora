@@ -123,7 +123,11 @@ message. It is request-only configuration: it participates in exact token accoun
 written to Room, rendered as a visible message, assigned a Run boundary, or used to alter durable
 parentage. The configured Compact summary instructions remain the complete system prompt; the final
 USER turn only invokes that behavior. A saved custom Compact prompt replaces the built-in system
-prompt in full, with no hidden prefix, suffix, or mandatory guardrail added by Agora. The built-in
+prompt in full, with no hidden prefix, suffix, or mandatory guardrail added by Agora. This legacy
+shape is the `Preserve System Prompt = off` mode. With Preserve on (the default), the compaction
+request instead keeps the conversation's ordinary resolved system prompt, captured for the compact
+model at admission, and the Compact Prompt moves to the head of the final USER message followed by
+a blank line and the built-in Compact invocation. The built-in
 default therefore owns its provenance, task-state, prior-summary reconciliation, language, fidelity,
 and anti-recursion rules, while a custom prompt intentionally assumes responsibility for all of
 those semantics. The API-only invocation is tagged as application-generated control input and must

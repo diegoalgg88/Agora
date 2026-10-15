@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">Agora</string>
     <string name="agora_responded">Agora ответила</string>
 
@@ -1176,6 +1176,8 @@
     <string name="context_compact_model">Модель сжатия</string>
     <string name="context_compact_prompt">Промпт сжатия</string>
     <string name="context_compact_prompt_desc">Инструкции для сводки</string>
+    <string name="context_compact_preserve_system">Сохранять системный промпт</string>
+    <string name="context_compact_preserve_system_desc">При сжатии используется системный промпт беседы; промпт сжатия стоит в начале запроса на резюме</string>
     <string name="context_compact_select_model">Выбрать модель сжатия</string>
     <string name="context_compact_threshold">Порог автоматического сжатия</string>
     <string name="context_compact_threshold_desc">Сжимать, когда оценённый контекст достигнет этого процента выбранного окна</string>

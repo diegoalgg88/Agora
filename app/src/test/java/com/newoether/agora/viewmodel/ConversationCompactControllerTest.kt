@@ -205,6 +205,90 @@ class ConversationCompactControllerTest {
     }
 
     @Test
+    fun preservedRequestKeepsTheConversationSystemPromptAndMovesTheCompactPrompt() = runBlocking {
+        val conversations = mockk<ConversationRepository>()
+        val operation = FakeCompactOperation()
+        val manager = mockk<GenerationManager>()
+        val launcher = mockk<StandardGenerationContinuationLauncher>()
+        val requestBuilder = mockk<GenerationRequestBuilder>()
+        val state = ConversationGenerationState("conversation")
+        val source = sourceEntity()
+        stubSelectedPath(
+            conversations,
+            listOf(source),
+            mapOf(null to source.id),
+        )
+        coEvery {
+            requestBuilder.captureAdmissionSnapshot(
+                conversationId = "conversation",
+                runId = any(),
+                modelId = "provider:model",
+            )
+        } returns testGenerationAdmissionSnapshot(
+            conversationId = "conversation",
+            runId = "compact-preflight-run",
+        )
+        coEvery { manager.buildApiPath(any()) } returns GenerationApiPath(
+            messages = listOf(source.toUi()),
+            providerConfig = mockk<ProviderConfig>(),
+        )
+        // manual() re-lee el mensaje settle por id tras el join del job (awaitCompletion);
+        // el stub genérico de getMessage solo conoce las entities del path, no el id compact_*.
+        coEvery { conversations.getMessage(match { it.startsWith("compact_") }) } answers {
+            MessageEntity(
+                id = firstArg(),
+                conversationId = "conversation",
+                parentId = source.id,
+                text = "new summary",
+                status = MessageStatus.SUCCESS,
+                participant = Participant.MODEL,
+                timestamp = 3L,
+                modelName = "provider:model",
+                runId = "compact-run",
+                runSequence = 0,
+            )
+        }
+        val launchRequest = slot<StandardGenerationContinuationRequest>()
+        every { launcher.launch(capture(launchRequest), state) } returns
+            StandardGenerationContinuationLaunch(
+                job = Job().apply { complete() },
+                modelMessageId = "compact_message",
+                started = CompletableDeferred(true),
+            )
+
+        val result = controller(
+            conversations,
+            operation,
+            requestBuilder,
+            manager,
+            launcher,
+        ).manual(
+            conversationId = "conversation",
+            request = CompactRequest(
+                model = "provider:model",
+                prompt = "compact prompt",
+                retainLogicalMessages = 2,
+                preserveSystemPrompt = true,
+            ),
+            state = state,
+        )
+
+        assertTrue(result is CompactResult.Created)
+        // El system prompt ordinario de la conversación se conserva; el Compact Prompt
+        // pasa al head del mensaje de usuario.
+        assertEquals(
+            "system",
+            launchRequest.captured.snapshot.config.effectiveSystemPrompt,
+        )
+        assertEquals(
+            "compact prompt\n\n" + BuiltInPrompts.CONTEXT_COMPACT_USER,
+            launchRequest.captured.snapshot.config.initialUserPrompt,
+        )
+        state.dispose()
+        Unit
+    }
+
+    @Test
     fun emptyPreflightProjectionCannotReplaceOrBlockTheOrdinaryGenerationPath() = runBlocking {
         val conversations = mockk<ConversationRepository>()
         val operation = FakeCompactOperation(automaticNeeded = true)

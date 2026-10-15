@@ -20,6 +20,10 @@ data class CompactRequest(
     val prompt: String,
     val retainLogicalMessages: Int,
     val replaceMessageId: String? = null,
+    // Cuando es true, el request conserva el system prompt ordinario de la conversación y mueve
+    // el Compact Prompt al mensaje de usuario. Default false preserva el comportamiento legacy
+    // para todo sitio de construcción que no haya optado explícitamente.
+    val preserveSystemPrompt: Boolean = false,
 )
 
 /** Provider-equivalent split input without role coalescing away durable graph ids. */

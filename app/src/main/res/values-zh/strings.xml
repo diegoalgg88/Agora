@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">Agora</string>
     <string name="agora_responded">Agora 已回复</string>
 
@@ -1282,6 +1282,8 @@
     <string name="context_compact_model">压缩模型</string>
     <string name="context_compact_prompt">压缩提示词</string>
     <string name="context_compact_prompt_desc">总结指令</string>
+    <string name="context_compact_preserve_system">保留系统提示词</string>
+    <string name="context_compact_preserve_system_desc">压缩时使用会话的系统提示词；压缩提示词作为摘要请求的开头</string>
     <string name="context_compact_select_model">选择压缩模型</string>
     <string name="context_compact_threshold">自动压缩阈值</string>
     <string name="context_compact_threshold_desc">估算上下文达到所选窗口的此百分比时进行压缩</string>

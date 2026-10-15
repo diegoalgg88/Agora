@@ -8,6 +8,7 @@ import com.newoether.agora.data.AssistantToolSettings
 import com.newoether.agora.data.BuiltInPrompts
 import com.newoether.agora.data.DEFAULT_COLOR_SCHEME
 import com.newoether.agora.data.DEFAULT_CONTEXT_COMPACT_ENABLED
+import com.newoether.agora.data.DEFAULT_CONTEXT_COMPACT_PRESERVE_SYSTEM_PROMPT
 import com.newoether.agora.data.DEFAULT_CONTEXT_COMPACT_RETAIN_COUNT
 import com.newoether.agora.data.DEFAULT_CONTEXT_COMPACT_THRESHOLD_PERCENT
 import com.newoether.agora.data.DEFAULT_DYNAMIC_COLOR
@@ -140,14 +141,9 @@ class SettingsRepository(
     )
     val contextCompactModel: StateFlow<String?> = hot(settingsManager.contextCompactModel, null)
     val contextCompactPrompt: StateFlow<String> = hot(settingsManager.contextCompactPrompt, BuiltInPrompts.CONTEXT_COMPACT_SYSTEM)
-    val contextCompactRetainCount: StateFlow<Int> = hot(
-        settingsManager.contextCompactRetainCount,
-        DEFAULT_CONTEXT_COMPACT_RETAIN_COUNT,
-    )
-    val contextCompactThresholdPercent: StateFlow<Int> = hot(
-        settingsManager.contextCompactThresholdPercent,
-        DEFAULT_CONTEXT_COMPACT_THRESHOLD_PERCENT,
-    )
+    val contextCompactRetainCount: StateFlow<Int> = hot(settingsManager.contextCompactRetainCount, DEFAULT_CONTEXT_COMPACT_RETAIN_COUNT)
+    val contextCompactPreserveSystemPrompt: StateFlow<Boolean> = hot(settingsManager.contextCompactPreserveSystemPrompt, DEFAULT_CONTEXT_COMPACT_PRESERVE_SYSTEM_PROMPT)
+    val contextCompactThresholdPercent: StateFlow<Int> = hot(settingsManager.contextCompactThresholdPercent, DEFAULT_CONTEXT_COMPACT_THRESHOLD_PERCENT)
     val codeExecutionEnabled: StateFlow<Boolean> = hot(settingsManager.codeExecutionEnabled, false)
     val googleSearchEnabled: StateFlow<Boolean> = hot(settingsManager.googleSearchEnabled, false)
     val thinkingEnabled: StateFlow<Boolean> = hot(settingsManager.thinkingEnabled, true)
@@ -709,6 +705,7 @@ class SettingsRepository(
     fun setContextCompactModel(model: String?) = scope.launch { settingsManager.saveContextCompactModel(model) }
     fun setContextCompactPrompt(prompt: String) = scope.launch { settingsManager.saveContextCompactPrompt(prompt) }
     fun setContextCompactRetainCount(count: Int) = scope.launch { settingsManager.saveContextCompactRetainCount(count) }
+    fun setContextCompactPreserveSystemPrompt(enabled: Boolean) = scope.launch { settingsManager.saveContextCompactPreserveSystemPrompt(enabled) }
     fun setContextCompactThresholdPercent(percent: Int) = scope.launch {
         settingsManager.saveContextCompactThresholdPercent(percent)
     }

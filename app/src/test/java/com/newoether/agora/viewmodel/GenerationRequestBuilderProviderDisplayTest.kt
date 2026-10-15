@@ -178,6 +178,43 @@ class GenerationRequestBuilderProviderDisplayTest {
     }
 
     @Test
+    fun `preserve mode resolves the ordinary system prompt for the compact request`() = runTest {
+        val fixture = RequestBuilderFixture(
+            providerName = Constants.PROVIDER_OPENAI,
+            lowContextModeEnabled = false,
+            compactPreserveSystemPrompt = true,
+        )
+
+        val snapshot = fixture.builder.captureAdmissionSnapshot("conversation", "run", fixture.modelId)
+
+        assertTrue(snapshot.automaticCompact.request.preserveSystemPrompt)
+        assertEquals(
+            RequestBuilderFixture.COMPACT_PROMPT,
+            snapshot.automaticCompact.request.prompt,
+        )
+        assertEquals(
+            RequestBuilderFixture.RESOLVED_SYSTEM_PROMPT,
+            snapshot.automaticCompact.generationConfig.effectiveSystemPrompt,
+        )
+    }
+
+    @Test
+    fun `legacy mode keeps the compact prompt as the compact system prompt`() = runTest {
+        val fixture = RequestBuilderFixture(
+            providerName = Constants.PROVIDER_OPENAI,
+            lowContextModeEnabled = false,
+        )
+
+        val snapshot = fixture.builder.captureAdmissionSnapshot("conversation", "run", fixture.modelId)
+
+        assertFalse(snapshot.automaticCompact.request.preserveSystemPrompt)
+        assertEquals(
+            RequestBuilderFixture.COMPACT_PROMPT,
+            snapshot.automaticCompact.generationConfig.effectiveSystemPrompt,
+        )
+    }
+
+    @Test
     fun `image transcription requires a resolvable transcription model before stripping images`() = runTest {
         val fixture = RequestBuilderFixture(
             providerName = Constants.PROVIDER_OPENAI,
@@ -322,6 +359,7 @@ class GenerationRequestBuilderProviderDisplayTest {
 private class RequestBuilderFixture(
     providerName: String,
     lowContextModeEnabled: Boolean,
+    compactPreserveSystemPrompt: Boolean = false,
 ) {
     companion object {
         const val COMPACT_PROMPT = "compact prompt"
@@ -402,6 +440,8 @@ private class RequestBuilderFixture(
         every { settings.contextCompactEnabled } returns MutableStateFlow(true)
         every { settings.contextCompactThresholdPercent } returns MutableStateFlow(80)
         every { settings.contextCompactRetainCount } returns MutableStateFlow(8)
+        every { settings.contextCompactPreserveSystemPrompt } returns
+            MutableStateFlow(compactPreserveSystemPrompt)
         every { settings.openAiResponsesApiEnabled } returns MutableStateFlow(false)
         every { settings.customProviders } returns MutableStateFlow(emptyList())
         every { settings.titleGenerationEnabled } returns MutableStateFlow(true)

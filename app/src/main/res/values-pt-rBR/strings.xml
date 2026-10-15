@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">Agora</string>
     <string name="agora_responded">Agora respondeu</string>
 
@@ -1176,6 +1176,8 @@
     <string name="context_compact_model">Modelo de compactação</string>
     <string name="context_compact_prompt">Prompt de compactação</string>
     <string name="context_compact_prompt_desc">Instruções do resumo</string>
+    <string name="context_compact_preserve_system">Preservar o prompt do sistema</string>
+    <string name="context_compact_preserve_system_desc">A compactação usa o prompt do sistema da conversa; o prompt de compactação encabeça a solicitação de resumo</string>
     <string name="context_compact_select_model">Selecionar modelo de compactação</string>
     <string name="context_compact_threshold">Limite de compactação automática</string>
     <string name="context_compact_threshold_desc">Compacte quando o contexto estimado atingir esta porcentagem da janela selecionada</string>

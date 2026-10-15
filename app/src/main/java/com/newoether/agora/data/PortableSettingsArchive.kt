@@ -54,6 +54,10 @@ internal object PortableSettingsArchive {
         putNullableString("contextCompactModel", sm.contextCompactModel.first())
         put("contextCompactPrompt", JsonPrimitive(sm.contextCompactPrompt.first()))
         put("contextCompactRetainCount", JsonPrimitive(sm.contextCompactRetainCount.first()))
+        put(
+            "contextCompactPreserveSystemPrompt",
+            JsonPrimitive(sm.contextCompactPreserveSystemPrompt.first()),
+        )
         put("contextCompactThresholdPercent", JsonPrimitive(sm.contextCompactThresholdPercent.first()))
         put("codeExecutionEnabled", JsonPrimitive(sm.codeExecutionEnabled.first()))
         put("googleSearchEnabled", JsonPrimitive(sm.googleSearchEnabled.first()))
@@ -318,15 +322,7 @@ internal object PortableSettingsArchive {
         (obj.int("contextTokenBudget") ?: obj.int("maxContextWindow"))
             ?.let { sm.saveMaxContextWindow(it) }
         obj.boolean("visualizeContextRollout")?.let { sm.saveVisualizeContextRollout(it) }
-        obj.boolean("contextCompactEnabled")?.let { sm.saveContextCompactEnabled(it) }
-        if (obj.containsKey("contextCompactModel")) {
-            sm.saveContextCompactModel(obj.nullableString("contextCompactModel")?.let(::remapModel))
-        }
-        obj.string("contextCompactPrompt")?.let { sm.saveContextCompactPrompt(it) }
-        obj.int("contextCompactRetainCount")?.takeIf { it >= 0 }?.let { sm.saveContextCompactRetainCount(it) }
-        importedContextCompactThresholdPercent(
-            obj.int("contextCompactThresholdPercent"),
-        )?.let { sm.saveContextCompactThresholdPercent(it) }
+        restoreContextCompactSettings(obj, sm, ::remapModel)
         obj.boolean("codeExecutionEnabled")?.let { sm.saveCodeExecutionEnabled(it) }
         obj.boolean("googleSearchEnabled")?.let { sm.saveGoogleSearchEnabled(it) }
         obj.boolean("thinkingEnabled")?.let { sm.saveThinkingEnabled(it) }
@@ -721,6 +717,29 @@ internal object PortableSettingsArchive {
 
     private inline fun <reified T> JsonObjectBuilder.putEncoded(key: String, value: T) {
         put(key, json.encodeToJsonElement(value))
+    }
+
+    /**
+     * Bloque de import de Context Compact, extraído de restoreFromJsonObject: ese método estaba al
+     * borde del límite de bytecode JVM y crece con cada setting portable nuevo.
+     */
+    private suspend fun restoreContextCompactSettings(
+        obj: JsonObject,
+        sm: SettingsManager,
+        remapModel: (String) -> String,
+    ) {
+        obj.boolean("contextCompactEnabled")?.let { sm.saveContextCompactEnabled(it) }
+        if (obj.containsKey("contextCompactModel")) {
+            sm.saveContextCompactModel(obj.nullableString("contextCompactModel")?.let(remapModel))
+        }
+        obj.string("contextCompactPrompt")?.let { sm.saveContextCompactPrompt(it) }
+        obj.int("contextCompactRetainCount")?.takeIf { it >= 0 }?.let { sm.saveContextCompactRetainCount(it) }
+        obj.boolean("contextCompactPreserveSystemPrompt")?.let {
+            sm.saveContextCompactPreserveSystemPrompt(it)
+        }
+        importedContextCompactThresholdPercent(
+            obj.int("contextCompactThresholdPercent"),
+        )?.let { sm.saveContextCompactThresholdPercent(it) }
     }
 
     private fun JsonObjectBuilder.putNullableString(key: String, value: String?) {

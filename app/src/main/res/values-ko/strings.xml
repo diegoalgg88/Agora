@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">Agora</string>
     <string name="agora_responded">Agora가 응답했습니다</string>
 
@@ -1176,6 +1176,8 @@
     <string name="context_compact_model">압축 모델</string>
     <string name="context_compact_prompt">압축 프롬프트</string>
     <string name="context_compact_prompt_desc">요약 지침</string>
+    <string name="context_compact_preserve_system">시스템 프롬프트 유지</string>
+    <string name="context_compact_preserve_system_desc">압축 시 대화의 시스템 프롬프트를 쓰고, 압축 프롬프트는 요약 요청 맨 앞의 지시가 됩니다</string>
     <string name="context_compact_select_model">압축 모델 선택</string>
     <string name="context_compact_threshold">자동 압축 임계값</string>
     <string name="context_compact_threshold_desc">예상 컨텍스트가 선택한 창의 이 비율에 도달하면 압축합니다</string>

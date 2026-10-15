@@ -1,4 +1,4 @@
-<resources>
+﻿<resources>
     <string name="app_name">Agora</string>
     <string name="agora_responded">Agora đã phản hồi</string>
 
@@ -1182,6 +1182,8 @@
     <string name="context_compact_model">Mô hình thu gọn</string>
     <string name="context_compact_prompt">Lời nhắc thu gọn</string>
     <string name="context_compact_prompt_desc">Hướng dẫn tóm tắt</string>
+    <string name="context_compact_preserve_system">Giữ prompt hệ thống</string>
+    <string name="context_compact_preserve_system_desc">Khi nén dùng prompt hệ thống của cuộc trò chuyện; prompt nén đứng đầu yêu cầu tóm tắt</string>
     <string name="context_compact_select_model">Chọn mô hình thu gọn</string>
     <string name="context_compact_threshold">Ngưỡng tự động thu gọn</string>
     <string name="context_compact_threshold_desc">Thu gọn khi ngữ cảnh ước tính đạt tỷ lệ này của cửa sổ đã chọn</string>
