@@ -614,4 +614,50 @@ class ToolPresentationResolverTest {
         assertEquals(1, presentation.count)
         assertEquals(ToolPresentationState.COMPLETED, presentation.state)
     }
+
+    @Test
+    fun malformedStandInPresentsTheToolAndArgumentsTheModelSent() {
+        val sent = """[{"question":"Pick one","options":["a","b"]}]"""
+        val wrapper = JsonObject(
+            mapOf(
+                "error" to JsonPrimitive("arguments were not a valid JSON object"),
+                "original_name" to JsonPrimitive("ask_user"),
+                "original_arguments" to JsonPrimitive(sent),
+            ),
+        ).toString()
+        val presentation = ToolPresentationResolver.resolve(
+            MessageSegment(
+                type = "tool",
+                toolName = "agora_malformed_tool_call",
+                toolArgs = wrapper,
+                toolResult = "Error: the previous tool call was malformed and was not executed",
+                toolState = ToolExecutionStates.FAILED,
+            ),
+        )
+        assertEquals("ask_user", presentation.toolName)
+        assertEquals(sent, presentation.rawArguments)
+        assertEquals(ToolKind.UNKNOWN, presentation.kind)
+        assertEquals(ToolPresentationState.FAILED, presentation.state)
+        assertEquals(
+            "Error: the previous tool call was malformed and was not executed",
+            presentation.errorMessage,
+        )
+    }
+
+    @Test
+    fun malformedStandInWithoutCarriedOriginalsKeepsTheStandInItself() {
+        val wrapper = """{"error":"duplicate tool call id"}"""
+        val presentation = ToolPresentationResolver.resolve(
+            MessageSegment(
+                type = "tool",
+                toolName = "agora_malformed_tool_call",
+                toolArgs = wrapper,
+                toolResult = "Error: the previous tool call was malformed and was not executed",
+                toolState = ToolExecutionStates.FAILED,
+            ),
+        )
+        assertEquals("agora_malformed_tool_call", presentation.toolName)
+        assertEquals(wrapper, presentation.rawArguments)
+        assertEquals(ToolPresentationState.FAILED, presentation.state)
+    }
 }
