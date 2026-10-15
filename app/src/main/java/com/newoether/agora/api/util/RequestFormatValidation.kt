@@ -80,15 +80,21 @@ internal fun validateToolDefinitions(tools: List<ToolDefinition>?): List<String>
         if (unknownRequired.isNotEmpty()) {
             violations += "tool ${function.name} requires undefined properties"
         }
-        function.parameters.properties.forEach { (propertyName, property) ->
-            if (propertyName.isBlank()) {
-                violations += "tool ${function.name} has a blank property name"
-            }
-            if (property.type.isBlank()) {
-                violations += "tool ${function.name} property $propertyName has no type"
-            }
-            if (property.type == "array" && property.items == null) {
-                violations += "tool ${function.name} array $propertyName has no items schema"
+        // Un schema externo (MCP) va verbatim y puede usar formas de JSON Schema que el modelo
+        // tipado no puede expresar, como un map object con solo additionalProperties; su
+        // anidamiento es el contrato del server, así que solo los schemas tipados que Agora
+        // construye por sí misma se revisan por debajo del top level.
+        if (function.parameters.schema == null) {
+            function.parameters.properties.forEach { (propertyName, property) ->
+                if (propertyName.isBlank()) {
+                    violations += "tool ${function.name} has a blank property name"
+                }
+                if (property.type.isBlank()) {
+                    violations += "tool ${function.name} property $propertyName has no type"
+                }
+                if (property.type == "array" && property.items == null) {
+                    violations += "tool ${function.name} array $propertyName has no items schema"
+                }
             }
         }
     }

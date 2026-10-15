@@ -144,7 +144,9 @@ internal data class ApiTool(
 internal data class GeminiFunctionDeclaration(
     val name: String,
     val description: String,
-    val parameters: JsonObject? = null
+    val parameters: JsonObject? = null,
+    /** JSON Schema parameters; mutuamente exclusivo con [parameters]. */
+    @SerialName("parameters_json_schema") val parametersJsonSchema: JsonObject? = null,
 )
 
 @Serializable
@@ -557,10 +559,14 @@ class GeminiProvider(
 
         // Add memory function declarations as a separate tool entry
         val functionDeclarations = config.tools?.map { td ->
+            // Un schema externo (MCP) va verbatim vía parameters_json_schema (JSON Schema pleno);
+            // `parameters` toma el subset OpenAPI de Gemini y rechaza keywords como
+            // additionalProperties.
+            val externalSchema = td.function.parameters.schema
             GeminiFunctionDeclaration(
                 name = td.function.name,
                 description = td.function.description,
-                parameters = JsonObject(
+                parameters = if (externalSchema == null) JsonObject(
                     mapOf(
                         "type" to JsonPrimitive(td.function.parameters.type),
                         "properties" to JsonObject(
@@ -572,7 +578,8 @@ class GeminiProvider(
                             td.function.parameters.required.map { JsonPrimitive(it) }
                         )
                     )
-                )
+                ) else null,
+                parametersJsonSchema = externalSchema,
             )
         }
         if (!functionDeclarations.isNullOrEmpty()) {

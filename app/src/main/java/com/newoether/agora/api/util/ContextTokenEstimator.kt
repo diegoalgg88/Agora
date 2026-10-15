@@ -47,13 +47,20 @@ object ContextTokenEstimator {
             raw += estimateTextRaw(tool.type)
             raw += estimateTextRaw(tool.function.name)
             raw += estimateTextRaw(tool.function.description)
-            raw += estimateTextRaw(tool.function.parameters.type)
-            tool.function.parameters.properties.toSortedMap().forEach { (name, property) ->
-                raw += estimateTextRaw(name)
-                raw += estimateToolPropertyRaw(property)
-            }
-            tool.function.parameters.required.sorted().forEach { required ->
-                raw += estimateTextRaw(required)
+            // El estimado cuenta el schema que se envía: un schema externo (MCP) va verbatim,
+            // así que es su texto completo lo que consume el contexto.
+            val externalSchema = tool.function.parameters.schema
+            if (externalSchema != null) {
+                raw += estimateTextRaw(externalSchema.toString())
+            } else {
+                raw += estimateTextRaw(tool.function.parameters.type)
+                tool.function.parameters.properties.toSortedMap().forEach { (name, property) ->
+                    raw += estimateTextRaw(name)
+                    raw += estimateToolPropertyRaw(property)
+                }
+                tool.function.parameters.required.sorted().forEach { required ->
+                    raw += estimateTextRaw(required)
+                }
             }
         }
         listOfNotNull(

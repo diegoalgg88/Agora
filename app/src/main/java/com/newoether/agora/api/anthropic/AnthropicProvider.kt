@@ -307,10 +307,12 @@ class AnthropicProvider(
 
         // Convert ToolDefinition to Anthropic format
         val anthropicTools = config.tools?.map { td ->
+            // Un schema externo (MCP) va verbatim; el cambo tipado reconstruye desde properties.
+            val externalSchema = td.function.parameters.schema
             AnthropicTool(
                 name = td.function.name,
                 description = td.function.description,
-                inputSchema = JsonObject(
+                inputSchema = externalSchema ?: JsonObject(
                     mapOf(
                         "type" to JsonPrimitive(td.function.parameters.type),
                         "properties" to JsonObject(
