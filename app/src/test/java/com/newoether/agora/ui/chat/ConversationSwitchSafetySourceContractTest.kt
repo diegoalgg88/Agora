@@ -126,6 +126,10 @@ class ConversationSwitchSafetySourceContractTest {
             "foreground send must not retain an entry point that re-reads selection after tap",
             generation.contains("private suspend fun sendMessageOffMain("),
         )
+        val drawerRows = File(
+            root,
+            "com/newoether/agora/ui/chat/ChatDrawerRows.kt",
+        ).readText().replace("\r\n", "\n")
         assertTrue(
             "drawer Delete must observe the exact conversation submission freeze",
             drawer.contains(
@@ -136,7 +140,10 @@ class ConversationSwitchSafetySourceContractTest {
                 drawer.contains(
                     "conversation.id !in submittingConversationIds",
                 ) &&
-                drawer.contains("enabled = deleteEnabled"),
+                // El row composable vive en ChatDrawerRows.kt y consume el freeze
+                // calculado por el drawer vía su parámetro deleteEnabled.
+                drawer.contains("deleteEnabled = !isSwitching && !isGenerating") &&
+                drawerRows.contains("enabled = deleteEnabled"),
         )
         assertFalse(
             "the removed UI attachment owner must not drive submission through pendingSend",

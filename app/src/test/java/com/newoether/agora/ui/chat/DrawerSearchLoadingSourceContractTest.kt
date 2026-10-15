@@ -37,6 +37,8 @@ class DrawerSearchLoadingSourceContractTest {
         val normalizedSearchState = searchState.replace("\r\n", "\n")
         val searchBar = source("ui/chat/search/DrawerSearchBar.kt")
         val searchResultItem = source("ui/chat/search/ChatSearchResultItem.kt")
+        val listModel = source("ui/chat/ChatDrawerListModel.kt").replace("\r\n", "\n")
+        val drawerRows = source("ui/chat/ChatDrawerRows.kt").replace("\r\n", "\n")
 
         assertTrue(dao.contains("SELECT id, title, systemPromptId, modelId, taskId, origin, graduated, hasUnreadGeneration, selectedBranchesJson FROM conversations"))
         assertTrue(dao.contains("fun getAllConversations(): Flow<List<ChatConversation>>"))
@@ -62,7 +64,14 @@ class DrawerSearchLoadingSourceContractTest {
         assertTrue(drawer.contains("state = searchListState"))
         assertTrue(drawer.split("LazyColumn(").size - 1 == 2)
         assertTrue(drawer.contains("key = { \"search:\${it.key}\" }"))
-        assertTrue(drawer.contains("key = { \"conversation:\${it.id}\" }"))
+        // El key de conversations vive en DrawerRow.Chat (ChatDrawerListModel.kt); el
+        // LazyColumn lo consume vía items(rows, key = { it.key }).
+        assertTrue(drawer.contains("items(rows, key = { it.key })"))
+        assertTrue(
+            listModel.contains(
+                "override val key: String get() = \"conversation:\${conversation.id}\"",
+            ),
+        )
         assertTrue(drawer.split("fadeInSpec = null").size - 1 == 1)
         assertTrue(drawer.split("fadeOutSpec = tween(180)").size - 1 == 1)
         val normalizedDrawer = drawer.replace("\r\n", "\n")
@@ -81,7 +90,7 @@ class DrawerSearchLoadingSourceContractTest {
         assertTrue(numericReorderAnchorBlock.contains("!search.isActive"))
         assertTrue(
             numericReorderAnchorBlock.contains(
-                "conversationListState.layoutInfo.totalItemsCount == conversations.size",
+                "conversationListState.layoutInfo.totalItemsCount == rows.size",
             ),
         )
         assertTrue(numericReorderAnchorBlock.contains("indexedConversationId != firstVisibleConversationId"))
@@ -102,7 +111,8 @@ class DrawerSearchLoadingSourceContractTest {
                 "if (viewModel.currentConversationId.value != conversationId) return@collect",
             ).size - 1 == 2,
         )
-        assertTrue(drawer.contains("currentConversations.firstOrNull()?.id == conversationId"))
+        // La verificación de presencia ahora opera sobre los rows aplanados del drawer.
+        assertTrue(drawer.contains("it is DrawerRow.Chat && it.conversation.id == conversationId"))
         assertTrue(drawer.contains("conversationListState.animateToAbsoluteTop("))
         assertTrue(drawer.contains("feedbackSpec = SendFeedbackScrollSpec"))
         assertTrue(drawer.contains("latestMotionPolicy.allowProgrammaticScrollMotion"))
@@ -116,17 +126,19 @@ class DrawerSearchLoadingSourceContractTest {
                     "                _firstMessageCommitted.tryEmit(conversationId)",
             ),
         )
-        assertTrue(drawer.contains("val visibleConversationTitle = replaceCustomProviderIdsForDisplay("))
-        val titleCrossfadeBlock = normalizedDrawer
-            .substringAfter("targetState = visibleConversationTitle")
+        // El row composable con su Crossfade de título vive en ChatDrawerRows.kt; el drawer
+        // resuelve el título de display y lo pasa como parámetro title.
+        assertTrue(drawer.contains("title = replaceCustomProviderIdsForDisplay("))
+        val titleCrossfadeBlock = drawerRows
+            .substringAfter("targetState = title")
             .substringBefore("label = \"DrawerConversationTitleCrossfade\"")
         assertTrue(titleCrossfadeBlock.contains("durationMillis = 200"))
         assertTrue(titleCrossfadeBlock.contains("easing = FastOutSlowInEasing"))
         assertTrue(titleCrossfadeBlock.contains("modifier = Modifier.weight(1f)"))
-        assertTrue(drawer.split("label = \"DrawerConversationTitleCrossfade\"").size - 1 == 1)
+        assertTrue(drawerRows.split("label = \"DrawerConversationTitleCrossfade\"").size - 1 == 1)
         assertTrue(drawer.split(".animateItem(").size - 1 == 1)
         assertFalse(drawer.contains("fadeInSpec = tween(180)"))
-        assertTrue(drawer.contains("overflow = TextOverflow.Ellipsis"))
+        assertTrue(drawerRows.contains("overflow = TextOverflow.Ellipsis"))
         assertTrue(searchResultItem.contains("overflow = TextOverflow.Ellipsis"))
         assertTrue(searchState.contains("var isSearching by mutableStateOf(false)"))
         assertTrue(searchState.contains("isSearching = true"))
