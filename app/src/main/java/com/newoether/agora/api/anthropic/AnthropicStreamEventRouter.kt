@@ -4,6 +4,7 @@ import com.newoether.agora.api.GenerationError
 import com.newoether.agora.api.StreamEvent
 import com.newoether.agora.api.util.ProviderRetryPolicy
 import com.newoether.agora.api.util.ToolArgumentAccumulator
+import com.newoether.agora.api.util.malformedToolCallRequest
 import com.newoether.agora.api.util.safeWireToolCallId
 import com.newoether.agora.api.util.safeWireToolName
 import com.newoether.agora.model.CitationPolicy
@@ -186,14 +187,14 @@ internal class AnthropicStreamEventRouter {
                         add(tool.completeEvent())
                     } else {
                         // A closed block is executable only when BOTH identity and arguments are
-                        // complete. A stop marker cannot turn truncated JSON into a valid call.
-                        reportedError = true
+                        // complete. A stop marker cannot turn truncated JSON into a valid call, so
+                        // the block becomes a stand-in the executor answers with this cause.
                         add(
-                            StreamEvent.Error(
-                                GenerationError.SseParse(
-                                    rawLine = "content_block_stop",
-                                    cause = invalidCause,
-                                )
+                            malformedToolCallRequest(
+                                cause = invalidCause,
+                                originalName = tool.name,
+                                originalArguments = tool.arguments.toString(),
+                                streamKey = tool.streamKey,
                             )
                         )
                     }

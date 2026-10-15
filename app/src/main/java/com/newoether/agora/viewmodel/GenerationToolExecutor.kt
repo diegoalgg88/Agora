@@ -2,6 +2,8 @@ package com.newoether.agora.viewmodel
 
 import android.app.Application
 import com.newoether.agora.api.ToolDefinition
+import com.newoether.agora.api.util.MALFORMED_TOOL_CALL_NAME
+import com.newoether.agora.api.util.malformedToolCallResultText
 import com.newoether.agora.data.MemoryManager
 import com.newoether.agora.data.SkillManager
 import com.newoether.agora.data.local.MessageEntity
@@ -165,6 +167,12 @@ internal class GenerationToolExecutor private constructor(
         call: AuthorizedToolCall,
         onEvent: suspend (ToolExecutionEvent) -> Unit,
     ): AuthorizedToolResult {
+        if (call.name == MALFORMED_TOOL_CALL_NAME) {
+            // Stand-in de una llamada dañada: jamás se ejecuta; se responde con qué estaba mal.
+            return call.result(
+                ToolExecutionResult(text = malformedToolCallResultText(call.arguments), isError = true),
+            )
+        }
         if (call.name !in call.authorizedToolNames) {
             return call.result(
                 ToolExecutionResult(

@@ -9,6 +9,7 @@ import com.newoether.agora.api.StreamEvent
 import com.newoether.agora.api.ToolDefinition
 import com.newoether.agora.api.ToolFunction
 import com.newoether.agora.api.ToolParameters
+import com.newoether.agora.api.util.MALFORMED_TOOL_CALL_NAME
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.Participant
 import com.newoether.agora.model.ToolCallData
@@ -270,13 +271,13 @@ class BaseOpenAiProviderTerminationTest {
         },
     ) { provider, config, _ ->
         val events = runBlocking {
-            withTimeout(2_000L) {
-                provider.generateResponse(messages(), config).toList()
-            }
+            withTimeout(2_000L) { provider.generateResponse(messages(), config).toList() }
         }
 
-        assertTrue(events.none { it is StreamEvent.ToolCallRequest })
-        assertEquals(1, events.filterIsInstance<StreamEvent.Error>().size)
+        // El nombre inválido jamás se ejecuta; el modelo recibe un error result por él.
+        val call = events.filterIsInstance<StreamEvent.ToolCallRequest>().single()
+        assertEquals(MALFORMED_TOOL_CALL_NAME, call.name)
+        assertTrue(events.none { it is StreamEvent.Error })
     }
 
     @Test
@@ -290,13 +291,14 @@ class BaseOpenAiProviderTerminationTest {
         },
     ) { provider, config, _ ->
         val events = runBlocking {
-            withTimeout(2_000L) {
-                provider.generateResponse(messages(), config).toList()
-            }
+            withTimeout(2_000L) { provider.generateResponse(messages(), config).toList() }
         }
 
-        assertTrue(events.none { it is StreamEvent.ToolCallRequest || it is StreamEvent.ToolCallsRequest })
-        assertEquals(1, events.filterIsInstance<StreamEvent.Error>().size)
+        // La primera llamada conserva su id; la duplicada se vuelve malformed con id fresco.
+        val calls = events.filterIsInstance<StreamEvent.ToolCallsRequest>().single().calls
+        assertEquals(listOf("file_read", MALFORMED_TOOL_CALL_NAME), calls.map { it.name })
+        assertEquals(2, calls.map { it.id }.distinct().size)
+        assertTrue(events.none { it is StreamEvent.Error })
     }
 
     @Test

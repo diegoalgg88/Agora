@@ -5,6 +5,7 @@ import com.newoether.agora.api.StreamEvent
 import com.newoether.agora.api.ToolDefinition
 import com.newoether.agora.api.ToolFunction
 import com.newoether.agora.api.ToolParameters
+import com.newoether.agora.api.util.MALFORMED_TOOL_CALL_NAME
 import com.newoether.agora.api.util.ProviderStreamNormalizer
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -317,7 +318,7 @@ class ProviderThoughtBoundaryNormalizerTest {
     }
 
     @Test
-    fun `malformed syntax and unknown tool names fail closed`() = runTest {
+    fun `malformed syntax is answered as a malformed call`() = runTest {
         val malformed = normalize(
             listOf(StreamEvent.TextChunk("<tool_call>{\"name\":\"file_read\"}")),
             TOOLS,
@@ -331,9 +332,19 @@ class ProviderThoughtBoundaryNormalizerTest {
             TOOLS,
         )
 
-        assertTrue(malformed.any { it is StreamEvent.Error })
-        assertTrue(unknown.any { it is StreamEvent.Error })
-        assertTrue((malformed + unknown).none { it is StreamEvent.ToolCallRequest })
+        // Nada se ejecuta, y el Run continúa con un error result sobre el que el modelo puede actuar.
+        assertTrue(malformed.none { it is StreamEvent.Error })
+        assertEquals(
+            MALFORMED_TOOL_CALL_NAME,
+            malformed.filterIsInstance<StreamEvent.ToolCallRequest>().single().name,
+        )
+        // Un tool desconocido es un error del modelo, no daño del protocolo: pasa al executor
+        // como call normal, que responde con un error tool result.
+        assertTrue(unknown.none { it is StreamEvent.Error })
+        assertEquals(
+            "File_Read",
+            unknown.filterIsInstance<StreamEvent.ToolCallRequest>().single().name,
+        )
     }
 
     @Test

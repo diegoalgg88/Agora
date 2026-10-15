@@ -7,6 +7,7 @@ import com.newoether.agora.api.StreamEvent
 import com.newoether.agora.api.ToolDefinition
 import com.newoether.agora.api.ToolFunction
 import com.newoether.agora.api.ToolParameters
+import com.newoether.agora.api.util.MALFORMED_TOOL_CALL_NAME
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.CitationRecord
 import com.newoether.agora.model.Participant
@@ -111,7 +112,7 @@ class ProviderPassRunnerTest {
     }
 
     @Test
-    fun `malformed duplicate incomplete and empty tool batches fail closed`() = runTest {
+    fun `malformed duplicate incomplete and empty tool batches stay pairable`() = runTest {
         val valid = StreamEvent.ToolCallRequest("call_1", "file_read", "{}", streamKey = "s1")
         val invalidStreams = listOf(
             listOf<StreamEvent>(
@@ -132,7 +133,11 @@ class ProviderPassRunnerTest {
             listOf<StreamEvent>(StreamEvent.ToolCallsRequest(emptyList())),
         )
 
-        invalidStreams.forEach { streamEvents ->
+        // El daño de identidad se responde como llamadas malformed; un stream key reusado o en
+        // blanco es bookkeeping local y solo recibe un key fresco. Argumentos que no son objeto
+        // y un stream abierto sin calls pasan al executor o se reportan como stand-in.
+        val expectedMalformed = listOf(1, 1, 1, 0, 0, 0, 1, 1)
+        invalidStreams.zip(expectedMalformed).forEach { (streamEvents, malformedCount) ->
             val forwarded = mutableListOf<StreamEvent>()
             val outcome = runner(streamEvents).run(
                 IDENTITY,
@@ -141,9 +146,12 @@ class ProviderPassRunnerTest {
                 forwarded::add,
             )
 
-            assertTrue(outcome is ProviderPassOutcome.Failed)
-            assertTrue((outcome as ProviderPassOutcome.Failed).error is GenerationError.SseParse)
-            assertTrue(forwarded.last() is StreamEvent.Error)
+            val calls = (outcome as ProviderPassOutcome.CompletedToolCalls).calls
+            assertEquals(malformedCount, calls.count { it.name == MALFORMED_TOOL_CALL_NAME })
+            assertEquals(calls.size, calls.map { it.id }.distinct().size)
+            assertEquals(calls.size, calls.map { it.streamKey }.distinct().size)
+            assertTrue(calls.all { it.streamKey.isNotBlank() })
+            assertTrue(forwarded.none { it is StreamEvent.Error })
         }
     }
 

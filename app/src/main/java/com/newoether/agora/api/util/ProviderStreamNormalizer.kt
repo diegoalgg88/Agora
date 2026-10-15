@@ -53,6 +53,7 @@ internal class ProviderStreamNormalizer(
     private var structuredMetadata = ThoughtMetadata(null, null)
     private var toolProbe = ToolProbe.UNDECIDED
     private var malformedTextTool = false
+    private val malformedTextCalls = mutableListOf<StreamEvent.ToolCallRequest>()
     private var finished = false
 
     suspend fun emit(event: StreamEvent, downstream: suspend (StreamEvent) -> Unit) {
@@ -95,7 +96,7 @@ internal class ProviderStreamNormalizer(
         flushThinking(downstream)
         if (releaseTextTools) {
             finishTextTools(downstream)
-            if (!malformedTextTool) releaseTextTools(downstream)
+            releaseTextTools(downstream)
         } else {
             flushAbortedText(downstream)
         }
@@ -278,7 +279,7 @@ internal class ProviderStreamNormalizer(
             onText = { taggedResidualText.append(it) },
             onUpdate = {},
             onComplete = { addTextCandidate(it) },
-            onMalformed = { reportMalformed(it, downstream) },
+            onMalformed = { reportMalformed(it) },
         )
     }
 
@@ -305,10 +306,13 @@ internal class ProviderStreamNormalizer(
                     onText = { taggedResidualText.append(it) },
                     onUpdate = {},
                     onComplete = { addTextCandidate(it) },
-                    onMalformed = { reportMalformed(it, downstream) },
+                    onMalformed = { reportMalformed(it) },
                 )
                 if (taggedResidualText.isNotBlank()) {
-                    reportMalformed("Tagged tool payload contained ordinary text", downstream)
+                    reportMalformed(
+                        "Tagged tool payload contained ordinary text",
+                        taggedResidualText.toString(),
+                    )
                 }
             }
         }
@@ -319,7 +323,7 @@ internal class ProviderStreamNormalizer(
         val parsed = ToolCallTextParser.parse(raw)
         if (parsed.isEmpty()) {
             if (looksLikeExplicitJsonTool(raw)) {
-                reportMalformed("Whole-content tool payload was malformed", downstream)
+                reportMalformed("Whole-content tool payload was malformed", raw)
             } else {
                 downstream(StreamEvent.TextChunk(raw))
             }
@@ -336,34 +340,43 @@ internal class ProviderStreamNormalizer(
     }
 
     private suspend fun releaseTextTools(downstream: suspend (StreamEvent) -> Unit) {
-        if (textToolCandidates.isEmpty()) return
+        if (textToolCandidates.isEmpty() && malformedTextCalls.isEmpty()) return
         val seenIds = nativeCallIds.toMutableSet()
         val calls = mutableListOf<StreamEvent.ToolCallRequest>()
         for (candidate in textToolCandidates) {
-            if (candidate.name !in offeredToolNames) {
-                reportMalformed("Tool name was not offered in this request", downstream)
-                return
-            }
             val fingerprint = fingerprint(candidate.name, candidate.arguments)
-            if (fingerprint == null) {
-                reportMalformed("Tool arguments were not a complete JSON object", downstream)
-                return
-            }
             val id = candidate.id ?: "call_text_${UUID.randomUUID()}"
             if (!id.matches(safeWireToolCallId)) {
-                reportMalformed("Text tool payload contained an invalid or duplicate id", downstream)
-                return
+                calls += malformedToolCallRequest(
+                    cause = "Text tool payload contained an invalid or duplicate id",
+                    originalName = candidate.name,
+                    originalArguments = candidate.arguments,
+                    streamKey = candidate.streamKey,
+                )
+                continue
             }
-            if (candidate.id in nativeCallIds) {
+            if (candidate.id != null && candidate.id in nativeCallIds) {
                 if (nativeFingerprintsById[candidate.id] == fingerprint) continue
-                reportMalformed("Text tool payload contained an invalid or duplicate id", downstream)
-                return
+                calls += malformedToolCallRequest(
+                    cause = "Text tool payload contained an invalid or duplicate id",
+                    originalName = candidate.name,
+                    originalArguments = candidate.arguments,
+                    streamKey = candidate.streamKey,
+                )
+                continue
             }
-            if (fingerprint in nativeFingerprints) continue
+            if (fingerprint != null && fingerprint in nativeFingerprints) continue
             if (!seenIds.add(id)) {
-                reportMalformed("Text tool payload contained an invalid or duplicate id", downstream)
-                return
+                calls += malformedToolCallRequest(
+                    cause = "Text tool payload contained an invalid or duplicate id",
+                    originalName = candidate.name,
+                    originalArguments = candidate.arguments,
+                    streamKey = candidate.streamKey,
+                )
+                continue
             }
+            // Un tool no ofrecido y argumentos que no son objeto son errores del modelo, no daño
+            // del protocolo: pasan al executor, que responde cada uno con un error tool result.
             calls += StreamEvent.ToolCallRequest(
                 id = id,
                 name = candidate.name,
@@ -371,6 +384,9 @@ internal class ProviderStreamNormalizer(
                 streamKey = candidate.streamKey,
             )
         }
+        // Los payloads imparsables se responden como llamadas malformed tras los parsables.
+        calls += malformedTextCalls
+        malformedTextCalls.clear()
         if (calls.size == 1) downstream(calls.single())
         if (calls.size > 1) downstream(StreamEvent.ToolCallsRequest(calls))
     }
@@ -399,20 +415,16 @@ internal class ProviderStreamNormalizer(
         else -> element
     }
 
-    private suspend fun reportMalformed(
-        cause: String,
-        downstream: suspend (StreamEvent) -> Unit,
-    ) {
+    /**
+     * Registra un payload de tool en texto imparsable. En lugar de fallar el Run, se libera como
+     * stand-in malformed-call que el executor responde con un error, para que el modelo pueda
+     * re-emitirlo. Defectos posteriores del mismo payload repiten el primero y no se reportan otra
+     * vez.
+     */
+    private fun reportMalformed(cause: String, raw: String? = null) {
         if (malformedTextTool) return
         malformedTextTool = true
-        downstream(
-            StreamEvent.Error(
-                GenerationError.SseParse(
-                    rawLine = "text_tool_call",
-                    cause = cause,
-                )
-            )
-        )
+        malformedTextCalls += malformedToolCallRequest(cause = cause, originalArguments = raw)
     }
 
     private suspend fun flushAbortedText(downstream: suspend (StreamEvent) -> Unit) {

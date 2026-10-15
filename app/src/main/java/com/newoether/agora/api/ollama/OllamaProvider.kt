@@ -10,6 +10,7 @@ import com.newoether.agora.api.util.StreamTermination
 import com.newoether.agora.api.util.asRetryableResponseBodyReadError
 import com.newoether.agora.api.util.asRetryableTransportError
 import com.newoether.agora.api.util.carriesModelOutput
+import com.newoether.agora.api.util.malformedToolCallRequest
 import com.newoether.agora.api.util.requireValidSerializedRequest
 import com.newoether.agora.api.util.safeWireToolCallId
 import com.newoether.agora.api.util.safeWireToolName
@@ -377,22 +378,25 @@ class OllamaProvider : LlmProvider {
                                                 }.getOrDefault(false),
                                             )
                                         }
-                                        val callIds = parsed.map { it.second.id }
-                                        if (
-                                            parsed.any { !it.third } ||
-                                            callIds.distinct().size != callIds.size
-                                        ) {
-                                            toolCallInFlight = true
-                                            streamError = GenerationError.SseParse(
-                                                rawLine = "tool_calls",
-                                                cause = "Ollama returned incomplete tool metadata",
-                                            )
-                                        } else {
-                                            parsed.forEach { emitTracked(it.first) }
-                                            val calls = parsed.map { it.second }
-                                            if (calls.size == 1) emitTracked(calls.single())
-                                            else emitTracked(StreamEvent.ToolCallsRequest(calls))
+                                        // Una llamada dañada se vuelve un stand-in que el
+                                        // executor responde con un error, para que el modelo
+                                        // pueda re-emitirla.
+                                        val seenIds = mutableSetOf<String>()
+                                        val calls = parsed.map { (_, call, valid) ->
+                                            if (valid && seenIds.add(call.id)) {
+                                                call
+                                            } else {
+                                                malformedToolCallRequest(
+                                                    cause = "Ollama returned incomplete or duplicate tool metadata",
+                                                    originalName = call.name,
+                                                    originalArguments = call.arguments,
+                                                    streamKey = call.streamKey,
+                                                )
+                                            }
                                         }
+                                        parsed.forEach { emitTracked(it.first) }
+                                        if (calls.size == 1) emitTracked(calls.single())
+                                        else emitTracked(StreamEvent.ToolCallsRequest(calls))
                                     }
 
                                     // 3. Compatibility parsing of inline thinking markers is

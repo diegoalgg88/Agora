@@ -1,5 +1,6 @@
 package com.newoether.agora.api.anthropic
 
+import com.newoether.agora.api.util.MALFORMED_TOOL_CALL_NAME
 import com.newoether.agora.api.GenerationError
 import com.newoether.agora.api.StreamEvent
 import kotlinx.serialization.json.Json
@@ -137,20 +138,20 @@ class AnthropicStreamTerminationTest {
     }
 
     @Test
-    fun namelessToolBlockClosing_reportsAnErrorInsteadOfVanishing() {
+    fun namelessToolBlockClosing_becomesAMalformedCallInsteadOfVanishing() {
         val router = AnthropicStreamEventRouter()
         router.route(
             decode("""{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"call_1"}}""")
         )
         val events = router.route(decode("""{"type":"content_block_stop","index":0}"""))
 
-        val error = events.single() as StreamEvent.Error
-        assertTrue(error.error is GenerationError.SseParse)
-        assertTrue(router.reportedError)
+        // El modelo recibe un error result por el bloque dañado y puede re-emitir la llamada.
+        val call = events.single() as StreamEvent.ToolCallRequest
+        assertEquals(MALFORMED_TOOL_CALL_NAME, call.name)
     }
 
     @Test
-    fun truncatedArgumentsAtBlockStop_reportAnErrorAndNeverCompleteTheCall() {
+    fun truncatedArgumentsAtBlockStop_becomeAMalformedCallInsteadOfExecuting() {
         val router = AnthropicStreamEventRouter()
         router.route(
             decode("""{"type":"content_block_start","index":0,"content_block":{"type":"tool_use","id":"call_1","name":"file_read"}}""")
@@ -161,9 +162,9 @@ class AnthropicStreamTerminationTest {
 
         val events = router.route(decode("""{"type":"content_block_stop","index":0}"""))
 
-        assertEquals(1, events.size)
-        assertTrue((events.single() as StreamEvent.Error).error is GenerationError.SseParse)
-        assertTrue(events.none { it is StreamEvent.ToolCallRequest })
+        // El JSON truncado jamás se ejecuta como file_read; se responde como llamada malformed.
+        val call = events.single() as StreamEvent.ToolCallRequest
+        assertEquals(MALFORMED_TOOL_CALL_NAME, call.name)
     }
 
     @Test
@@ -192,7 +193,10 @@ class AnthropicStreamTerminationTest {
             if (index == 0) {
                 assertTrue(events.single() is StreamEvent.ToolCallRequest)
             } else {
-                assertTrue((events.single() as StreamEvent.Error).error is GenerationError.SseParse)
+                // La segunda llamada duplicada se vuelve un stand-in malformed con id fresco.
+                val call = events.single() as StreamEvent.ToolCallRequest
+                assertEquals(MALFORMED_TOOL_CALL_NAME, call.name)
+                assertTrue(call.id != "call_1")
             }
         }
     }
