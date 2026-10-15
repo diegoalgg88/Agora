@@ -4,7 +4,9 @@ import com.newoether.agora.api.GenerationError
 import com.newoether.agora.api.ProviderConfig
 import com.newoether.agora.api.StreamEvent
 import com.newoether.agora.model.ChatMessage
+import com.newoether.agora.model.MessageSegment
 import com.newoether.agora.model.Participant
+import com.newoether.agora.util.Constants
 import com.newoether.agora.util.DebugLog
 import com.sun.net.httpserver.HttpServer
 import io.mockk.Runs
@@ -16,8 +18,11 @@ import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.float
 import kotlinx.serialization.json.int
+import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
@@ -103,6 +108,114 @@ class AnthropicProviderRequestSerializationTest {
     }
 
     @Test
+    fun signedThinkingIsReplayedOnlyToTheModelThatSignedIt() = withServer { server ->
+        val history = signedToolRoundHistory()
+
+        val sameModel = server.capture(config(server, "claude-opus-5"), history)
+        assertEquals(
+            listOf("text", "thinking", "tool_use", "tool_result", "text"),
+            sameModel.contentPartTypes(),
+        )
+        assertTrue(sameModel.toString().contains(SIGNED_THOUGHT))
+
+        listOf("claude-sonnet-5", "claude-opus-4.6").forEach { otherModel ->
+            val switched = server.capture(config(server, otherModel), history)
+            val types = switched.contentPartTypes()
+            assertFalse("$otherModel got a foreign thinking block: $types", "thinking" in types)
+            assertFalse(
+                "$otherModel got a foreign signature",
+                switched.toString().contains(SIGNED_THOUGHT),
+            )
+        }
+    }
+
+    @Test
+    fun signedThinkingIsNeverReplayedThroughAnotherProviderEntry() = withServer { server ->
+        val body = server.capture(
+            config = config(server, "claude-opus-5"),
+            messages = signedToolRoundHistory(),
+            providerName = "Relay Claude",
+        )
+
+        assertFalse("thinking" in body.contentPartTypes())
+        assertFalse(body.toString().contains(SIGNED_THOUGHT))
+        assertTrue(body.toString().contains("Archived tool activity"))
+    }
+
+    /** Una ronda de tool de Anthropic cuyo thinking block lleva una signature opaca firmada por el modelo. */
+    private fun signedToolRoundHistory(): List<ChatMessage> = listOf(
+        ChatMessage(id = "u1", text = "Read a.txt", participant = Participant.USER),
+        ChatMessage(
+            id = Constants.TOOL_MSG_PREFIX + "round",
+            text = "",
+            participant = Participant.MODEL,
+            modelName = "Anthropic:claude-opus-5",
+            segments = listOf(
+                MessageSegment(
+                    type = "thought",
+                    content = "I should read the file first.",
+                    signature = SIGNED_THOUGHT,
+                    signatureProvider = Constants.PROVIDER_ANTHROPIC,
+                ),
+                MessageSegment(
+                    type = "tool",
+                    toolName = "read_file",
+                    toolArgs = """{"path":"a.txt"}""",
+                    toolCallId = "call-1",
+                ),
+            ),
+        ),
+        ChatMessage(
+            id = Constants.RESULT_MSG_PREFIX + "round",
+            text = "",
+            participant = Participant.MODEL,
+            segments = listOf(
+                MessageSegment(
+                    type = "tool",
+                    toolName = "read_file",
+                    toolCallId = "call-1",
+                    toolResult = "hello",
+                ),
+            ),
+        ),
+        ChatMessage(id = "u2", text = "Continue", participant = Participant.USER),
+    )
+
+    private fun JsonObject.contentPartTypes(): List<String> =
+        this["messages"]!!.jsonArray.flatMap { message ->
+            message.jsonObject["content"]!!.jsonArray
+                .map { part -> part.jsonObject["type"]!!.jsonPrimitive.content }
+        }
+
+    private companion object {
+        const val SIGNED_THOUGHT = "opus-5-issued-signature"
+    }
+
+    @Test
+    fun unsetMaxTokensDefaultsTo32kWithinTheModelsDocumentedCeiling() = withServer { server ->
+        fun maxTokensFor(model: String): Int = server.capture(
+            config(server, model).copy(maxTokens = null, thinkingEnabled = false),
+        )["max_tokens"]!!.jsonPrimitive.int
+
+        assertEquals(32768, maxTokensFor("claude-sonnet-5"))
+        // Modelo sin techo documentado: pide el default completo sin clamp.
+        assertEquals(32768, maxTokensFor("claude-unknown-model"))
+        assertEquals(32000, maxTokensFor("claude-opus-4-1-20250805"))
+        assertEquals(8192, maxTokensFor("claude-3-5-sonnet-20240620"))
+        assertEquals(4096, maxTokensFor("claude-3-haiku-20240307"))
+    }
+
+    @Test
+    fun documentedCeilingsMatchOnVersionBoundariesOnly() {
+        assertEquals(64_000, AnthropicOutputLimits.maxOutputTokens("claude-opus-4-5-20251101"))
+        assertEquals(32_000, AnthropicOutputLimits.maxOutputTokens("claude-opus-4-20250514"))
+        assertEquals(64_000, AnthropicOutputLimits.maxOutputTokens("anthropic/claude-sonnet-4.5"))
+        assertEquals(128_000, AnthropicOutputLimits.maxOutputTokens("claude-opus-5-5"))
+        assertEquals(null, AnthropicOutputLimits.maxOutputTokens("claude-opus-45"))
+        assertEquals(null, AnthropicOutputLimits.maxOutputTokens("claude-mythos-preview"))
+    }
+
+    @Test
     fun legacyManualThinkingOmitsTemperatureAndKeepsCompatibleTopP() = withServer { server ->
         val body = server.capture(
             config(server, "claude-haiku-4-5-20251001").copy(
@@ -136,20 +249,33 @@ class AnthropicProviderRequestSerializationTest {
     }
 
     private fun collect(server: RecordingServer, config: ProviderConfig): List<StreamEvent> =
-        runBlocking {
-            withTimeout(2_000L) {
-                AnthropicProvider(defaultBaseUrl = server.baseUrl).generateResponse(
-                    listOf(ChatMessage(text = "hello", participant = Participant.USER)),
-                    config,
-                ).toList()
-            }
+        collect(server, config, listOf(ChatMessage(text = "hello", participant = Participant.USER)))
+
+    private fun collect(
+        server: RecordingServer,
+        config: ProviderConfig,
+        messages: List<ChatMessage>,
+        providerName: String = Constants.PROVIDER_ANTHROPIC,
+    ): List<StreamEvent> = runBlocking {
+        withTimeout(2_000L) {
+            AnthropicProvider(name = providerName, defaultBaseUrl = server.baseUrl)
+                .generateResponse(messages, config)
+                .toList()
         }
+    }
 
     private fun RecordingServer.capture(config: ProviderConfig) =
-        collect(this, config).let { events ->
-            assertTrue(events.none { it is StreamEvent.Error })
-            Json.parseToJsonElement(bodies.last()).jsonObject
-        }
+        capture(config, listOf(ChatMessage(text = "hello", participant = Participant.USER)))
+
+    private fun RecordingServer.capture(
+        config: ProviderConfig,
+        messages: List<ChatMessage>,
+        providerName: String = Constants.PROVIDER_ANTHROPIC,
+    ) = collect(this, config, messages, providerName).let { events ->
+        val failure = events.filterIsInstance<StreamEvent.Error>().firstOrNull()
+        assertTrue("unexpected provider error: ${failure?.error}", failure == null)
+        Json.parseToJsonElement(bodies.last()).jsonObject
+    }
 
     private fun config(server: RecordingServer, model: String) = ProviderConfig(
         apiKey = "",

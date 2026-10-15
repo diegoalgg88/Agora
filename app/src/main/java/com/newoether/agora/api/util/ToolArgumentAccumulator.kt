@@ -42,7 +42,17 @@ class ToolArgumentAccumulator(initial: String = "") {
                 builder.append(fragment)
                 return
             }
-            if (current.startsWith(fragment)) return
+            // Un fragmento corto que repite el head de lo acumulado es un incremento normal,
+            // no un snapshot viejo: los tool arguments casi siempre abren con `{"`, y un par
+            // de chunks `[` + `{"` (chunking real de Anthropic) solía tragarse aquí dejando
+            // la llamada truncada e imparsable. Solo un resend sustancial que cubre la mayor
+            // parte del valor acumulado se lee como snapshot stale, porque descartar un
+            // incremento no puede deshacerse después en el stream.
+            if (
+                fragment.length >= MIN_STALE_SNAPSHOT_LENGTH &&
+                fragment.length * 2 >= current.length &&
+                current.startsWith(fragment)
+            ) return
         }
         builder.append(fragment)
     }
@@ -56,5 +66,6 @@ class ToolArgumentAccumulator(initial: String = "") {
 
     private companion object {
         const val MIN_SNAPSHOT_OVERLAP = 2
+        const val MIN_STALE_SNAPSHOT_LENGTH = 16
     }
 }

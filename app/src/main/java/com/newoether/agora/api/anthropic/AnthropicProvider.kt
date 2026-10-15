@@ -5,6 +5,7 @@ import com.newoether.agora.api.*
 import com.newoether.agora.util.DebugLog
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageSegment
+import com.newoether.agora.model.ModelId
 import com.newoether.agora.model.Participant
 import com.newoether.agora.model.ThinkingLevels
 import com.newoether.agora.api.util.buildToolCallId
@@ -209,18 +210,28 @@ internal fun classifyClaudeFamily(modelName: String): ClaudeFamily {
     return ClaudeFamily.CURRENT_ADAPTIVE
 }
 
+/**
+ * Una thinking signature es estado opaco firmado por el modelo que la produjo, así que solo ese
+ * modelo exacto tras esa entrada de provider exacta puede verificarla. En cualquier otro lugar el
+ * replay es un fallo duro del request: Bedrock responde `Invalid `signature` in `thinking` block`
+ * para TODO el request, que es lo que un cambio de modelo dentro de una conversación solía
+ * provocar. Un modelo o entrada de provider distinta detiene el replay, y
+ * [adaptToolRoundsForProvider] degrada esa ronda a contexto archivado inerte. Las filas sin modelo
+ * registrado no pueden atribuirse, así que tampoco se reenvían.
+ */
 private fun MessageSegment.signatureIsCompatibleWithAnthropic(
     sourceModel: String?,
     targetModel: String,
     targetProviderName: String,
 ): Boolean {
-    signatureProvider?.let {
-        return it.equals(Constants.PROVIDER_ANTHROPIC, ignoreCase = true) ||
-            it == targetProviderName
-    }
-    return sourceModel == null ||
-        sourceModel.equals(targetModel, ignoreCase = true) ||
-        sourceModel.contains("claude", ignoreCase = true)
+    val storedModel = sourceModel?.trim()?.takeIf(String::isNotEmpty)
+        ?.let(ModelId::parse)
+        ?: return false
+    val issuer = signatureProvider?.trim()?.takeIf(String::isNotEmpty)
+        ?: storedModel.providerName
+    if (!issuer.equals(targetProviderName, ignoreCase = true)) return false
+    return storedModel.modelName.removePrefix("models/")
+        .equals(targetModel.trim().removePrefix("models/"), ignoreCase = true)
 }
 
 private fun ChatMessage.isAnthropicToolRoundCompatible(
@@ -375,11 +386,16 @@ class AnthropicProvider(
             // The answer headroom above the thinking budget must also leave room for a tool_use
             // block: with only ~1KB of slack, a thinking model routinely exhausts the cap exactly
             // where the tool call would begin, which surfaces as "the tool call vanished".
-            maxTokens = config.maxTokens ?: when {
-                thinking?.budgetTokens != null ->
-                    maxOf(thinking.budgetTokens + ANSWER_HEADROOM_TOKENS, 16384)
-                thinking?.type == "adaptive" -> 32768
-                else -> 8192
+            //
+            // Sin un valor explícito, cada request pide DEFAULT_MAX_TOKENS, bajado solo al techo
+            // documentado del modelo (los Claude viejos rechazan cualquier cosa por encima).
+            maxTokens = config.maxTokens ?: run {
+                val wanted = when {
+                    thinking?.budgetTokens != null ->
+                        maxOf(thinking.budgetTokens + ANSWER_HEADROOM_TOKENS, DEFAULT_MAX_TOKENS)
+                    else -> DEFAULT_MAX_TOKENS
+                }
+                AnthropicOutputLimits.maxOutputTokens(modelName)?.let { minOf(wanted, it) } ?: wanted
             },
             tools = anthropicTools,
             temperature = config.temperature.takeIf {
@@ -694,6 +710,13 @@ class AnthropicProvider(
          * tool call from being cut off at the block boundary.
          */
         const val ANSWER_HEADROOM_TOKENS = 8192
+
+        /**
+         * `max_tokens` cuando el usuario no fija ninguno. Es un tope, no un objetivo, y el rate
+         * limit de salida de Anthropic solo cuenta los tokens generados, así que un valor
+         * generoso no cuesta nada.
+         */
+        const val DEFAULT_MAX_TOKENS = 32768
     }
 }
 
