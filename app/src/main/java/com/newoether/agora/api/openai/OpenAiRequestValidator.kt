@@ -12,6 +12,7 @@ import com.newoether.agora.api.util.requireValidRequestFormat
 import com.newoether.agora.api.util.safeWireToolCallId
 import com.newoether.agora.api.util.safeWireToolName
 import com.newoether.agora.api.util.validateToolDefinitions
+import com.newoether.agora.model.ModelId
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
@@ -125,8 +126,16 @@ internal fun OpenAiChatRequest.requireValidWireFormat(provider: String) {
     requireValidRequestFormat(provider, violations)
 }
 
+/**
+ * Los raw Responses output items, estado `reasoning` opaco incluido, pertenecen al modelo que los
+ * produjo. Reenviarlos a través de otro modelo es contexto desperdiciado en el mejor caso y un
+ * request rechazado en el peor, así que la entrada de provider Y el modelo deben coincidir, y los
+ * items cuyo modelo no está registrado no se reenvían en absoluto. Dropearlos es seguro: el
+ * fallback de abajo reconstruye items `function_call` planos desde los tool calls almacenados.
+ */
 internal fun List<OpenAiMessage>.toResponsesInput(
     providerName: String? = null,
+    targetModel: String? = null,
 ): List<JsonObject> = buildList {
     this@toResponsesInput.forEach { message ->
         if (message.role == "tool") {
@@ -164,9 +173,15 @@ internal fun List<OpenAiMessage>.toResponsesInput(
                 ).toResponseInputJson(),
             )
         }
+        val storedItemModel = message.responseOutputItemModel?.trim()?.takeIf(String::isNotEmpty)
+        val wantedModel = targetModel?.trim()?.takeIf(String::isNotEmpty)
         val replayedResponseItems = if (
             providerName != null &&
-            message.responseOutputItemProvider == providerName
+            message.responseOutputItemProvider == providerName &&
+            storedItemModel != null &&
+            wantedModel != null &&
+            ModelId.parse(storedItemModel).modelName.removePrefix("models/")
+                .equals(wantedModel.removePrefix("models/"), ignoreCase = true)
         ) {
             message.responseOutputItems.orEmpty()
         } else {

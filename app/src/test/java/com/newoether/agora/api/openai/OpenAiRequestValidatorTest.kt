@@ -244,9 +244,10 @@ class OpenAiRequestValidatorTest {
             assistantToolCall("call_1").copy(
                 responseOutputItems = listOf(reasoning, functionCall),
                 responseOutputItemProvider = "OpenAI",
+                responseOutputItemModel = "OpenAI:gpt-test",
             ),
             toolResult("call_1"),
-        ).toResponsesInput(providerName = "OpenAI")
+        ).toResponsesInput(providerName = "OpenAI", targetModel = "gpt-test")
         val request = OpenAiResponsesRequest(model = "gpt-test", input = input)
 
         request.requireValidWireFormat("OpenAI")
@@ -257,6 +258,57 @@ class OpenAiRequestValidatorTest {
         assertEquals("opaque-reasoning-state", input[1]["encrypted_content"]?.jsonPrimitive?.content)
         assertEquals("fc_1", input[2]["id"]?.jsonPrimitive?.content)
         assertEquals("call_1", input[2]["call_id"]?.jsonPrimitive?.content)
+    }
+
+    @Test
+    fun responsesContinuationDoesNotReplayOpaqueItemsToAnotherModel() {
+        val input = listOf(
+            user("start"),
+            assistantToolCall("call_1").copy(
+                responseOutputItems = listOf(
+                    responseItem(
+                        OpenAiResponseOutputItem(
+                            id = "rs_1",
+                            type = "reasoning",
+                            encryptedContent = "opaque-reasoning-state",
+                        ),
+                    ),
+                ),
+                responseOutputItemProvider = "OpenAI",
+                responseOutputItemModel = "OpenAI:gpt-test",
+            ),
+            toolResult("call_1"),
+        ).toResponsesInput(providerName = "OpenAI", targetModel = "gpt-other")
+
+        assertEquals(
+            listOf("message", "function_call", "function_call_output"),
+            input.map { it["type"]?.jsonPrimitive?.content },
+        )
+    }
+
+    @Test
+    fun responsesContinuationDoesNotReplayOpaqueItemsWithoutARecordedModel() {
+        val input = listOf(
+            user("start"),
+            assistantToolCall("call_1").copy(
+                responseOutputItems = listOf(
+                    responseItem(
+                        OpenAiResponseOutputItem(
+                            id = "rs_1",
+                            type = "reasoning",
+                            encryptedContent = "opaque-reasoning-state",
+                        ),
+                    ),
+                ),
+                responseOutputItemProvider = "OpenAI",
+            ),
+            toolResult("call_1"),
+        ).toResponsesInput(providerName = "OpenAI", targetModel = "gpt-test")
+
+        assertEquals(
+            listOf("message", "function_call", "function_call_output"),
+            input.map { it["type"]?.jsonPrimitive?.content },
+        )
     }
 
     @Test

@@ -94,6 +94,7 @@ fun convertToOpenAiMessages(
                     responseOutputItemProvider = toolSegs.firstOrNull {
                         it.responseOutputItems.isNotEmpty()
                     }?.responseOutputItemProvider,
+                    responseOutputItemModel = msg.modelName,
                 ))
             } else if (msg.toolCall != null) {
                 val tc = msg.toolCall
@@ -108,6 +109,7 @@ fun convertToOpenAiMessages(
                     reasoningContent = thoughtContent?.ifEmpty { null },
                     responseOutputItems = tc.responseOutputItems.ifEmpty { null },
                     responseOutputItemProvider = tc.responseOutputItemProvider,
+                    responseOutputItemModel = msg.modelName,
                 ))
             }
             return@flatMap entries

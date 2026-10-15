@@ -5,6 +5,7 @@ import com.newoether.agora.api.*
 import com.newoether.agora.util.DebugLog
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageSegment
+import com.newoether.agora.model.ModelId
 import com.newoether.agora.model.ThinkingLevels
 import com.newoether.agora.api.util.adaptToolRoundsForProvider
 import com.newoether.agora.api.util.RequestFormatException
@@ -57,7 +58,16 @@ private fun extractThoughtTitle(content: String): String? =
 internal fun requiresGemini3ToolProtocol(modelName: String): Boolean =
     modelName.contains("gemini-3", ignoreCase = true)
 
-private fun ChatMessage.isGeminiToolRoundCompatible(
+/**
+ * Una thoughtSignature de Gemini es estado opaco firmado por el modelo que la produjo, así que
+ * solo ese modelo exacto tras esa entrada de provider exacta puede leerla de vuelta. La regla
+ * anterior dejaba pasar cualquier firma cuyo provider fuera Google y de lo contrario caía en un
+ * match de nombre con "gemini", de modo que un cambio de modelo dentro de una conversación
+ * reenviaba una firma extranjera. La entrada de provider emisora Y el modelo emisor deben coincidir
+ * ahora, y una ronda cuyo modelo no está registrado tampoco se reenvía.
+ * [adaptToolRoundsForProvider] convierte una ronda rechazada en contexto archivado inerte.
+ */
+internal fun ChatMessage.isGeminiToolRoundCompatible(
     targetModel: String,
     targetProviderName: String,
     signatureRequired: Boolean,
@@ -79,16 +89,16 @@ private fun ChatMessage.isGeminiToolRoundCompatible(
             }.orEmpty()
         }
     if (calls.isEmpty()) return false
+    val storedModel = modelName?.trim()?.takeIf(String::isNotEmpty)?.let(ModelId::parse)
+    val target = targetModel.trim().removePrefix("models/")
     return calls.all { call ->
         if (signatureRequired && call.signature.isNullOrBlank()) return@all false
         if (call.signature.isNullOrBlank()) return@all true
-        call.signatureProvider?.let { provider ->
-            return@all provider.equals(Constants.PROVIDER_GOOGLE, ignoreCase = true) ||
-                provider == targetProviderName
-        }
-        modelName == null ||
-            modelName.equals(targetModel, ignoreCase = true) ||
-            modelName.contains("gemini", ignoreCase = true)
+        val model = storedModel ?: return@all false
+        val issuer = call.signatureProvider?.trim()?.takeIf(String::isNotEmpty)
+            ?: model.providerName
+        issuer.equals(targetProviderName, ignoreCase = true) &&
+            model.modelName.removePrefix("models/").equals(target, ignoreCase = true)
     }
 }
 

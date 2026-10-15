@@ -47,7 +47,7 @@ class GenerationToolRoundBuilderTest {
         val durablePath = ApiPathAssembler.assemble(round.entities, round.entities)
         val input = convertToOpenAiMessages(
             projectProviderMessages(durablePath, includeStoredTranscriptions = false),
-        ).toResponsesInput(providerName = "OpenAI")
+        ).toResponsesInput(providerName = "OpenAI", targetModel = "model")
 
         assertEquals(
             listOf("reasoning", "function_call", "function_call_output"),
