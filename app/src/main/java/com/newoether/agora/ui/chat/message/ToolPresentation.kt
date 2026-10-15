@@ -189,7 +189,7 @@ internal object ToolPresentationResolver {
 
     private fun kindFor(name: String): ToolKind = when (name) {
         "list_memory_files" -> ToolKind.MEMORY_LIST
-        "read_memory_file" -> ToolKind.MEMORY_READ
+        "read_memory_file", "read_active_memory" -> ToolKind.MEMORY_READ
         "create_memory_file" -> ToolKind.MEMORY_CREATE
         "edit_memory_file" -> ToolKind.MEMORY_EDIT
         "delete_memory_file" -> ToolKind.MEMORY_DELETE

@@ -33,7 +33,7 @@ class MemoryToolProviderTest {
     @Test
     fun definitionsExposeSixMemoryToolsAndExplicitEditOperation() {
         val definitions = provider.definitions(enabled)
-        assertEquals(7, definitions.size)
+        assertEquals(8, definitions.size)
         assertEquals(
             setOf(
                 "list_memory_files",
@@ -42,6 +42,7 @@ class MemoryToolProviderTest {
                 "edit_memory_file",
                 "delete_memory_file",
                 "pin_memory_file",
+                "read_active_memory",
                 "update_active_memory",
             ),
             definitions.map { it.function.name }.toSet(),
@@ -67,7 +68,7 @@ class MemoryToolProviderTest {
     fun definitionsRespectMemoryAccessSettings() {
         val activeOnly = enabled.copy(accessSavedMemories = false)
         assertEquals(
-            listOf("update_active_memory"),
+            listOf("read_active_memory", "update_active_memory"),
             provider.definitions(activeOnly).map { it.function.name },
         )
         assertTrue(
@@ -273,10 +274,17 @@ class MemoryToolProviderTest {
     }
 
     @Test
+    fun readActiveMemoryReturnsStoredText() = runTest {
+        every { memoryManager.getActiveMemory() } returns "# index\n- a.md"
+        assertEquals("# index\n- a.md", provider.execute("read_active_memory", "{}", enabled))
+    }
+
+    @Test
     fun handlesOnlyMemoryTools() {
         assertTrue(provider.handles("list_memory_files"))
         assertTrue(provider.handles("update_active_memory"))
         assertTrue(provider.handles("pin_memory_file"))
+        assertTrue(provider.handles("read_active_memory"))
         assertFalse(provider.handles("web_search"))
         assertFalse(provider.handles("unknown_tool"))
     }

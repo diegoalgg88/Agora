@@ -15,6 +15,13 @@ data class GenerationPromptTemplate(
     val systemItems: List<PromptTemplateItem>,
     val userItems: List<PromptTemplateItem>,
     val assistantItems: List<PromptTemplateItem>,
+    /**
+     * Active memory leída UNA vez al capturar el template, de modo que cada pass del Provider de
+     * un mismo Run (request inicial, tool continuations, retries) ve el mismo texto y mantiene el
+     * prompt cache estable. Los edits a mitad de Run se hacen visibles vía read_active_memory y
+     * entran al prompt en el siguiente Run.
+     */
+    val activeMemory: String = "",
 )
 
 data class GenerationConfig(

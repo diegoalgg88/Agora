@@ -529,12 +529,21 @@ class GenerationRequestBuilder(
             ?: conversation?.systemPromptId
             ?: promptSettings.activeSystemPromptId
         val entry = promptSettings.systemPrompts.find { it.id == targetPromptId }
+        // Congelada aquí, UNA vez por Run, en lugar de re-leerse en cada pass del Provider: cada
+        // pass del mismo Run (request inicial, tool continuations, retries) debe ver el mismo
+        // texto para mantener el prompt cache estable. El switch accessActiveMemory sigue
+        // gobernando la presencia del texto (decisión propia del fork, más estricta que el
+        // upstream); los edits mid-Run se ven vía read_active_memory y entran al siguiente Run.
+        val activeMemory = withContext(Dispatchers.IO) {
+            if (settings.accessActiveMemory.value) memoryManager.getActiveMemory() else ""
+        }
         GenerationPromptTemplate(
             systemItems = entry?.resolvedSystemItems?.toList().orEmpty(),
             userItems = entry?.resolvedUserItems?.toList()
                 ?: PredefinedVariables.normalizeMessageTemplate(emptyList()),
             assistantItems = entry?.resolvedAssistantItems?.toList()
                 ?: PredefinedVariables.normalizeMessageTemplate(emptyList()),
+            activeMemory = activeMemory,
         )
     }
 
@@ -572,11 +581,9 @@ class GenerationRequestBuilder(
         activeModel: String,
     ): ResolvedPrompt = withContext(Dispatchers.Default) {
         coroutineScope {
-            val includeActiveMemory = settings.accessActiveMemory.value
+            // Active memory está congelada en el template (una lectura por Run), no se relee
+            // aquí: cada pass del mismo Run debe ver el mismo texto para el prompt cache.
             val includeSkillCatalog = settings.accessSkills.value
-            val activeMemoryDeferred = async(Dispatchers.IO) {
-                if (includeActiveMemory) memoryManager.getActiveMemory() else ""
-            }
             val skillCatalogDeferred = async {
                 if (includeSkillCatalog) skillManager.catalog() else ""
             }
@@ -586,9 +593,7 @@ class GenerationRequestBuilder(
             val runtimeValues = buildPromptRuntimeValues(
                 now = java.util.Date(),
                 modelId = modelId,
-                activeMemory = activeMemoryDeferred.await()
-                    .takeIf { includeActiveMemory }
-                    .orEmpty(),
+                activeMemory = promptTemplate.activeMemory,
                 skillCatalog = skillCatalogDeferred.await()
                     .takeIf { includeSkillCatalog }
                     .orEmpty(),

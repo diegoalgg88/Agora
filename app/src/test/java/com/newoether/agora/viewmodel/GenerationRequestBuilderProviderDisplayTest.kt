@@ -156,6 +156,28 @@ class GenerationRequestBuilderProviderDisplayTest {
     }
 
     @Test
+    fun `active memory is frozen for every provider pass of one run`() = runTest {
+        val fixture = RequestBuilderFixture(
+            providerName = Constants.PROVIDER_OPENAI,
+            lowContextModeEnabled = false,
+        )
+        val snapshot = fixture.builder.captureAdmissionSnapshot(
+            conversationId = "conversation",
+            runId = "run",
+            modelId = fixture.modelId,
+        )
+        val resolver = requireNotNull(snapshot.config.requestResolver)
+        // Un tool call edita la active memory a mitad del Run; los passes posteriores deben
+        // conservar el texto capturado al admitir el Run.
+        every { fixture.memoryManager.getActiveMemory() } returns "edited mid-run"
+        val config = com.newoether.agora.api.ProviderConfig(apiKey = "key", modelId = "model")
+        val first = resolver.resolve(emptyList(), config)
+        val second = resolver.resolve(emptyList(), config)
+        assertEquals(RequestBuilderFixture.RESOLVED_SYSTEM_PROMPT, first.systemPrompt)
+        assertEquals(first.systemPrompt, second.systemPrompt)
+    }
+
+    @Test
     fun `image transcription requires a resolvable transcription model before stripping images`() = runTest {
         val fixture = RequestBuilderFixture(
             providerName = Constants.PROVIDER_OPENAI,
