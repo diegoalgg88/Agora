@@ -970,7 +970,6 @@ class SettingsManager(val context: Context) {
             prefs.remove(SCHEME_STYLE)
             prefs.remove(FONT_PREFERENCE)
             prefs.remove(SHOW_DOCUMENTATION_FAB)
-            generationDefaults.clearAll()
 
             // Derived fetch state is never restored. Invalidate it when portable provider/model
             // configuration is replaced so stale results cannot masquerade as imported data.
@@ -978,6 +977,10 @@ class SettingsManager(val context: Context) {
             prefs.remove(CUSTOM_ENDPOINT_RESOLUTIONS_JSON)
             prefs.remove(LAST_MODELS_FETCH_FINGERPRINT)
         }
+        // FUERA del lambda edit: clearAll hace su propio dataStore.edit sobre la MISMA
+        // instancia, y DataStore prohíbe updateData anidado (issue 241760537) — dentro del
+        // lambda el import de Settings abortaba con "Calling updateData inside updateData".
+        generationDefaults.clearAll()
         settingsNotifications.resetPortableKeys()
     }
     suspend fun invalidatePortableModelCaches() =

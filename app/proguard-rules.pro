@@ -46,6 +46,13 @@
 -keep class com.newoether.agora.notifications.NotificationReaderImpl { *; }
 -keep class com.newoether.agora.notifications.NotificationListenerControllerImpl { *; }
 
+# LiteRT-LM: su JNI nativo (liblitertlm_jni.so) resuelve métodos y campos por nombre vía
+# GetMethodID/GetFieldID sobre SamplerConfig, ThinkingConfig y las clases del paquete; R8 los
+# renombró y nativeCreateConversation abortó con "JNI DETECTED ERROR: mid == null" (crash
+# SIGABRT verificado on-device 2026-10-18, tid DefaultDispatch).
+-keep class com.google.ai.edge.litertlm.** { *; }
+-dontwarn com.google.ai.edge.litertlm.**
+
 # Ktor server: JVM-only debug detection (DevelopmentMode), absent on Android.
 -dontwarn java.lang.management.ManagementFactory
 -dontwarn java.lang.management.RuntimeMXBean
