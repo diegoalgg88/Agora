@@ -63,7 +63,8 @@ android {
     buildTypes {
         release {
             signingConfig = releaseSigning
-            isMinifyEnabled = false
+            // R8 shrinks and optimizes release code; keep rules live in proguard-rules.pro.
+            isMinifyEnabled = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"

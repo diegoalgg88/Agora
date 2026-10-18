@@ -24,3 +24,28 @@
 
 # Compose
 -dontwarn androidx.compose.**
+
+# JNI (llama): native code reads these classes' fields and constructors, and calls the
+# callback methods, by name.
+-keep class com.newoether.agora.api.NativeChatCallback { *; }
+-keep class * implements com.newoether.agora.api.NativeChatCallback { *; }
+-keep class com.newoether.agora.api.ChatTemplateToolCall { *; }
+-keep class com.newoether.agora.api.ChatTemplateMessage { *; }
+-keep class com.newoether.agora.api.ChatTemplateTool { *; }
+-keep class com.newoether.agora.api.LlamaChatTemplateRequest { *; }
+-keep class com.newoether.agora.api.ChatTemplateGrammarTrigger { *; }
+-keep class com.newoether.agora.api.LlamaChatTemplateResult { *; }
+-keepclasseswithmembernames class com.newoether.agora.** { native <methods>; }
+
+# Reflection: flavor sandbox factories (AppContainer) and the fdroid-only flavor impls
+# (SMS readers/senders, notification listener) loaded via Class.forName.
+-keep class com.newoether.agora.sandbox.FdroidSandboxManagerFactory { <init>(...); }
+-keep class com.newoether.agora.sandbox.PlaySandboxManagerFactory { <init>(...); }
+-keep class com.newoether.agora.sms.SmsReaderImpl { *; }
+-keep class com.newoether.agora.sms.SmsSenderImpl { *; }
+-keep class com.newoether.agora.notifications.NotificationReaderImpl { *; }
+-keep class com.newoether.agora.notifications.NotificationListenerControllerImpl { *; }
+
+# Ktor server: JVM-only debug detection (DevelopmentMode), absent on Android.
+-dontwarn java.lang.management.ManagementFactory
+-dontwarn java.lang.management.RuntimeMXBean
