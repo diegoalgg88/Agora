@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">Новый проект</string>
+    <string name="project_create">Создать</string>
+    <string name="project_name_label">Название проекта</string>
+    <string name="project_rename_title">Переименовать проект</string>
+    <string name="project_delete_title">Удалить проект</string>
+    <string name="project_delete_confirm">Чаты внутри не удаляются; они возвращаются в основной список.</string>
+    <string name="project_move_to">Переместить в проект</string>
+    <string name="project_remove_from">Убрать из проекта</string>
+    <string name="project_none_yet">Проектов пока нет</string>
+    <string name="project_expand">Развернуть проект</string>
+    <string name="project_collapse">Свернуть проект</string>
+    <string name="drawer_select">Выбрать</string>
+    <string name="drawer_selected_count">Выбрано: %1$d</string>
+    <string name="drawer_select_all">Выбрать все</string>
+    <string name="drawer_cancel_selection">Отменить выбор</string>
+    <string name="drawer_delete_selected_title">Удалить чаты: %1$d</string>
+    <string name="drawer_delete_selected_confirm">Выбранные чаты будут удалены безвозвратно. Чаты, в которых идёт генерация, пропускаются.</string>
+</resources>

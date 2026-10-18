@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">新しいプロジェクト</string>
+    <string name="project_create">作成</string>
+    <string name="project_name_label">プロジェクト名</string>
+    <string name="project_rename_title">プロジェクト名を変更</string>
+    <string name="project_delete_title">プロジェクトを削除</string>
+    <string name="project_delete_confirm">中のチャットは削除されず、メインリストに戻ります。</string>
+    <string name="project_move_to">プロジェクトへ移動</string>
+    <string name="project_remove_from">プロジェクトから外す</string>
+    <string name="project_none_yet">プロジェクトはまだありません</string>
+    <string name="project_expand">プロジェクトを展開</string>
+    <string name="project_collapse">プロジェクトを折りたたむ</string>
+    <string name="drawer_select">選択</string>
+    <string name="drawer_selected_count">%1$d 件選択中</string>
+    <string name="drawer_select_all">すべて選択</string>
+    <string name="drawer_cancel_selection">選択を解除</string>
+    <string name="drawer_delete_selected_title">%1$d 件のチャットを削除</string>
+    <string name="drawer_delete_selected_confirm">選択したチャットを完全に削除します。生成中のチャットはスキップされます。</string>
+</resources>

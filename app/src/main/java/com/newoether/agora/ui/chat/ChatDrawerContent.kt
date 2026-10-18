@@ -1,15 +1,14 @@
 package com.newoether.agora.ui.chat
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.background
-import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -29,23 +28,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.CreateNewFolder
 import androidx.compose.material.icons.filled.Repeat
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import com.newoether.agora.ui.motion.MotionAwareCircularProgressIndicator as CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.FilledTonalIconButton
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -60,11 +54,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.focus.FocusRequester
@@ -72,11 +62,7 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.data.replaceCustomProviderIdsForDisplay
@@ -133,10 +119,14 @@ internal fun isDrawerListAtBottom(
 }
 
 /**
- * The conversation navigation drawer: search box, new-chat button, conversation list with
- * per-item context menu, and the settings button. Reads its own flows from [viewModel];
- * shared host state (drawer slide progress, settings-button position, dialog requests) is
- * written back through callbacks so [ChatApp] keeps owning it.
+ * The conversation navigation drawer: search box, new-chat button, projects and conversation
+ * list with per-item context menu, multi-selection actions, and the settings button. Reads its
+ * own flows from [viewModel]; shared host state (drawer slide progress, settings-button
+ * position, dialog requests) is written back through callbacks so [ChatApp] keeps owning it.
+ *
+ * Selection and project dialogs are drawer-local UI state. Durable changes always go through
+ * `viewModel.projects` (organization only) or `viewModel.deleteConversation` (the existing
+ * guarded delete path), never a parallel pipeline.
  */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -165,7 +155,26 @@ internal fun ChatDrawerContent(
     val isSwitching by viewModel.isSwitching.collectAsState()
     val generatingConversationIds by viewModel.generatingConversationIds.collectAsState()
     val customProviders by viewModel.settings.customProviders.collectAsState()
+    val projects by viewModel.projects.projects.collectAsState()
+    val memberships by viewModel.projects.memberships.collectAsState()
+    val rows = remember(conversations, projects, memberships) {
+        buildDrawerRows(conversations, projects, memberships)
+    }
     val search = rememberDrawerSearchState(viewModel)
+
+    var selectedIds by remember { mutableStateOf(emptySet<String>()) }
+    var projectDialog by remember { mutableStateOf<ProjectDialog?>(null) }
+    val selectionActive = selectedIds.isNotEmpty()
+    val allConversationIds = remember(conversations) { conversations.map { it.id } }
+    // Drop ids of chats that were deleted (or never existed) so the count cannot go stale.
+    LaunchedEffect(allConversationIds) {
+        val pruned = selectedIds.intersect(allConversationIds.toSet())
+        if (pruned != selectedIds) selectedIds = pruned
+    }
+    LaunchedEffect(search.isActive) {
+        if (search.isActive) selectedIds = emptySet()
+    }
+    BackHandler(enabled = selectionActive) { selectedIds = emptySet() }
 
     ModalDrawerSheet(
         drawerShape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
@@ -181,7 +190,7 @@ internal fun ChatDrawerContent(
         val searchListState = rememberLazyListState()
         val activeListState = if (search.isActive) searchListState else conversationListState
         val edgeFadeTolerancePx = with(density) { DrawerEdgeFadeTolerance.roundToPx() }
-        val latestConversations by rememberUpdatedState(conversations)
+        val latestRows by rememberUpdatedState(rows)
         val latestMotionPolicy by rememberUpdatedState(motionPolicy)
         val submittingConversationIds by viewModel.conversationComposerSubmission
             .activeOwnerIds
@@ -190,13 +199,23 @@ internal fun ChatDrawerContent(
             viewModel.firstMessageCommitted.collect { conversationId ->
                 if (viewModel.currentConversationId.value != conversationId) return@collect
                 snapshotFlow {
-                    val currentConversations = latestConversations
-                    currentConversations.firstOrNull()?.id == conversationId &&
-                        conversationListState.layoutInfo.totalItemsCount ==
-                            currentConversations.size
+                    val currentRows = latestRows
+                    currentRows.any {
+                        it is DrawerRow.Chat && it.conversation.id == conversationId
+                    } && conversationListState.layoutInfo.totalItemsCount == currentRows.size
                 }.first { ready -> ready }
                 if (viewModel.currentConversationId.value != conversationId) return@collect
-                if (latestMotionPolicy.allowProgrammaticScrollMotion) {
+                val targetIndex = latestRows.indexOfFirst {
+                    it is DrawerRow.Chat && it.conversation.id == conversationId
+                }.coerceAtLeast(0)
+                if (targetIndex > 0) {
+                    // Projects sit above ungrouped chats: bring the new chat itself into view.
+                    if (latestMotionPolicy.allowProgrammaticScrollMotion) {
+                        conversationListState.animateScrollToItem(targetIndex)
+                    } else {
+                        conversationListState.scrollToItem(targetIndex)
+                    }
+                } else if (latestMotionPolicy.allowProgrammaticScrollMotion) {
                     conversationListState.animateToAbsoluteTop(
                         estimatedItemSizePx = with(density) { 44.dp.toPx() },
                         minimumStepPx = with(density) { 2.dp.toPx() },
@@ -214,10 +233,11 @@ internal fun ChatDrawerContent(
                 ?.key
                 ?.toString()
                 ?.removePrefix("conversation:")
-            val indexedConversationId = conversations.getOrNull(firstVisibleIndex)?.id
+            val indexedConversationId =
+                (rows.getOrNull(firstVisibleIndex) as? DrawerRow.Chat)?.conversation?.id
             if (
                 !search.isActive &&
-                conversationListState.layoutInfo.totalItemsCount == conversations.size &&
+                conversationListState.layoutInfo.totalItemsCount == rows.size &&
                 firstVisibleConversationId != null &&
                 indexedConversationId != null &&
                 indexedConversationId != firstVisibleConversationId &&
@@ -279,54 +299,92 @@ internal fun ChatDrawerContent(
             ) { targetResults ->
                 if (targetResults == null) {
                     Column(modifier = Modifier.fillMaxSize()) {
-                        FilledTonalButton(
-                            onClick = {
-                                focusManager.clearFocus()
-                                onOpenTasks()
-                                scope.launch { onRequestClose() }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(42.dp),
-                            shape = CircleShape
-                        ) {
-                            Icon(Icons.Default.Repeat, null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.tasks), style = ChatType.drawerButton)
-                        }
+                        Crossfade(
+                            targetState = selectionActive,
+                            animationSpec = tween(180),
+                            label = "DrawerActionsTransition",
+                            modifier = Modifier.animateContentSize(tween(200)),
+                        ) { selecting ->
+                            if (selecting) {
+                                DrawerSelectionBar(
+                                    selectedCount = selectedIds.size,
+                                    allSelected = selectedIds.size >= allConversationIds.size,
+                                    canRemoveFromProject = selectedIds.any { it in memberships },
+                                    onClose = { selectedIds = emptySet() },
+                                    onSelectAll = { selectedIds = allConversationIds.toSet() },
+                                    onMove = { projectDialog = ProjectDialog.Move(selectedIds) },
+                                    onRemoveFromProject = {
+                                        viewModel.projects.unassign(selectedIds)
+                                        selectedIds = emptySet()
+                                    },
+                                    onDelete = { projectDialog = ProjectDialog.BulkDelete },
+                                )
+                            } else {
+                                Column {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        FilledTonalButton(
+                                            onClick = {
+                                                focusManager.clearFocus()
+                                                onOpenTasks()
+                                                scope.launch { onRequestClose() }
+                                            },
+                                            modifier = Modifier.weight(1f).height(42.dp),
+                                            shape = CircleShape
+                                        ) {
+                                            Icon(Icons.Default.Repeat, null, modifier = Modifier.size(20.dp))
+                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Text(stringResource(R.string.tasks), style = ChatType.drawerButton)
+                                        }
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        FilledTonalIconButton(
+                                            onClick = { projectDialog = ProjectDialog.Create(emptySet()) },
+                                            modifier = Modifier.size(42.dp),
+                                        ) {
+                                            Icon(
+                                                Icons.Default.CreateNewFolder,
+                                                contentDescription = stringResource(R.string.project_new),
+                                                modifier = Modifier.size(20.dp),
+                                            )
+                                        }
+                                    }
 
-                        Spacer(modifier = Modifier.height(10.dp))
+                                    Spacer(modifier = Modifier.height(10.dp))
 
-                        val newChatDisabled = isSwitching
-                        val newChatContainer by animateColorAsState(
-                            if (newChatDisabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
-                            else MaterialTheme.colorScheme.primary,
-                            tween(300), label = "newChatContainer"
-                        )
-                        val newChatContent by animateColorAsState(
-                            if (newChatDisabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                            else MaterialTheme.colorScheme.onPrimary,
-                            tween(300), label = "newChatContent"
-                        )
-                        Button(
-                            onClick = {
-                                if (!newChatDisabled) {
-                                    viewModel.createNewChat()
-                                    scope.launch {
-                                        onRequestClose()
-                                        inputFocusRequester.requestFocus()
+                                    val newChatDisabled = isSwitching
+                                    val newChatContainer by animateColorAsState(
+                                        if (newChatDisabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)
+                                        else MaterialTheme.colorScheme.primary,
+                                        tween(300), label = "newChatContainer"
+                                    )
+                                    val newChatContent by animateColorAsState(
+                                        if (newChatDisabled) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                        else MaterialTheme.colorScheme.onPrimary,
+                                        tween(300), label = "newChatContent"
+                                    )
+                                    Button(
+                                        onClick = {
+                                            if (!newChatDisabled) {
+                                                viewModel.createNewChat()
+                                                scope.launch {
+                                                    onRequestClose()
+                                                    inputFocusRequester.requestFocus()
+                                                }
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth().height(42.dp),
+                                        enabled = true,
+                                        shape = CircleShape,
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = newChatContainer,
+                                            contentColor = newChatContent
+                                        )
+                                    ) {
+                                        Icon(Icons.Default.Add, null, modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(stringResource(R.string.new_chat), style = ChatType.drawerButton)
                                     }
                                 }
-                            },
-                            modifier = Modifier.fillMaxWidth().height(42.dp),
-                            enabled = true,
-                            shape = CircleShape,
-                            colors = ButtonDefaults.buttonColors(
-                                containerColor = newChatContainer,
-                                contentColor = newChatContent
-                            )
-                        ) {
-                            Icon(Icons.Default.Add, null, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(stringResource(R.string.new_chat), style = ChatType.drawerButton)
+                            }
                         }
 
                         Spacer(modifier = Modifier.height(16.dp))
@@ -340,43 +398,16 @@ internal fun ChatDrawerContent(
                             ) {
                                 LazyColumn(
                                     state = conversationListState,
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .verticalEdgeFade(
-                                        edgeFadeDp = 40f,
-                                        topWeight = stw,
-                                        bottomWeight = sbw,
-                                    ),
-                            ) {
-                                items(
-                                    conversations,
-                                    key = { "conversation:${it.id}" },
-                                ) { conversation ->
-                                    val isSelected = conversation.id == currentConversationId
-                                    val visibleConversationTitle = replaceCustomProviderIdsForDisplay(
-                                        conversation.title,
-                                        customProviders,
-                                    )
-                                    val isGenerating = conversation.id in generatingConversationIds
-                                    val indicator = resolveDrawerConversationIndicator(
-                                        isGenerating = isGenerating,
-                                        isSelected = isSelected,
-                                        hasUnreadGeneration = conversation.hasUnreadGeneration,
-                                    )
-                                    val menuEnabled = !isSwitching && !isGenerating
-                                    val deleteEnabled = menuEnabled &&
-                                        conversation.id !in submittingConversationIds
-                                    val unreadDescription =
-                                        stringResource(R.string.conversation_unread_generation)
-                                    var showMenu by remember { mutableStateOf(false) }
-                                    var pressOffset by remember { mutableStateOf(DpOffset.Zero) }
-                                    var lastPosition by remember {
-                                        mutableStateOf(androidx.compose.ui.geometry.Offset.Zero)
-                                    }
-                                    val density = LocalDensity.current
-
-                                    Box(
-                                        modifier = Modifier.animateItem(
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .verticalEdgeFade(
+                                            edgeFadeDp = 40f,
+                                            topWeight = stw,
+                                            bottomWeight = sbw,
+                                        ),
+                                ) {
+                                    items(rows, key = { it.key }) { row ->
+                                        val itemModifier = Modifier.animateItem(
                                             fadeInSpec = null,
                                             placementSpec = if (
                                                 motionPolicy.allowSpatialTransitions
@@ -386,208 +417,99 @@ internal fun ChatDrawerContent(
                                                 null
                                             },
                                             fadeOutSpec = tween(180),
-                                        ),
-                                    ) {
-                                        Surface(
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .height(44.dp)
-                                                .padding(vertical = 2.dp)
-                                                .clip(CircleShape)
-                                                .pointerInput(showMenu) {
-                                                    if (!showMenu) {
-                                                        awaitPointerEventScope {
-                                                            while (true) {
-                                                                val event = awaitPointerEvent(
-                                                                    PointerEventPass.Initial,
-                                                                )
-                                                                lastPosition =
-                                                                    event.changes.first().position
-                                                            }
-                                                        }
-                                                    }
-                                                }
-                                                .combinedClickable(
-                                                    enabled = !isSwitching,
-                                                    hapticFeedbackEnabled = false,
-                                                    onClick = {
-                                                        viewModel.selectConversation(conversation.id)
-                                                        scope.launch {
-                                                            onRequestClose()
-                                                        }
-                                                    },
-                                                    onLongClick = {
-                                                        haptics.longPress()
-                                                        pressOffset = with(density) {
-                                                            val x = lastPosition.x
-                                                                .toDp()
-                                                                .coerceIn(16.dp, 200.dp)
-                                                            DpOffset(
-                                                                x,
-                                                                lastPosition.y.toDp() - 28.dp,
-                                                            )
-                                                        }
-                                                        showMenu = true
-                                                    }
-                                                ),
-                                            color = if (isSelected) {
-                                                MaterialTheme.colorScheme.secondaryContainer
-                                            } else {
-                                                Color.Transparent
-                                            },
-                                            shape = CircleShape
-                                        ) {
-                                            Row(
-                                                modifier = Modifier
-                                                    .fillMaxSize()
-                                                    .padding(horizontal = 16.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                            ) {
-                                                Crossfade(
-                                                    targetState = visibleConversationTitle,
-                                                    animationSpec = tween(
-                                                        durationMillis = 200,
-                                                        easing = FastOutSlowInEasing,
-                                                    ),
-                                                    modifier = Modifier.weight(1f),
-                                                    label = "DrawerConversationTitleCrossfade",
-                                                ) { title ->
-                                                    Text(
-                                                        text = title,
-                                                        maxLines = 1,
-                                                        overflow = TextOverflow.Ellipsis,
-                                                        style = MaterialTheme.typography.bodyLarge,
-                                                        color = if (isSelected) {
-                                                            MaterialTheme.colorScheme.onSecondaryContainer
-                                                        } else {
-                                                            MaterialTheme.colorScheme.onSurface
-                                                        },
-                                                    )
-                                                }
-                                                Spacer(modifier = Modifier.width(8.dp))
-                                                Box(
-                                                    modifier = Modifier.size(18.dp),
-                                                    contentAlignment = Alignment.Center,
-                                                ) {
-                                                    androidx.compose.animation.AnimatedVisibility(
-                                                        visible =
-                                                            indicator ==
-                                                                DrawerConversationIndicator.GENERATING,
-                                                        enter = fadeIn(tween(200)),
-                                                        exit = fadeOut(tween(200)),
-                                                    ) {
-                                                        CircularProgressIndicator(
-                                                            modifier = Modifier.size(18.dp),
-                                                            strokeWidth = 2.dp,
-                                                            color = if (isSelected) {
-                                                                MaterialTheme.colorScheme.onSecondaryContainer
+                                        )
+                                        when (row) {
+                                            is DrawerRow.Project -> DrawerProjectRow(
+                                                name = row.project.name,
+                                                chatCount = row.chatIds.size,
+                                                collapsed = row.project.collapsed,
+                                                selectionActive = selectionActive,
+                                                allSelected = row.chatIds.isNotEmpty() &&
+                                                    selectedIds.containsAll(row.chatIds),
+                                                onClick = {
+                                                    if (selectionActive) {
+                                                        selectedIds =
+                                                            if (selectedIds.containsAll(row.chatIds)) {
+                                                                selectedIds - row.chatIds.toSet()
                                                             } else {
-                                                                MaterialTheme.colorScheme.primary
-                                                            },
+                                                                selectedIds + row.chatIds
+                                                            }
+                                                    } else {
+                                                        viewModel.projects.setCollapsed(
+                                                            row.project.id,
+                                                            !row.project.collapsed,
                                                         )
                                                     }
-                                                    androidx.compose.animation.AnimatedVisibility(
-                                                        visible =
-                                                            indicator ==
-                                                                DrawerConversationIndicator.UNREAD,
-                                                        enter = fadeIn(tween(200)),
-                                                        exit = fadeOut(tween(200)),
-                                                    ) {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .size(8.dp)
-                                                                .background(
-                                                                    MaterialTheme.colorScheme.primary,
-                                                                    CircleShape,
-                                                                )
-                                                                .semantics {
-                                                                    contentDescription =
-                                                                        unreadDescription
-                                                                },
-                                                        )
-                                                    }
-                                                }
-                                            }
-                                        }
+                                                },
+                                                onRename = {
+                                                    projectDialog = ProjectDialog.Rename(
+                                                        row.project.id,
+                                                        row.project.name,
+                                                    )
+                                                },
+                                                onDelete = {
+                                                    projectDialog = ProjectDialog.Delete(
+                                                        row.project.id,
+                                                        row.project.name,
+                                                    )
+                                                },
+                                                modifier = itemModifier,
+                                            )
 
-                                        DropdownMenu(
-                                            containerColor =
-                                                MaterialTheme.colorScheme.surfaceContainer,
-                                            tonalElevation = 16.dp,
-                                            expanded = showMenu,
-                                            onDismissRequest = { showMenu = false },
-                                            offset = pressOffset,
-                                            shape = RoundedCornerShape(12.dp)
-                                        ) {
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Text(stringResource(R.string.generate_title))
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        Icons.Default.Refresh,
-                                                        contentDescription = null,
-                                                    )
-                                                },
-                                                enabled = menuEnabled,
-                                                onClick = {
-                                                    showMenu = false
-                                                    viewModel.generateTitle(conversation.id)
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = { Text(stringResource(R.string.rename)) },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        Icons.Default.Edit,
-                                                        contentDescription = null,
-                                                    )
-                                                },
-                                                enabled = menuEnabled,
-                                                onClick = {
-                                                    showMenu = false
-                                                    onRequestRename(
-                                                        conversation.id,
+                                            is DrawerRow.Chat -> {
+                                                val conversation = row.conversation
+                                                val isGenerating =
+                                                    conversation.id in generatingConversationIds
+                                                DrawerConversationRow(
+                                                    title = replaceCustomProviderIdsForDisplay(
                                                         conversation.title,
-                                                    )
-                                                }
-                                            )
-                                            DropdownMenuItem(
-                                                text = {
-                                                    Text(
-                                                        stringResource(R.string.delete),
-                                                        color = if (deleteEnabled) {
-                                                            MaterialTheme.colorScheme.error
-                                                        } else {
-                                                            MaterialTheme.colorScheme.error.copy(
-                                                                alpha = 0.5f,
-                                                            )
-                                                        },
-                                                    )
-                                                },
-                                                leadingIcon = {
-                                                    Icon(
-                                                        Icons.Default.Delete,
-                                                        contentDescription = null,
-                                                        tint = if (deleteEnabled) {
-                                                            MaterialTheme.colorScheme.error
-                                                        } else {
-                                                            MaterialTheme.colorScheme.error.copy(
-                                                                alpha = 0.5f,
-                                                            )
-                                                        },
-                                                    )
-                                                },
-                                                enabled = deleteEnabled,
-                                                onClick = {
-                                                    showMenu = false
-                                                    onRequestDelete(conversation.id)
-                                                }
-                                            )
+                                                        customProviders,
+                                                    ),
+                                                    isCurrent = conversation.id == currentConversationId,
+                                                    isGenerating = isGenerating,
+                                                    hasUnreadGeneration = conversation.hasUnreadGeneration,
+                                                    isSwitching = isSwitching,
+                                                    deleteEnabled = !isSwitching && !isGenerating &&
+                                                        conversation.id !in submittingConversationIds,
+                                                    inProject = row.projectId != null,
+                                                    indented = row.projectId != null,
+                                                    selectionActive = selectionActive,
+                                                    checked = conversation.id in selectedIds,
+                                                    onOpen = {
+                                                        viewModel.selectConversation(conversation.id)
+                                                        scope.launch { onRequestClose() }
+                                                    },
+                                                    onToggleSelect = {
+                                                        selectedIds =
+                                                            if (conversation.id in selectedIds) {
+                                                                selectedIds - conversation.id
+                                                            } else {
+                                                                selectedIds + conversation.id
+                                                            }
+                                                    },
+                                                    onStartSelection = {
+                                                        selectedIds = selectedIds + conversation.id
+                                                    },
+                                                    onGenerateTitle = {
+                                                        viewModel.generateTitle(conversation.id)
+                                                    },
+                                                    onRename = {
+                                                        onRequestRename(conversation.id, conversation.title)
+                                                    },
+                                                    onMove = {
+                                                        projectDialog =
+                                                            ProjectDialog.Move(setOf(conversation.id))
+                                                    },
+                                                    onRemoveFromProject = {
+                                                        viewModel.projects.unassign(setOf(conversation.id))
+                                                    },
+                                                    onDelete = { onRequestDelete(conversation.id) },
+                                                    modifier = itemModifier,
+                                                )
+                                            }
                                         }
                                     }
                                 }
-                            }
                             }
 
                             androidx.compose.animation.AnimatedVisibility(
@@ -682,6 +604,71 @@ internal fun ChatDrawerContent(
                 Icon(Icons.Default.Settings, null, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(stringResource(R.string.settings), style = ChatType.drawerButton)
+            }
+        }
+
+        when (val dialog = projectDialog) {
+            null -> Unit
+            is ProjectDialog.Create -> ProjectNameDialog(
+                titleRes = R.string.project_new,
+                confirmRes = R.string.project_create,
+                initialName = "",
+                onSave = { name ->
+                    viewModel.projects.create(name, dialog.assignIds)
+                    if (dialog.assignIds.isNotEmpty()) selectedIds = emptySet()
+                    projectDialog = null
+                },
+                onDismiss = { projectDialog = null },
+            )
+
+            is ProjectDialog.Rename -> ProjectNameDialog(
+                titleRes = R.string.project_rename_title,
+                confirmRes = R.string.save,
+                initialName = dialog.name,
+                onSave = { name ->
+                    viewModel.projects.rename(dialog.id, name)
+                    projectDialog = null
+                },
+                onDismiss = { projectDialog = null },
+            )
+
+            is ProjectDialog.Delete -> ProjectDeleteDialog(
+                projectName = dialog.name,
+                onConfirm = {
+                    viewModel.projects.delete(dialog.id)
+                    projectDialog = null
+                },
+                onDismiss = { projectDialog = null },
+            )
+
+            is ProjectDialog.Move -> MoveToProjectDialog(
+                projects = projects,
+                onPick = { projectId ->
+                    viewModel.projects.assign(projectId, dialog.ids)
+                    selectedIds = emptySet()
+                    projectDialog = null
+                },
+                onCreateNew = { projectDialog = ProjectDialog.Create(dialog.ids) },
+                onDismiss = { projectDialog = null },
+            )
+
+            ProjectDialog.BulkDelete -> {
+                // Same guards as the single-delete path: generating or submitting chats are skipped.
+                val deletable = selectedIds.filter {
+                    it !in generatingConversationIds &&
+                        it !in submittingConversationIds &&
+                        !viewModel.isConversationDeleteLocked(it)
+                }
+                BulkDeleteDialog(
+                    count = deletable.size,
+                    onConfirm = {
+                        deletable.forEach { viewModel.deleteConversation(it) }
+                        haptics.destructiveConfirmed()
+                        selectedIds = emptySet()
+                        projectDialog = null
+                    },
+                    onDismiss = { projectDialog = null },
+                )
             }
         }
     }

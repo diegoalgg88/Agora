@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">Nouveau projet</string>
+    <string name="project_create">Créer</string>
+    <string name="project_name_label">Nom du projet</string>
+    <string name="project_rename_title">Renommer le projet</string>
+    <string name="project_delete_title">Supprimer le projet</string>
+    <string name="project_delete_confirm">Les discussions qu\'il contient ne sont pas supprimées ; elles retournent dans la liste principale.</string>
+    <string name="project_move_to">Déplacer vers un projet</string>
+    <string name="project_remove_from">Retirer du projet</string>
+    <string name="project_none_yet">Aucun projet pour le moment</string>
+    <string name="project_expand">Développer le projet</string>
+    <string name="project_collapse">Réduire le projet</string>
+    <string name="drawer_select">Sélectionner</string>
+    <string name="drawer_selected_count">%1$d sélectionnée(s)</string>
+    <string name="drawer_select_all">Tout sélectionner</string>
+    <string name="drawer_cancel_selection">Annuler la sélection</string>
+    <string name="drawer_delete_selected_title">Supprimer %1$d discussions</string>
+    <string name="drawer_delete_selected_confirm">Les discussions sélectionnées seront supprimées définitivement. Celles en cours de génération sont ignorées.</string>
+</resources>

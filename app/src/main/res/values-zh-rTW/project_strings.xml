@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">新增專案</string>
+    <string name="project_create">建立</string>
+    <string name="project_name_label">專案名稱</string>
+    <string name="project_rename_title">重新命名專案</string>
+    <string name="project_delete_title">刪除專案</string>
+    <string name="project_delete_confirm">專案內的對話不會被刪除，它們會回到主清單。</string>
+    <string name="project_move_to">移至專案</string>
+    <string name="project_remove_from">從專案中移除</string>
+    <string name="project_none_yet">尚無專案</string>
+    <string name="project_expand">展開專案</string>
+    <string name="project_collapse">收合專案</string>
+    <string name="drawer_select">選取</string>
+    <string name="drawer_selected_count">已選取 %1$d 項</string>
+    <string name="drawer_select_all">全選</string>
+    <string name="drawer_cancel_selection">取消選取</string>
+    <string name="drawer_delete_selected_title">刪除 %1$d 個對話</string>
+    <string name="drawer_delete_selected_confirm">這將永久刪除所選對話。正在生成的對話會被略過。</string>
+</resources>

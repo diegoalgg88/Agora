@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">مشروع جديد</string>
+    <string name="project_create">إنشاء</string>
+    <string name="project_name_label">اسم المشروع</string>
+    <string name="project_rename_title">إعادة تسمية المشروع</string>
+    <string name="project_delete_title">حذف المشروع</string>
+    <string name="project_delete_confirm">لن يتم حذف المحادثات الموجودة بداخله؛ ستعود إلى القائمة الرئيسية.</string>
+    <string name="project_move_to">نقل إلى مشروع</string>
+    <string name="project_remove_from">إزالة من المشروع</string>
+    <string name="project_none_yet">لا توجد مشاريع بعد</string>
+    <string name="project_expand">توسيع المشروع</string>
+    <string name="project_collapse">طي المشروع</string>
+    <string name="drawer_select">تحديد</string>
+    <string name="drawer_selected_count">تم تحديد %1$d</string>
+    <string name="drawer_select_all">تحديد الكل</string>
+    <string name="drawer_cancel_selection">إلغاء التحديد</string>
+    <string name="drawer_delete_selected_title">حذف %1$d محادثات</string>
+    <string name="drawer_delete_selected_confirm">سيؤدي هذا إلى حذف المحادثات المحددة نهائيًا. يتم تخطي المحادثات التي قيد التوليد.</string>
+</resources>

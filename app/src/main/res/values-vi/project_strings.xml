@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">Dự án mới</string>
+    <string name="project_create">Tạo</string>
+    <string name="project_name_label">Tên dự án</string>
+    <string name="project_rename_title">Đổi tên dự án</string>
+    <string name="project_delete_title">Xóa dự án</string>
+    <string name="project_delete_confirm">Các cuộc trò chuyện bên trong không bị xóa; chúng quay lại danh sách chính.</string>
+    <string name="project_move_to">Chuyển vào dự án</string>
+    <string name="project_remove_from">Xóa khỏi dự án</string>
+    <string name="project_none_yet">Chưa có dự án nào</string>
+    <string name="project_expand">Mở rộng dự án</string>
+    <string name="project_collapse">Thu gọn dự án</string>
+    <string name="drawer_select">Chọn</string>
+    <string name="drawer_selected_count">Đã chọn %1$d</string>
+    <string name="drawer_select_all">Chọn tất cả</string>
+    <string name="drawer_cancel_selection">Hủy chọn</string>
+    <string name="drawer_delete_selected_title">Xóa %1$d cuộc trò chuyện</string>
+    <string name="drawer_delete_selected_confirm">Thao tác này xóa vĩnh viễn các cuộc trò chuyện đã chọn. Những cuộc đang tạo phản hồi sẽ bị bỏ qua.</string>
+</resources>

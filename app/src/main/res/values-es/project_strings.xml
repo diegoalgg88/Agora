@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">Nuevo proyecto</string>
+    <string name="project_create">Crear</string>
+    <string name="project_name_label">Nombre del proyecto</string>
+    <string name="project_rename_title">Renombrar proyecto</string>
+    <string name="project_delete_title">Eliminar proyecto</string>
+    <string name="project_delete_confirm">Los chats dentro no se eliminan; vuelven a la lista principal.</string>
+    <string name="project_move_to">Mover a proyecto</string>
+    <string name="project_remove_from">Quitar del proyecto</string>
+    <string name="project_none_yet">Aún no hay proyectos</string>
+    <string name="project_expand">Expandir proyecto</string>
+    <string name="project_collapse">Contraer proyecto</string>
+    <string name="drawer_select">Seleccionar</string>
+    <string name="drawer_selected_count">%1$d seleccionados</string>
+    <string name="drawer_select_all">Seleccionar todo</string>
+    <string name="drawer_cancel_selection">Cancelar selección</string>
+    <string name="drawer_delete_selected_title">Eliminar %1$d chats</string>
+    <string name="drawer_delete_selected_confirm">Esto elimina permanentemente los chats seleccionados. Los chats que se están generando se omiten.</string>
+</resources>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">새 프로젝트</string>
+    <string name="project_create">만들기</string>
+    <string name="project_name_label">프로젝트 이름</string>
+    <string name="project_rename_title">프로젝트 이름 변경</string>
+    <string name="project_delete_title">프로젝트 삭제</string>
+    <string name="project_delete_confirm">안의 채팅은 삭제되지 않고 기본 목록으로 돌아갑니다.</string>
+    <string name="project_move_to">프로젝트로 이동</string>
+    <string name="project_remove_from">프로젝트에서 제거</string>
+    <string name="project_none_yet">아직 프로젝트가 없습니다</string>
+    <string name="project_expand">프로젝트 펼치기</string>
+    <string name="project_collapse">프로젝트 접기</string>
+    <string name="drawer_select">선택</string>
+    <string name="drawer_selected_count">%1$d개 선택됨</string>
+    <string name="drawer_select_all">모두 선택</string>
+    <string name="drawer_cancel_selection">선택 취소</string>
+    <string name="drawer_delete_selected_title">채팅 %1$d개 삭제</string>
+    <string name="drawer_delete_selected_confirm">선택한 채팅을 영구적으로 삭제합니다. 생성 중인 채팅은 건너뜁니다.</string>
+</resources>

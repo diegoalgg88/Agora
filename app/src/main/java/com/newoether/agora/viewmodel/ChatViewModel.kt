@@ -93,7 +93,7 @@ class ChatViewModel(
     val settings: SettingsRepository = settingsRepository
     val smsUi: SmsUiBridge = SmsUiBridge(smsDraftStore, smsStore, smsPoller, smsSender, viewModelScope)
     val emailUi: EmailUiBridge = EmailUiBridge(emailDraftStore, emailStore, emailPoller, settingsRepository, viewModelScope)
-
+    val projects = ProjectController(chatDao, viewModelScope)
     /**
      * Conversation/message persistence behind the repository layer. CRUD, cascade-delete,
      * branch-selection and stuck-message logic live in [ConversationRepository]; managers

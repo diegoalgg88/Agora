@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">Novo projeto</string>
+    <string name="project_create">Criar</string>
+    <string name="project_name_label">Nome do projeto</string>
+    <string name="project_rename_title">Renomear projeto</string>
+    <string name="project_delete_title">Excluir projeto</string>
+    <string name="project_delete_confirm">As conversas dentro não são excluídas; elas voltam para a lista principal.</string>
+    <string name="project_move_to">Mover para projeto</string>
+    <string name="project_remove_from">Remover do projeto</string>
+    <string name="project_none_yet">Ainda não há projetos</string>
+    <string name="project_expand">Expandir projeto</string>
+    <string name="project_collapse">Recolher projeto</string>
+    <string name="drawer_select">Selecionar</string>
+    <string name="drawer_selected_count">%1$d selecionadas</string>
+    <string name="drawer_select_all">Selecionar tudo</string>
+    <string name="drawer_cancel_selection">Cancelar seleção</string>
+    <string name="drawer_delete_selected_title">Excluir %1$d conversas</string>
+    <string name="drawer_delete_selected_confirm">Isso exclui permanentemente as conversas selecionadas. Conversas em geração são ignoradas.</string>
+</resources>

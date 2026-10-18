@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="project_new">Neues Projekt</string>
+    <string name="project_create">Erstellen</string>
+    <string name="project_name_label">Projektname</string>
+    <string name="project_rename_title">Projekt umbenennen</string>
+    <string name="project_delete_title">Projekt löschen</string>
+    <string name="project_delete_confirm">Die enthaltenen Chats werden nicht gelöscht; sie kehren in die Hauptliste zurück.</string>
+    <string name="project_move_to">In Projekt verschieben</string>
+    <string name="project_remove_from">Aus Projekt entfernen</string>
+    <string name="project_none_yet">Noch keine Projekte</string>
+    <string name="project_expand">Projekt aufklappen</string>
+    <string name="project_collapse">Projekt zuklappen</string>
+    <string name="drawer_select">Auswählen</string>
+    <string name="drawer_selected_count">%1$d ausgewählt</string>
+    <string name="drawer_select_all">Alle auswählen</string>
+    <string name="drawer_cancel_selection">Auswahl abbrechen</string>
+    <string name="drawer_delete_selected_title">%1$d Chats löschen</string>
+    <string name="drawer_delete_selected_confirm">Die ausgewählten Chats werden dauerhaft gelöscht. Chats, die gerade generieren, werden übersprungen.</string>
+</resources>
