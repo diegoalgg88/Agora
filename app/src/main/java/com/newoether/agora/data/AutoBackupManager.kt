@@ -117,6 +117,13 @@ class AutoBackupManager(
             // shows an explicit warning when that box is checked).
             val includeApiKeys = DataExporter.ExportCategory.API_KEYS in categories
 
+            // Find the most recent valid .agora file as an optional baseline for incremental backups
+            val baselineFile = dir.listFiles { candidate ->
+                candidate.isFile &&
+                    candidate.name.startsWith("Agora_backup_") &&
+                    candidate.name.endsWith(".agora")
+            }?.maxByOrNull(File::lastModified)
+
             val exporter = DataExporter(
                 context,
                 database,
@@ -129,6 +136,7 @@ class AutoBackupManager(
                 uri = Uri.fromFile(tmpFile),
                 categories = categories,
                 includeApiKeys = includeApiKeys,
+                baselineFile = baselineFile,
                 onProgress = {}
             )
 

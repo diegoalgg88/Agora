@@ -88,8 +88,11 @@ interface ChatCoreDao : ChatModelReferenceDao {
     @Upsert
     suspend fun upsertConversation(conversation: ChatEntity)
 
-    @Query("UPDATE conversations SET title = :title WHERE id = :conversationId")
-    suspend fun updateConversationTitle(conversationId: String, title: String): Int
+    @Query("UPDATE conversations SET dataChangedAt = :at WHERE id = :conversationId")
+    suspend fun touchConversationData(conversationId: String, at: Long): Int
+
+    @Query("UPDATE conversations SET title = :title, dataChangedAt = :at WHERE id = :conversationId")
+    suspend fun updateConversationTitle(conversationId: String, title: String, at: Long): Int
 
     @Query(
         """
@@ -118,7 +121,7 @@ interface ChatCoreDao : ChatModelReferenceDao {
     @Query(
         """
         UPDATE conversations
-        SET title = :newTitle
+        SET title = :newTitle, dataChangedAt = :at
         WHERE id = :conversationId AND title = :expectedTitle
         """
     )
@@ -126,6 +129,7 @@ interface ChatCoreDao : ChatModelReferenceDao {
         conversationId: String,
         expectedTitle: String,
         newTitle: String,
+        at: Long,
     ): Int
 
     @Upsert

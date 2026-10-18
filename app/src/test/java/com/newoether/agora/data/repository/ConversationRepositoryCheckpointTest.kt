@@ -1,6 +1,7 @@
 package com.newoether.agora.data.repository
 
 import com.newoether.agora.data.local.ChatDao
+import com.newoether.agora.data.local.MessageEntity
 import com.newoether.agora.data.local.MessageStreamCheckpoint
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.CitationAnchor
@@ -27,7 +28,21 @@ class ConversationRepositoryCheckpointTest {
     fun checkpointUpdatesOnlyMutableStreamingFields() = runTest {
         val dao = mockk<ChatDao>()
         val captured = slot<MessageStreamCheckpoint>()
-        coEvery { dao.updateMessageCheckpoint(capture(captured)) } returns 1
+        // El checkpoint ahora resuelve el conversationId desde Room para el watermark dataChangedAt.
+        coEvery { dao.getMessage("model-message") } returns MessageEntity(
+            id = "model-message",
+            conversationId = "conversation",
+            parentId = "user-message",
+            text = "",
+            status = MessageStatus.SENDING,
+            participant = Participant.MODEL,
+            timestamp = 1L,
+            runId = "run",
+            runSequence = 0,
+        )
+        coEvery { dao.updateConversationMessageCheckpoint(any(), capture(captured), any()) } returns true
+        coEvery { dao.updateMessageCheckpoint(any()) } returns 1
+        coEvery { dao.touchConversationData(any(), any()) } returns 1
         val repository = ConversationRepository(dao, database = null)
         val answer = "partial answer"
         val citation = requireNotNull(
@@ -91,13 +106,15 @@ class ConversationRepositoryCheckpointTest {
             segments,
             Json.decodeFromString<List<MessageSegment>>(captured.captured.toolCallJson!!),
         )
-        coVerify(exactly = 1) { dao.updateMessageCheckpoint(any()) }
+        coVerify(exactly = 1) { dao.updateConversationMessageCheckpoint(any(), any(), any()) }
     }
 
     @Test
     fun missingPlaceholderIsNotRecreated() = runTest {
         val dao = mockk<ChatDao>()
-        coEvery { dao.updateMessageCheckpoint(any()) } returns 0
+        // El placeholder fue eliminado: el lookup de conversationId devuelve null y el
+        // checkpoint NO recrea la fila (invariante §4.6: nunca resucitar un borrado).
+        coEvery { dao.getMessage("deleted-message") } returns null
         val repository = ConversationRepository(dao, database = null)
 
         val updated = repository.updateStreamingMessageCheckpoint(
@@ -110,6 +127,6 @@ class ConversationRepositoryCheckpointTest {
         )
 
         assertFalse(updated)
-        coVerify(exactly = 1) { dao.updateMessageCheckpoint(any()) }
+        coVerify(exactly = 0) { dao.updateMessageCheckpoint(any()) }
     }
 }

@@ -4,11 +4,14 @@ import kotlinx.serialization.Serializable
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 
 internal object NativeBackupFormat {
-    const val CURRENT_VERSION = 4
+    const val CURRENT_VERSION = 5
     const val MIN_SUPPORTED_VERSION = 1
 
     const val MANIFEST_ENTRY = "manifest.json"
     const val CONVERSATIONS_ENTRY = "conversations.json"
+    const val CONVERSATION_INDEX_ENTRY = "conv/index.json"
+    const val CONVERSATION_ENTRY_PREFIX = "conv/items/"
+    const val TASKS_ENTRY = "conv/tasks.json"
     const val SETTINGS_ENTRY = "settings.json"
     const val LEGACY_EXTRA_SETTINGS_ENTRY = "extra_settings.json"
     const val SECRETS_ENTRY = "api_keys.json"
@@ -19,9 +22,29 @@ internal object NativeBackupFormat {
     const val VIDEO_MEDIA_PREFIX = "media/videos/"
     const val DRAFT_MEDIA_PREFIX = "media/drafts/"
 
+    /** Entrada per-conversation del layout v5: id en hex para evitar caracteres de path. */
+    fun conversationEntry(id: String): String =
+        CONVERSATION_ENTRY_PREFIX + id.encodeToByteArray().joinToString("") { byte ->
+            "%02x".format(byte.toInt() and 0xff)
+        } + ".json"
+
     fun isSupported(version: Int): Boolean =
         version in MIN_SUPPORTED_VERSION..CURRENT_VERSION
 }
+
+/** Índice del layout v5: una entrada por conversación exportada, con su watermark y media. */
+@Serializable
+internal data class NativeConversationIndex(
+    val conversations: List<NativeConversationIndexEntry>,
+)
+
+@Serializable
+internal data class NativeConversationIndexEntry(
+    val id: String,
+    val dataChangedAt: Long,
+    val entry: String,
+    val mediaEntries: List<String> = emptyList(),
+)
 
 @Serializable
 internal data class ShellDeviceSecrets(

@@ -24,12 +24,12 @@ internal class NativeBackupArchive private constructor(
     private val ownedTemporaryFile: File?,
     private val entries: Map<String, ZipArchiveEntry>,
     private val metadataLimitBytes: Long,
-) : Closeable {
-    fun has(name: String): Boolean = entries.containsKey(name)
+) : Closeable, NativeGraphEntrySource {
+    override fun has(name: String): Boolean = entries.containsKey(name)
 
     fun size(name: String): Long = entries[name]?.size ?: -1L
 
-    fun bytes(name: String): ByteArray? {
+    override fun bytes(name: String): ByteArray? {
         val entry = entries[name] ?: return null
         if (isResourceEntry(name)) {
             throw IOException("Resource entry must be copied to storage: $name")
@@ -44,7 +44,7 @@ internal class NativeBackupArchive private constructor(
 
     operator fun get(name: String): ByteArray? = bytes(name)
 
-    fun stream(name: String): InputStream? {
+    override fun stream(name: String): InputStream? {
         val entry = entries[name] ?: return null
         if (isResourceEntry(name)) {
             throw IOException("Resource entry must be copied to storage: $name")

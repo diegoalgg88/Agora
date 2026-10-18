@@ -110,6 +110,7 @@ data class ChatEntity(
     @PrimaryKey val id: String,
     val title: String,
     val lastUpdated: Long = System.currentTimeMillis(),
+    val dataChangedAt: Long = 0L,
     val selectedBranchesJson: String? = null,
     val systemPromptId: String? = null,
     val modelId: String? = null,

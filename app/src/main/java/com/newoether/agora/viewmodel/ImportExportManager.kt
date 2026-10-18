@@ -330,7 +330,7 @@ class ImportExportManager(
 
                 // Convert to Room entities
                 val chatEntities = importData.conversations.map { ce ->
-                    ChatEntity(ce.id, ce.title, ce.lastUpdated, ce.selectedBranchesJson, ce.systemPromptId, ce.modelId)
+                    ChatEntity(ce.id, ce.title, ce.lastUpdated, selectedBranchesJson = ce.selectedBranchesJson, systemPromptId = ce.systemPromptId, modelId = ce.modelId)
                 }
                 if (strategy == ImportStrategy.REPLACE) {
                     val graph = planImportedLegacyMessages(importData.messages)
@@ -433,7 +433,7 @@ class ImportExportManager(
                 _gptImportProgress.value = 0.6f
 
                 val chatEntities = importData.conversations.map { ce ->
-                    ChatEntity(ce.id, ce.title, ce.lastUpdated, ce.selectedBranchesJson, ce.systemPromptId, ce.modelId)
+                    ChatEntity(ce.id, ce.title, ce.lastUpdated, selectedBranchesJson = ce.selectedBranchesJson, systemPromptId = ce.systemPromptId, modelId = ce.modelId)
                 }
                 val thoughtsCount = importData.messages.count { it.thoughts != null && it.thoughts.isNotBlank() }
                 if (strategy == ImportStrategy.REPLACE) {

@@ -72,6 +72,8 @@ class ChatDaoRunRecoveryTest {
     fun recoveryRepairsOnlyTheExactOwnersRunBranchesAndStuckRows() = runTest {
         val dao = mockk<ChatDao>()
         coEvery { dao.recoverConversationRuntime(any(), any()) } coAnswers { callOriginal() }
+        // El watermark dataChangedAt avanza dentro de la transacción de recovery.
+        coEvery { dao.touchConversationData(any(), any()) } returns 1
         coEvery { dao.getConversation(CONVERSATION_ID) } returns ChatEntity(
             id = CONVERSATION_ID,
             title = "Conversation",
@@ -164,6 +166,8 @@ class ChatDaoRunRecoveryTest {
 
     private fun stubExactOwner(dao: ChatDao, run: RunEntity?) {
         coEvery { dao.recoverConversationRuntime(any(), any()) } coAnswers { callOriginal() }
+        // El watermark dataChangedAt avanza dentro de la transacción de recovery.
+        coEvery { dao.touchConversationData(any(), any()) } returns 1
         coEvery { dao.getConversation(CONVERSATION_ID) } returns ChatEntity(
             id = CONVERSATION_ID,
             title = "Conversation",

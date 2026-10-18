@@ -9,6 +9,9 @@ import androidx.room.Query
  * the draft contract reviewable and under the repository's permanent source-size gate.
  */
 interface ChatDraftDao {
-    @Query("UPDATE conversations SET draftText = :text, draftAttachments = :attachments WHERE id = :id")
-    suspend fun updateDraft(id: String, text: String, attachments: String?)
+    @Query(
+        "UPDATE conversations SET draftText = :text, draftAttachments = :attachments, " +
+            "dataChangedAt = :at WHERE id = :id"
+    )
+    suspend fun updateDraft(id: String, text: String, attachments: String?, at: Long)
 }

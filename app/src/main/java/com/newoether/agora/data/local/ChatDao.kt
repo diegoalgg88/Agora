@@ -382,6 +382,11 @@ interface ChatDao :
         val messageUpdated = updateMessageCheckpoint(checkpoint) == 1
         val runUpdated = terminalizeLiveRun(runId, status, reason, at) == 1
         val completed = messageUpdated && runUpdated
+        // El watermark dataChangedAt avanza en la misma transacción que vuelve terminal al Run:
+        // un backup incremental jamás ve la conversación "sin cambios" tras una generación.
+        if (completed) {
+            check(touchConversationData(conversationId, at) == 1)
+        }
         if (completed && markConversationUnread) {
             setConversationUnreadGeneration(conversationId, true)
         }
@@ -395,17 +400,20 @@ interface ChatDao :
     @Transaction
     suspend fun finishStoppedGeneration(
         checkpoints: List<MessageStreamCheckpoint>,
+        conversationId: String,
         runId: String?,
         at: Long,
     ): Boolean {
         checkpoints.forEach { updateMessageCheckpoint(it) }
         if (runId != null) stopInFlightModelMessages(runId)
-        return runId == null || terminalizeLiveRun(
+        val completed = runId == null || terminalizeLiveRun(
             runId,
             RunStatus.STOPPED,
             RunEndReason.USER_STOPPED,
             at,
         ) == 1
+        if (completed) check(touchConversationData(conversationId, at) == 1)
+        return completed
     }
 
     /**
@@ -504,7 +512,23 @@ interface ChatDao :
             }
         }
         changedRows += stopStuckMessagesForConversation(conversationId)
+        if (changedRows > 0) check(touchConversationData(conversationId, at) == 1)
         return changedRows
+    }
+
+    /**
+     * Checkpoint de mensaje + watermark de conversación en una sola transacción: el streaming
+     * visible para el usuario siempre cuenta como cambio de datos para el backup incremental.
+     */
+    @Transaction
+    suspend fun updateConversationMessageCheckpoint(
+        conversationId: String,
+        checkpoint: MessageStreamCheckpoint,
+        at: Long,
+    ): Boolean {
+        val updated = updateMessageCheckpoint(checkpoint) == 1
+        if (updated) check(touchConversationData(conversationId, at) == 1)
+        return updated
     }
 
     @Update(entity = MessageEntity::class)

@@ -81,7 +81,7 @@ class DataExporterSnapshotSourceContractTest {
         val mediaPlan = section(
             exporter,
             "private suspend fun buildMediaExportPlan(",
-            "/** Writes the captured Room snapshot",
+            " * Writes the captured Room snapshot",
         )
         val archiveWriter = section(
             exporter,
