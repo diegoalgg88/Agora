@@ -115,6 +115,9 @@ internal class GenerationApiPathBuilder(
                     promptCacheKey = request.conversationId.takeIf {
                         config.providerName == Constants.PROVIDER_OPENAI
                     },
+                    sessionId = request.conversationId.takeIf {
+                        config.providerName == Constants.PROVIDER_OPENCODE_GO
+                    },
                     requestResolver = config.requestResolver,
                 ),
             )
