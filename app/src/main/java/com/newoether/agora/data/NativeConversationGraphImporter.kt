@@ -226,6 +226,8 @@ internal class NativeConversationGraphImporter(
                     // Unread is durable on one device, but it is not user content and must never
                     // become a false cross-device notification after restore.
                     hasUnreadGeneration = false,
+                    // Pin es preferencia de usuario y viaja con el contenido.
+                    isPinned = conversation.isPinned,
                 ),
                 availableTaskIds,
             )
@@ -725,6 +727,8 @@ internal class NativeConversationGraphImporter(
         val conversationSettings: ConversationSettings? = null,
         /** v1-v3 compatibility only; never restored across devices. */
         val hasUnreadGeneration: Boolean = false,
+        /** Conversación pineada; viaja con el contenido en archives v5+. */
+        val isPinned: Boolean = false,
     )
 
     @Serializable

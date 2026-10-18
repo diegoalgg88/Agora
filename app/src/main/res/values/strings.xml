@@ -209,6 +209,9 @@
 
     <!-- Drawer -->
     <string name="conversations">Conversations</string>
+    <string name="pin_conversation">Pin</string>
+    <string name="unpin_conversation">Unpin</string>
+    <string name="pinned_conversations">Pinned</string>
     <string name="conversation_unread_generation">Unread generated response</string>
     <string name="new_chat">New Chat</string>
 

@@ -31,6 +31,8 @@ internal data class NativeExportChatEntity(
     val draftAttachments: String? = null,
     val conversationSettings: ConversationSettings? = null,
     val hasUnreadGeneration: Boolean = false,
+    /** Conversación pineada (sección Pinned del drawer); se exporta y restaura. */
+    val isPinned: Boolean = false,
 )
 
 @Serializable

@@ -172,6 +172,9 @@
 
     <!-- Drawer -->
     <string name="conversations">Unterhaltungen</string>
+    <string name="pin_conversation">Anheften</string>
+    <string name="unpin_conversation">Loslösen</string>
+    <string name="pinned_conversations">Angeheftet</string>
     <string name="conversation_unread_generation">Ungelesene generierte Antwort</string>
     <string name="new_chat">Neuer Chat</string>
 

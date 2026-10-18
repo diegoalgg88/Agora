@@ -27,7 +27,7 @@ private fun encodeSelectionMap(selections: Map<String?, String>): String =
  * the core contract reviewable and under the repository's permanent source-size gate.
  */
 interface ChatCoreDao : ChatModelReferenceDao {
-    @Query("SELECT id, title, systemPromptId, modelId, taskId, origin, graduated, hasUnreadGeneration, selectedBranchesJson FROM conversations WHERE taskId IS NULL ORDER BY lastUpdated DESC")
+    @Query("SELECT id, title, systemPromptId, modelId, taskId, origin, graduated, hasUnreadGeneration, isPinned, selectedBranchesJson FROM conversations WHERE taskId IS NULL ORDER BY lastUpdated DESC")
     fun getAllConversations(): Flow<List<ChatConversation>>
 
     @Query("SELECT * FROM conversations WHERE taskId = :taskId ORDER BY lastUpdated DESC")
@@ -93,6 +93,20 @@ interface ChatCoreDao : ChatModelReferenceDao {
 
     @Query("UPDATE conversations SET title = :title, dataChangedAt = :at WHERE id = :conversationId")
     suspend fun updateConversationTitle(conversationId: String, title: String, at: Long): Int
+
+    /**
+     * Pin/Unpin del drawer. El watermark dataChangedAt avanza con MAX(dataChangedAt + 1, :at):
+     * pinear NO reordena por recencia (el orden del grupo Pinned sigue siendo lastUpdated), pero
+     * sí invalida cualquier baseline de backup que contenga la conversación.
+     */
+    @Query(
+        """
+        UPDATE conversations
+        SET isPinned = :pinned, dataChangedAt = MAX(dataChangedAt + 1, :at)
+        WHERE id = :conversationId AND taskId IS NULL AND isPinned != :pinned
+        """
+    )
+    suspend fun setConversationPinned(conversationId: String, pinned: Boolean, at: Long): Int
 
     @Query(
         """

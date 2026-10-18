@@ -901,11 +901,10 @@ class ChatViewModel(
     fun shareMessages(messageIds: Set<String>) =
         conversationForkShareController.shareMessages(messageIds)
 
-    fun renameConversation(id: String, newTitle: String) {
-        conversationLifecycleController.rename(id, newTitle)
-    }
+    fun renameConversation(id: String, newTitle: String) = conversationLifecycleController.rename(id, newTitle)
 
     fun generateTitle(conversationId: String) = generationController.generateTitle(conversationId)
+    fun setConversationPinned(id: String, pinned: Boolean) = viewModelScope.launch { convRepo.setConversationPinned(id, pinned) }
 
     fun setConversationSystemPrompt(id: String, promptId: String?) =
         conversationWorkspaces.setSystemPrompt(id, promptId)

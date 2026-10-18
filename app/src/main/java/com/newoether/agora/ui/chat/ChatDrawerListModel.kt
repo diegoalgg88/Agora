@@ -7,6 +7,11 @@ import com.newoether.agora.model.ChatConversation
 internal sealed interface DrawerRow {
     val key: String
 
+    /** A section heading ("Pinned" / "Conversations"). */
+    data class Section(val pinned: Boolean) : DrawerRow {
+        override val key: String get() = if (pinned) "section:pinned" else "section:conversations"
+    }
+
     /** A project header. [chatIds] includes chats hidden by a collapsed project. */
     data class Project(
         val project: ProjectEntity,
@@ -35,29 +40,38 @@ internal sealed interface ProjectDialog {
 }
 
 /**
- * Projects first (creation order), each followed by its chats unless collapsed, then every
- * ungrouped chat. [conversations] keeps its incoming recency order inside each group. A
- * membership that points to an unknown project is treated as ungrouped, so a chat can never
- * disappear from the list.
+ * Pinned conversations first under a "Pinned" heading (recency order inside the group), then
+ * projects (creation order), each followed by its chats unless collapsed, then every ungrouped
+ * chat under a "Conversations" heading. [conversations] keeps its incoming recency order inside
+ * each group. A membership that points to an unknown project is treated as ungrouped, so a chat
+ * can never disappear from the list.
  */
 internal fun buildDrawerRows(
     conversations: List<ChatConversation>,
     projects: List<ProjectEntity>,
     memberships: Map<String, String>,
 ): List<DrawerRow> {
+    val (pinned, ordinary) = conversations.partition { it.isPinned }
     val knownProjectIds = projects.mapTo(HashSet()) { it.id }
     val byProject = HashMap<String, MutableList<ChatConversation>>()
     val ungrouped = ArrayList<ChatConversation>()
-    for (conversation in conversations) {
+    for (conversation in ordinary) {
         val projectId = memberships[conversation.id]?.takeIf { it in knownProjectIds }
         if (projectId == null) ungrouped += conversation
         else byProject.getOrPut(projectId) { ArrayList() } += conversation
     }
-    val rows = ArrayList<DrawerRow>(conversations.size + projects.size)
+    val rows = ArrayList<DrawerRow>(conversations.size + projects.size + 2)
+    if (pinned.isNotEmpty()) {
+        rows += DrawerRow.Section(pinned = true)
+        pinned.forEach { rows += DrawerRow.Chat(it, null) }
+    }
     for (project in projects) {
         val chats = byProject[project.id].orEmpty()
         rows += DrawerRow.Project(project, chats.map { it.id })
         if (!project.collapsed) chats.forEach { rows += DrawerRow.Chat(it, project.id) }
+    }
+    if (pinned.isNotEmpty() && (ungrouped.isNotEmpty() || projects.isNotEmpty())) {
+        rows += DrawerRow.Section(pinned = false)
     }
     ungrouped.forEach { rows += DrawerRow.Chat(it, null) }
     return rows

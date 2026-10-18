@@ -62,6 +62,8 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
@@ -419,6 +421,27 @@ internal fun ChatDrawerContent(
                                             fadeOutSpec = tween(180),
                                         )
                                         when (row) {
+                                            is DrawerRow.Section -> {
+                                                Text(
+                                                    stringResource(if (row.pinned) {
+                                                        R.string.pinned_conversations
+                                                    } else {
+                                                        R.string.conversations
+                                                    }),
+                                                    style = MaterialTheme.typography.labelLarge,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    modifier = Modifier
+                                                        // El grupo Conversations lleva espacio extra arriba para separarse del Pinned.
+                                                        .padding(
+                                                            start = 16.dp,
+                                                            end = 16.dp,
+                                                            top = if (row.pinned) 8.dp else 12.dp,
+                                                            bottom = 8.dp,
+                                                        )
+                                                        .semantics { heading() },
+                                                )
+                                            }
+
                                             is DrawerRow.Project -> DrawerProjectRow(
                                                 name = row.project.name,
                                                 chatCount = row.chatIds.size,
@@ -469,6 +492,7 @@ internal fun ChatDrawerContent(
                                                     isGenerating = isGenerating,
                                                     hasUnreadGeneration = conversation.hasUnreadGeneration,
                                                     isSwitching = isSwitching,
+                                                    isPinned = conversation.isPinned,
                                                     deleteEnabled = !isSwitching && !isGenerating &&
                                                         conversation.id !in submittingConversationIds,
                                                     inProject = row.projectId != null,
@@ -489,6 +513,12 @@ internal fun ChatDrawerContent(
                                                     },
                                                     onStartSelection = {
                                                         selectedIds = selectedIds + conversation.id
+                                                    },
+                                                    onTogglePinned = {
+                                                        viewModel.setConversationPinned(
+                                                            conversation.id,
+                                                            !conversation.isPinned,
+                                                        )
                                                     },
                                                     onGenerateTitle = {
                                                         viewModel.generateTitle(conversation.id)

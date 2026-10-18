@@ -40,7 +40,7 @@ class DrawerSearchLoadingSourceContractTest {
         val listModel = source("ui/chat/ChatDrawerListModel.kt").replace("\r\n", "\n")
         val drawerRows = source("ui/chat/ChatDrawerRows.kt").replace("\r\n", "\n")
 
-        assertTrue(dao.contains("SELECT id, title, systemPromptId, modelId, taskId, origin, graduated, hasUnreadGeneration, selectedBranchesJson FROM conversations"))
+        assertTrue(dao.contains("SELECT id, title, systemPromptId, modelId, taskId, origin, graduated, hasUnreadGeneration, isPinned, selectedBranchesJson FROM conversations"))
         assertTrue(dao.contains("fun getAllConversations(): Flow<List<ChatConversation>>"))
         assertFalse(dao.contains("SELECT * FROM conversations WHERE taskId IS NULL ORDER BY lastUpdated DESC"))
         assertTrue(repository.contains("fun getAllConversations(): Flow<List<ChatConversation>> = chatDao.getAllConversations()"))

@@ -172,6 +172,9 @@
 
     <!-- Drawer -->
     <string name="conversations">Conversaciones</string>
+    <string name="pin_conversation">Fijar</string>
+    <string name="unpin_conversation">Quitar fijado</string>
+    <string name="pinned_conversations">Fijadas</string>
     <string name="conversation_unread_generation">Respuesta generada sin leer</string>
     <string name="new_chat">Nuevo chat</string>
 

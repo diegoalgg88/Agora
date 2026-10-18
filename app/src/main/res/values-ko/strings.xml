@@ -172,6 +172,9 @@
 
     <!-- Drawer -->
     <string name="conversations">대화</string>
+    <string name="pin_conversation">고정</string>
+    <string name="unpin_conversation">고정 해제</string>
+    <string name="pinned_conversations">고정됨</string>
     <string name="conversation_unread_generation">읽지 않은 생성 응답</string>
     <string name="new_chat">새 채팅</string>
 

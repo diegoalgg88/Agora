@@ -31,6 +31,8 @@ import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.FolderOff
+import androidx.compose.material.icons.filled.PushPin
+import androidx.compose.material.icons.outlined.PushPin
 import androidx.compose.material.icons.filled.RadioButtonUnchecked
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.SelectAll
@@ -111,6 +113,7 @@ internal fun DrawerConversationRow(
     isGenerating: Boolean,
     hasUnreadGeneration: Boolean,
     isSwitching: Boolean,
+    isPinned: Boolean,
     deleteEnabled: Boolean,
     inProject: Boolean,
     indented: Boolean,
@@ -119,6 +122,7 @@ internal fun DrawerConversationRow(
     onOpen: () -> Unit,
     onToggleSelect: () -> Unit,
     onStartSelection: () -> Unit,
+    onTogglePinned: () -> Unit,
     onGenerateTitle: () -> Unit,
     onRename: () -> Unit,
     onMove: () -> Unit,
@@ -258,6 +262,20 @@ internal fun DrawerConversationRow(
                 onClick = {
                     showMenu = false
                     onStartSelection()
+                },
+            )
+            DropdownMenuItem(
+                text = { Text(stringResource(if (isPinned) R.string.unpin_conversation else R.string.pin_conversation)) },
+                leadingIcon = {
+                    Icon(
+                        if (isPinned) Icons.Outlined.PushPin else Icons.Default.PushPin,
+                        contentDescription = null,
+                    )
+                },
+                enabled = menuEnabled,
+                onClick = {
+                    showMenu = false
+                    onTogglePinned()
                 },
             )
             DropdownMenuItem(

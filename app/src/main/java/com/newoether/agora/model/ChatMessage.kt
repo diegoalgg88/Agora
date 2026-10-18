@@ -203,6 +203,8 @@ data class ChatConversation(
     val origin: String = "user",
     val graduated: Boolean = false,
     val hasUnreadGeneration: Boolean = false,
+    /** Conversación pineada: encabeza la sección Pinned del drawer. */
+    val isPinned: Boolean = false,
     val selectedBranchesJson: String? = null,
 )
 

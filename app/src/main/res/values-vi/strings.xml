@@ -175,6 +175,9 @@
 
     <!-- Drawer -->
     <string name="conversations">Cuộc trò chuyện</string>
+    <string name="pin_conversation">Ghim</string>
+    <string name="unpin_conversation">Bỏ ghim</string>
+    <string name="pinned_conversations">Đã ghim</string>
     <string name="conversation_unread_generation">Phản hồi đã tạo chưa đọc</string>
     <string name="new_chat">Trò chuyện mới</string>
 

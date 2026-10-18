@@ -107,6 +107,7 @@ class ConversationRepository(
         id = id, title = title, systemPromptId = systemPromptId, modelId = modelId,
         taskId = taskId, origin = origin, graduated = graduated,
         hasUnreadGeneration = hasUnreadGeneration,
+        isPinned = isPinned,
         selectedBranchesJson = selectedBranchesJson,
     )
 
@@ -216,6 +217,10 @@ class ConversationRepository(
         id: String,
         unread: Boolean,
     ): Boolean = chatDao.setConversationUnreadGeneration(id, unread) == 1
+
+    /** Pin/Unpin del drawer; el DAO ya toca el watermark dataChangedAt en la misma escritura. */
+    suspend fun setConversationPinned(id: String, pinned: Boolean): Boolean =
+        chatDao.setConversationPinned(id, pinned, System.currentTimeMillis()) == 1
 
     suspend fun replaceConfiguredModelReferences(
         oldModelId: String,

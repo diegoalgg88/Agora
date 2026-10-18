@@ -129,6 +129,8 @@ data class ChatEntity(
     val selectedRunBranchesJson: String? = null,
     /** True after a completed model generation until this conversation becomes the open target. */
     val hasUnreadGeneration: Boolean = false,
+    /** Conversación pineada: encabeza la sección Pinned del drawer, recent-first dentro del grupo. */
+    @ColumnInfo(defaultValue = "0") val isPinned: Boolean = false,
 )
 
 /** A saved automation: a prompt + schedule that fans out a fresh conversation on each run. */

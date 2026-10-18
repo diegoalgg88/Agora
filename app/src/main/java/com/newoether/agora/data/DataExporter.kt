@@ -94,6 +94,8 @@ class DataExporter(
         val draftText: String = "",
         val draftAttachments: String? = null,
         val conversationSettings: ConversationSettings? = null,
+        /** Conversación pineada (sección Pinned del drawer); se exporta y restaura. */
+        val isPinned: Boolean = false,
     )
 
     @Serializable
@@ -265,6 +267,7 @@ class DataExporter(
                                     draftText = conversation.draftText,
                                     draftAttachments = conversation.draftAttachments,
                                     conversationSettings = conversationSettings[conversation.id],
+                                    isPinned = conversation.isPinned,
                                 ),
                             ),
                         )

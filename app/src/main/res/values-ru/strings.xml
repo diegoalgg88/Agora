@@ -172,6 +172,9 @@
 
     <!-- Drawer -->
     <string name="conversations">Беседы</string>
+    <string name="pin_conversation">Закрепить</string>
+    <string name="unpin_conversation">Открепить</string>
+    <string name="pinned_conversations">Закреплённые</string>
     <string name="conversation_unread_generation">Непрочитанный сгенерированный ответ</string>
     <string name="new_chat">Новый чат</string>
 

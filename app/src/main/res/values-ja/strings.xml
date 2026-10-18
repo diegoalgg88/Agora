@@ -172,6 +172,9 @@
 
     <!-- Drawer -->
     <string name="conversations">会話</string>
+    <string name="pin_conversation">ピン留め</string>
+    <string name="unpin_conversation">ピン留め解除</string>
+    <string name="pinned_conversations">ピン留め済み</string>
     <string name="conversation_unread_generation">未読の生成済み回答</string>
     <string name="new_chat">新しいチャット</string>
 

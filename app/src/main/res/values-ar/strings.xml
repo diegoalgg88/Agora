@@ -172,6 +172,9 @@
 
     <!-- Drawer -->
     <string name="conversations">المحادثات</string>
+    <string name="pin_conversation">تثبيت</string>
+    <string name="unpin_conversation">إلغاء التثبيت</string>
+    <string name="pinned_conversations">المثبتة</string>
     <string name="conversation_unread_generation">رد مُنشأ غير مقروء</string>
     <string name="new_chat">محادثة جديدة</string>
 
