@@ -804,6 +804,7 @@
     <string name="local_model_download_pause">一時停止</string>
     <string name="local_model_download_resume_dl">再開</string>
     <string name="local_model_download_ready">準備完了</string>
+    <string name="local_model_download_delete">削除</string>
     <string name="local_model_download_failed">失敗 — タップして再試行</string>
     <string name="local_model_download_cancel">ダウンロードをキャンセルしますか？</string>
     <string name="local_model_download_cancel_text">\'%1$s\' のダウンロードをキャンセルしますか？部分ファイルは端末に残り、後から再開できます。</string>

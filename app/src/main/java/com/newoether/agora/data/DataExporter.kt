@@ -622,7 +622,10 @@ class DataExporter(
             null
         }
         try {
-            val rawOutput = context.contentResolver.openOutputStream(uri)
+            // "wt" (write-truncate): SAF abre "rw" por defecto y NO trunca — exportar sobre un
+            // .agora preexistente dejaba la cola del archivo viejo (con su central directory)
+            // tras el contenido nuevo, y todo reader leía el zip VIEJO: "Error reading zip".
+            val rawOutput = context.contentResolver.openOutputStream(uri, "wt")
                 ?: throw IOException("Could not open the selected backup destination")
             rawOutput.use { raw ->
                 val zip = ZipArchiveOutputStream(BufferedOutputStream(raw))

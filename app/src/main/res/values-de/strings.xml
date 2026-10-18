@@ -804,6 +804,7 @@
     <string name="local_model_download_pause">Anhalten</string>
     <string name="local_model_download_resume_dl">Fortsetzen</string>
     <string name="local_model_download_ready">Bereit</string>
+    <string name="local_model_download_delete">Löschen</string>
     <string name="local_model_download_failed">Fehlgeschlagen — zum Wiederholen tippen</string>
     <string name="local_model_download_cancel">Download abbrechen?</string>
     <string name="local_model_download_cancel_text">Download von \'%1$s\' abbrechen? Die Teildatei bleibt auf dem Gerät und der Download kann später fortgesetzt werden.</string>

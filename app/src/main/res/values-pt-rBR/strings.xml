@@ -804,6 +804,7 @@
     <string name="local_model_download_pause">Pausar</string>
     <string name="local_model_download_resume_dl">Retomar</string>
     <string name="local_model_download_ready">Pronto</string>
+    <string name="local_model_download_delete">Excluir</string>
     <string name="local_model_download_failed">Falhou — toque para tentar de novo</string>
     <string name="local_model_download_cancel">Cancelar o download?</string>
     <string name="local_model_download_cancel_text">Cancelar o download de \'%1$s\'? O arquivo parcial permanece no dispositivo e o download pode ser retomado depois.</string>

@@ -804,6 +804,7 @@
     <string name="local_model_download_pause">إيقاف مؤقت</string>
     <string name="local_model_download_resume_dl">استئناف</string>
     <string name="local_model_download_ready">جاهز</string>
+    <string name="local_model_download_delete">حذف</string>
     <string name="local_model_download_failed">فشل — انقر لإعادة المحاولة</string>
     <string name="local_model_download_cancel">إلغاء التنزيل؟</string>
     <string name="local_model_download_cancel_text">إلغاء تنزيل \'%1$s\'؟ يبقى الملف الجزئي على القرص ويمكن استئناف التنزيل لاحقًا.</string>

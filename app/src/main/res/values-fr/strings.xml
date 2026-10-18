@@ -804,6 +804,7 @@
     <string name="local_model_download_pause">Interrompre</string>
     <string name="local_model_download_resume_dl">Reprendre</string>
     <string name="local_model_download_ready">Prêt</string>
+    <string name="local_model_download_delete">Supprimer</string>
     <string name="local_model_download_failed">Échec — touchez pour réessayer</string>
     <string name="local_model_download_cancel">Annuler le téléchargement ?</string>
     <string name="local_model_download_cancel_text">Annuler le téléchargement de \'%1$s\' ? Le fichier partiel reste sur l\'appareil et le téléchargement pourra être repris plus tard.</string>

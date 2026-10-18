@@ -863,6 +863,7 @@
     <string name="local_model_download_pause">Pause</string>
     <string name="local_model_download_resume_dl">Resume</string>
     <string name="local_model_download_ready">Ready</string>
+    <string name="local_model_download_delete">Delete</string>
     <string name="local_model_download_failed">Failed — tap to retry</string>
     <string name="local_model_download_cancel">Cancel download?</string>
     <string name="local_model_download_cancel_text">Cancel the download of \'%1$s\'? The partial file stays on disk and the download can be resumed later.</string>

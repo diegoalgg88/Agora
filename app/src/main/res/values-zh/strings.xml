@@ -950,6 +950,7 @@
     <string name="local_model_download_pause">暂停</string>
     <string name="local_model_download_resume_dl">继续</string>
     <string name="local_model_download_ready">就绪</string>
+    <string name="local_model_download_delete">删除</string>
     <string name="local_model_download_failed">失败 — 点按重试</string>
     <string name="local_model_download_cancel">取消下载？</string>
     <string name="local_model_download_cancel_text">取消 \'%1$s\' 的下载？部分文件会保留在设备上，之后可以继续下载。</string>

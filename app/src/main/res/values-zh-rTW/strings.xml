@@ -834,6 +834,7 @@
     <string name="local_model_download_pause">暫停</string>
     <string name="local_model_download_resume_dl">繼續</string>
     <string name="local_model_download_ready">就緒</string>
+    <string name="local_model_download_delete">刪除</string>
     <string name="local_model_download_failed">失敗 — 輕觸重試</string>
     <string name="local_model_download_cancel">取消下載？</string>
     <string name="local_model_download_cancel_text">取消 \'%1$s\' 的下載？部分檔案會保留在裝置上，之後可以繼續下載。</string>

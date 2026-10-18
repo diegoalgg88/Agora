@@ -11,6 +11,7 @@ import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Visibility
+import androidx.compose.material.icons.outlined.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -65,7 +66,13 @@ fun SettingsLocalModelCatalogPage(
         entries = viewModel.modelCatalogRepository.getVisibleEntries(forceRefresh)
     }
 
-    LaunchedEffect(Unit) { reloadCatalog() }
+    LaunchedEffect(Unit) {
+        // El reconcile alinea rows durables con el disco (READY sin archivo → DeleteRow);
+        // sin él, un archivo borrado fuera de la app deja el badge "descargado" para siempre
+        // y el click bloqueado (status != null/FAILED no descarga).
+        viewModel.localModelDownloadManager.reconcile()
+        reloadCatalog()
+    }
 
     CollapsingSettingsScaffold(
         title = stringResource(R.string.local_model_catalog_title),
@@ -143,6 +150,14 @@ fun SettingsLocalModelCatalogPage(
                                 }
                             },
                             onCancelDownload = { showCancelConfirm = entry },
+                            onDeleteDownload = {
+                                scope.launch {
+                                    // Limpia fila + archivo del store de descargas; el entry
+                                    // auto-registrado en Models se limpia desde esa página.
+                                    viewModel.localModelDownloadManager.deleteModel(entry.id)
+                                    viewModel.localModelDownloadManager.reconcile()
+                                }
+                            },
                         )
                     }
                 })
@@ -182,6 +197,7 @@ private fun CatalogEntryItem(
     remainingMs: Long,
     onStartDownload: () -> Unit,
     onCancelDownload: () -> Unit,
+    onDeleteDownload: () -> Unit,
 ) {
     val status = row?.status
     val percent = if (status == LocalModelStatus.DOWNLOADING) {
@@ -266,12 +282,23 @@ private fun CatalogEntryItem(
                 LocalModelStatus.DOWNLOADING -> IconButton(onClick = onCancelDownload, modifier = Modifier.size(24.dp)) {
                     Icon(Icons.Default.Close, stringResource(R.string.local_model_download_pause), modifier = Modifier.size(18.dp))
                 }
-                LocalModelStatus.READY -> Icon(
-                    Icons.Default.Check,
-                    contentDescription = stringResource(R.string.local_model_download_ready),
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(20.dp),
-                )
+                LocalModelStatus.READY -> Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.Check,
+                        contentDescription = stringResource(R.string.local_model_download_ready),
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                    // Permite liberar el modelo descargado y re-descargarlo; sin esta acción
+                    // una row READY (o su archivo borrado fuera de la app) bloqueaba el catálogo.
+                    IconButton(onClick = onDeleteDownload, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            Icons.Outlined.Delete,
+                            contentDescription = stringResource(R.string.local_model_download_delete),
+                            modifier = Modifier.size(18.dp),
+                        )
+                    }
+                }
                 else -> TextButton(onClick = onStartDownload) {
                     Text(stringResource(R.string.local_model_download))
                 }

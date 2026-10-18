@@ -804,6 +804,7 @@
     <string name="local_model_download_pause">일시정지</string>
     <string name="local_model_download_resume_dl">다시 시작</string>
     <string name="local_model_download_ready">준비됨</string>
+    <string name="local_model_download_delete">삭제</string>
     <string name="local_model_download_failed">실패 — 탭하여 재시도</string>
     <string name="local_model_download_cancel">다운로드를 취소할까요?</string>
     <string name="local_model_download_cancel_text">\'%1$s\' 다운로드를 취소할까요? 부분 파일은 기기에 남고 나중에 다시 시작할 수 있습니다.</string>

@@ -804,6 +804,7 @@
     <string name="local_model_download_pause">Приостановить</string>
     <string name="local_model_download_resume_dl">Возобновить</string>
     <string name="local_model_download_ready">Готово</string>
+    <string name="local_model_download_delete">Удалить</string>
     <string name="local_model_download_failed">Ошибка — нажмите, чтобы повторить</string>
     <string name="local_model_download_cancel">Отменить загрузку?</string>
     <string name="local_model_download_cancel_text">Отменить загрузку \'%1$s\'? Частичный файл останется на устройстве, и загрузку можно будет возобновить позже.</string>

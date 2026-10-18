@@ -807,6 +807,7 @@
     <string name="local_model_download_pause">Tạm dừng</string>
     <string name="local_model_download_resume_dl">Tiếp tục</string>
     <string name="local_model_download_ready">Sẵn sàng</string>
+    <string name="local_model_download_delete">Xóa</string>
     <string name="local_model_download_failed">Thất bại — chạm để thử lại</string>
     <string name="local_model_download_cancel">Hủy tải xuống?</string>
     <string name="local_model_download_cancel_text">Hủy tải xuống \'%1$s\'? Tệp một phần vẫn còn trên thiết bị và có thể tiếp tục sau.</string>

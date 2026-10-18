@@ -64,7 +64,9 @@ class DataExporterSnapshotSourceContractTest {
         val captureCall = export.indexOf(
             "captureConversationSnapshot(settingsManager.conversationSettings.first())",
         )
-        val destinationOpen = export.indexOf("context.contentResolver.openOutputStream(uri)")
+        // "wt" (write-truncate): sin truncar, exportar sobre un .agora preexistente deja la
+        // cola del archivo viejo y todo reader lee el central directory VIEJO.
+        val destinationOpen = export.indexOf("context.contentResolver.openOutputStream(uri, \"wt\")")
         val mediaCopy = export.indexOf("buildMediaExportPlan(zip, conversationSpool)")
         val archiveWrite = export.indexOf("writeConversationArchive(")
         assertTrue(captureCall >= 0)
