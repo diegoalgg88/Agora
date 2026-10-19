@@ -121,8 +121,10 @@ class DrawerSearchLoadingSourceContractTest {
         assertTrue(normalizedViewModel.contains("val firstMessageCommitted = _firstMessageCommitted.asSharedFlow()"))
         assertTrue(
             normalizedViewModel.contains(
-                "onConversationCreatedBySend = { conversationId ->\n" +
-                    "                suppressNextOpenScroll = true\n" +
+                // Ancla al phoneClient del fork; el comentario del bloque va en es-MX.
+                "            if (selected) {\n" +
+                    "                // El scroll propio del send cubre el primer mensaje; salta el scroll de open.\n" +
+                    "                scrollRequests.suppressNextOpenScroll = true\n" +
                     "                _firstMessageCommitted.tryEmit(conversationId)",
             ),
         )

@@ -336,22 +336,6 @@ class ChatViewModel(
         get() = scrollRequests.loadingDraft
         set(value) { scrollRequests.loadingDraft = value }
 
-    fun triggerScrollToMessage(messageId: String? = null) {
-        scrollRequests.requestMessage(currentConversationId.value, messageId)
-    }
-
-    fun triggerScrollToAbsoluteBottomAfter(conversationId: String, messageId: String) {
-        scrollRequests.requestAbsoluteBottomAfter(conversationId, messageId)
-    }
-
-    fun triggerScrollToAttachedBottomAfter(conversationId: String, messageId: String) {
-        scrollRequests.requestAbsoluteBottomAfter(
-            conversationId = conversationId,
-            messageId = messageId,
-            attachedOnly = true,
-        )
-    }
-
     fun completeAnimatedScroll(requestId: Long) = scrollRequests.complete(requestId)
 
     val currentActiveModel: StateFlow<String> get() = selectionController.currentActiveModel
@@ -456,6 +440,46 @@ class ChatViewModel(
             com.newoether.agora.service.AppForegroundTracker.isInForeground &&
                 com.newoether.agora.service.AppForegroundTracker.isChatPresented &&
                 currentConversationId.value == conversationId
+        override val branchTransitions: BranchReplacementTransitionCoordinator
+            get() = regenerationTransitions
+        override suspend fun awaitProjectedPath(conversationId: String, messageId: String) {
+            combine(messages, currentConversationId) { path, open ->
+                open != conversationId || path.any { it.id == messageId }
+            }.first { it }
+        }
+        override fun requestScrollToBottomAfter(
+            conversationId: String,
+            messageId: String,
+            attachedOnly: Boolean,
+        ) = scrollRequests.requestAbsoluteBottomAfter(conversationId, messageId, attachedOnly)
+        override fun onSendAccepted(conversationId: String, messageId: String) {
+            // Feedback va a la conversación en pantalla; un New Chat califica vía isNewChatMode.
+            val currentId = currentConversationId.value
+            if (currentId == conversationId || (currentId == null && isNewChatMode.value)) {
+                onSendAccepted?.invoke(conversationId, messageId)
+            }
+        }
+        override suspend fun applyCommittedNewConversationState(conversationId: String) =
+            conversationWorkspaces.applyCommittedNewConversationState(conversationId)
+        override suspend fun publishAcceptedNewConversation(
+            conversationId: String,
+            modelId: String,
+            entryId: Long,
+        ): Boolean = withContext(Dispatchers.Main.immediate) {
+            selectionController.publishAcceptedConversationIfOriginStillOpen(conversationId, modelId, entryId)
+        }.also { selected ->
+            if (selected) {
+                // El scroll propio del send cubre el primer mensaje; salta el scroll de open.
+                scrollRequests.suppressNextOpenScroll = true
+                _firstMessageCommitted.tryEmit(conversationId)
+            }
+        }
+        override suspend fun beginTreeMutation(conversationId: String, scrollToTarget: Boolean) =
+            selectionController.beginTreeMutation(conversationId, scrollToTarget)
+        override fun settleTreeMutation(requestId: Long?, targetMessageId: String?) =
+            selectionController.markTreeMutationReady(requestId, targetMessageId)
+        override fun failTreeMutation(requestId: Long?) = selectionController.failTreeMutation(requestId)
+        override fun showSnackbar(message: String) = emitSnackbar(message)
     }
     val allMessages: StateFlow<List<ChatMessage>> = conversationUi.allMessages
     val loadedMessagesConversationId: StateFlow<String?> =
@@ -644,7 +668,9 @@ class ChatViewModel(
         currentModel = { currentActiveModel.value },
         configuredPrompt = { settings.contextCompactPrompt.value },
         configuredRetainCount = { settings.contextCompactRetainCount.value },
-        configuredPreserveSystemPrompt = { settings.contextCompactPreserveSystemPrompt.value }, compactManual = { request -> generationController.compactManual(request) },
+        configuredPreserveSystemPrompt = { settings.contextCompactPreserveSystemPrompt.value }, compactManual = { request ->
+            generationController.compactManual(currentConversationId.value, request)
+        },
         failureMessage = { result -> compactFailureMessage(appContext, result) },
         onFailure = { message -> emitSnackbar(message) },
     )
@@ -714,50 +740,14 @@ class ChatViewModel(
             executionCoordinator = conversationExecutionCoordinator,
             // Cada cliente adjunto; proyecciones con scope de conversación y visibilidad van por aquí.
             clients = chatRuntime.clients,
-            renderStore = renderStore,
             currentConversationId = currentConversationId,
             isNewChatMode = isNewChatMode,
             newChatEntryId = newChatEntryId,
             captureNewChatWorkspace = conversationWorkspaces::captureNewChatSnapshot,
-            applyCommittedNewConversationState = conversationWorkspaces::applyCommittedNewConversationState,
             currentActiveModel = currentActiveModel,
-            messages = messages,
-            onScrollToMessage = { id -> triggerScrollToMessage(id) },
-            onScrollToAbsoluteBottomAfter = ::triggerScrollToAbsoluteBottomAfter,
-            onScrollToAttachedBottomAfter = ::triggerScrollToAttachedBottomAfter,
-            onSendAcceptedEvent = { convId, msgId ->
-                // Feedback belongs to the conversation on screen. A send from the new-chat page
-                // qualifies because that page becomes this very conversation, but its id is only
-                // published after acceptance, so it is matched via isNewChatMode rather than by id.
-                // Background automation on another conversation stays silent: from the user's point
-                // of view nothing happened on screen.
-                val currentId = currentConversationId.value
-                val targetsOpenConversation = currentId == convId ||
-                    (currentId == null && isNewChatMode.value)
-                if (targetsOpenConversation) onSendAccepted?.invoke(convId, msgId)
-            },
             onSnackbar = { msg -> emitSnackbar(msg) },
             onSnackbarSuspend = { msg -> _snackbarMessage.emit(SnackbarEvent(msg)) },
-            onConversationCreatedBySend = { conversationId ->
-                suppressNextOpenScroll = true
-                _firstMessageCommitted.tryEmit(conversationId)
-            },
-            onConversationAcceptedBySend = { conversationId, modelId, entryId ->
-                withContext(Dispatchers.Main.immediate) {
-                    selectionController.publishAcceptedConversationIfOriginStillOpen(
-                        conversationId,
-                        modelId,
-                        entryId,
-                    )
-                }
-            },
             onUserMessagePersisted = ragManager::indexMessageForRag,
-            onTreeMutationStart = { conversationId, scrollToTarget ->
-                selectionController.beginTreeMutation(conversationId, scrollToTarget)
-            },
-            onTreeMutationSettling = selectionController::markTreeMutationReady,
-            onTreeMutationFailed = selectionController::failTreeMutation,
-            regenerationTransitions = regenerationTransitions,
             pauseConversationTasks = { conversationId -> loopManager.stopLoop(conversationId) },
         )
     }
@@ -769,7 +759,7 @@ class ChatViewModel(
             captureTarget = generationController::captureForegroundSendTarget,
             prepare = generationController::prepareForegroundSend,
             send = { admission, text, attachments, onAccepted ->
-                generationController.sendMessage(admission, text, attachments, onAccepted)
+                generationController.sendMessage(admission, text, attachments, onAccepted, phoneClient)
             },
             onAcceptedClearFailed = { _, retry ->
                 emitSnackbar(
@@ -946,7 +936,13 @@ class ChatViewModel(
             onResult?.invoke(false)
             return 0
         }
-        return generationController.deleteMessage(messageId, onResult)
+        return generationController.deleteMessage(
+            origin = phoneClient,
+            conversationId = currentConversationId.value,
+            messageId = messageId,
+            snapshot = renderStore.allMessages,
+            onResult = onResult,
+        )
     }
 
     private val currentRuntimeFacade = CurrentConversationRuntimeFacade(
@@ -961,12 +957,19 @@ class ChatViewModel(
 
     fun stopGeneration() = generationStopAdapter.stopVisibleConversation()
 
-    fun regenerate(messageId: String): Boolean = generationController.regenerate(messageId)
+    fun regenerate(messageId: String): Boolean = generationController.regenerate(
+        phoneClient, currentConversationId.value, messageId,
+        currentActiveModel.value, messages.value.toList(),
+    )
 
     fun switchBranch(parentId: String?, currentMessageId: String, direction: Int) =
         selectionController.switchBranch(parentId, currentMessageId, direction)
 
-    suspend fun editMessage(messageId: String, newText: String): Boolean = generationController.editMessage(messageId, newText)
+    suspend fun editMessage(messageId: String, newText: String): Boolean =
+        generationController.editMessage(
+            phoneClient, currentConversationId.value, messageId, newText,
+            currentActiveModel.value, messages.value.toList(),
+        )
 
     suspend fun fetchModelsForProvider(name: String): List<String> = providerModelSyncUi.fetchModelsForProvider(name)
 

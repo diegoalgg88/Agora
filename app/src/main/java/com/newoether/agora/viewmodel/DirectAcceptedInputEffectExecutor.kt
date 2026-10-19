@@ -34,6 +34,8 @@ internal data class DirectAcceptedInputRequest(
     val newConversationSettings: ConversationSettings? = null,
     val newChatPersistSnapshot: NewChatPersistEntity? = null,
     val alreadyHoldsLock: Boolean,
+    /** Cliente que emitió este Send; null para sends automáticos (queue drain, ciclo de Loop). */
+    val origin: ChatClient?,
     val requestScroll: (conversationId: String, messageId: String) -> Unit,
     val onAccepted: suspend (SendAcceptance) -> Unit,
     val onModelMessageCreated: ((String) -> Unit)?,
@@ -52,6 +54,8 @@ internal data class DirectAcceptedInputRequest(
         require(wasNewChat == (newConversation != null))
         require(wasNewChat == (originNewChatEntryId != null))
         require(wasNewChat || newChatPersistSnapshot == null)
+        // Un New Chat pertenece al cliente que lo envió; solo ese cliente puede abrir el resultado.
+        require(!wasNewChat || origin != null)
         generationSnapshot?.let { snapshot ->
             require(snapshot.conversationId == conversationId)
             require(snapshot.runId == runId)
@@ -90,8 +94,6 @@ internal class DirectAcceptedInputEffectExecutor(
     private val boundRunGenerationLauncher: BoundRunGenerationLauncher,
     private val acceptanceNotifier: SendAcceptanceNotifier,
     private val toUiMessage: (MessageEntity) -> ChatMessage,
-    private val applyCommittedNewConversationState: suspend (String) -> Unit,
-    private val publishNewConversation: suspend (String, String, Long) -> Boolean,
     private val onUserMessagePersisted: (messageId: String, text: String) -> Unit,
     private val onGenerateTitle: (String) -> Unit,
     private val idFactory: () -> String = { UUID.randomUUID().toString() },
@@ -136,7 +138,8 @@ internal class DirectAcceptedInputEffectExecutor(
             if (request.wasNewChat && !newConversationTransferAttempted) {
                 newConversationTransferAttempted = true
                 try {
-                    applyCommittedNewConversationState(request.conversationId)
+                    checkNotNull(request.origin)
+                        .applyCommittedNewConversationState(request.conversationId)
                 } catch (error: Exception) {
                     runCatching {
                         DebugLog.w(
@@ -151,7 +154,7 @@ internal class DirectAcceptedInputEffectExecutor(
         suspend fun publishNewChatIfNeeded(acceptance: SendAcceptance.Direct): Boolean {
             if (!request.wasNewChat) return false
             if (!newConversationSelectionAttempted) {
-                newConversationSelected = publishNewConversation(
+                newConversationSelected = checkNotNull(request.origin).publishAcceptedNewConversation(
                     request.conversationId,
                     request.modelId,
                     checkNotNull(request.originNewChatEntryId),
@@ -159,7 +162,7 @@ internal class DirectAcceptedInputEffectExecutor(
                 newConversationSelectionAttempted = true
             }
             if (newConversationSelected && !newConversationPresentationPublished) {
-                acceptanceNotifier.publish(acceptance)
+                acceptanceNotifier.publish(acceptance, request.origin)
                 newConversationPresentationPublished = true
             }
             return newConversationSelected
@@ -180,6 +183,7 @@ internal class DirectAcceptedInputEffectExecutor(
                 acceptanceNotifier.notify(
                     accepted,
                     request.onAccepted,
+                    origin = request.origin,
                     publishEvent = !request.wasNewChat,
                 )
                 durableAcceptance.complete(accepted)
@@ -236,6 +240,7 @@ internal class DirectAcceptedInputEffectExecutor(
                     acceptanceNotifier.notify(
                         accepted,
                         request.onAccepted,
+                        origin = request.origin,
                         publishEvent = !request.wasNewChat,
                     )
                     durableAcceptance.complete(accepted)

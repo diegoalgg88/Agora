@@ -1,4 +1,4 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
 import com.newoether.agora.automation.ConversationExecutionCoordinator
 import com.newoether.agora.data.local.MessageEntity
@@ -26,6 +26,8 @@ import org.junit.Test
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ConversationBranchMutationServiceTest {
+    /** Client that issues every delete in these tests; hooks are set by [service]. */
+    private val origin = FakeChatClient(open = "conversation")
     @Test
     fun cancellationDuringOverlayStillCompletesTheBlockedDialog() = runTest {
         val owner = SupervisorJob()
@@ -43,7 +45,7 @@ class ConversationBranchMutationServiceTest {
         )
         service.delete(
             "conversation", "model", state,
-            listOf(chat("model", null, Participant.MODEL)), results::add,
+            listOf(chat("model", null, Participant.MODEL)), origin, results::add,
         )
         runCurrent()
         owner.cancel()
@@ -72,7 +74,7 @@ class ConversationBranchMutationServiceTest {
         )
         service.delete(
             "conversation", "model", state,
-            listOf(chat("model", null, Participant.MODEL)), results::add,
+            listOf(chat("model", null, Participant.MODEL)), origin, results::add,
         )
         runCurrent()
 
@@ -117,6 +119,7 @@ class ConversationBranchMutationServiceTest {
             messageId = compactId,
             state = state,
             snapshot = listOf(chat(compactId, null, Participant.MODEL)),
+            origin = origin,
         )
         advanceUntilIdle()
 
@@ -175,6 +178,7 @@ class ConversationBranchMutationServiceTest {
             messageId = "model",
             state = state,
             snapshot = listOf(chat("user", null, Participant.USER), chat("model", "user", Participant.MODEL)),
+            origin = origin,
             onResult = { events += "result:$it" },
         )
         advanceUntilIdle()
@@ -200,6 +204,7 @@ class ConversationBranchMutationServiceTest {
             messageId = "model",
             state = state,
             snapshot = listOf(chat("model", null, Participant.MODEL)),
+            origin = origin,
             onResult = results::add,
         )
         advanceUntilIdle()
@@ -221,7 +226,11 @@ class ConversationBranchMutationServiceTest {
             events += "start:$it"
             7L
         },
-    ) = ConversationBranchMutationService(
+    ): ConversationBranchMutationService {
+        origin.onBeginTreeMutation = { _, scrollToTarget -> start(scrollToTarget) }
+        origin.onSettleTreeMutation = { _, target -> events += "settle:$target" }
+        origin.onFailTreeMutation = onFailed
+        return ConversationBranchMutationService(
         scope = ownerScope,
         conversations = conversations,
         executionCoordinator = coordinator,
@@ -230,12 +239,10 @@ class ConversationBranchMutationServiceTest {
         },
         isConversationOpen = { true },
         projectGraph = { _, messages, _ -> events += "project:${messages.joinToString { it.id }}" },
-        onMutationStart = { _, scrollToTarget -> start(scrollToTarget) },
-        onMutationSettling = { _, target -> events += "settle:$target" },
-        onMutationFailed = onFailed,
         ioDispatcher = StandardTestDispatcher(testScheduler),
         resultDispatcher = StandardTestDispatcher(testScheduler),
     )
+    }
 
     private fun entity(
         id: String,

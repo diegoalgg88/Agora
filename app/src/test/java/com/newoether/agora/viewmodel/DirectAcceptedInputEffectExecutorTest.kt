@@ -322,6 +322,8 @@ class DirectAcceptedInputEffectExecutorTest {
         )
         private val ids = ArrayDeque(listOf(USER_ID, MODEL_ID))
         val executor: DirectAcceptedInputEffectExecutor
+        val client = FakeChatClient(open = CONVERSATION_ID.takeIf { conversationOpen })
+        val clients = ChatClients()
 
         init {
             coEvery { settings.incrementMessagesSent() } just Runs
@@ -336,34 +338,27 @@ class DirectAcceptedInputEffectExecutorTest {
             coEvery { conversations.getMessage(MODEL_ID) } returns
                 MODEL_ENTITY.copy(status = MessageStatus.SUCCESS)
 
+            client.onAccepted = { _, messageId -> events += "accept-event:$messageId" }
+            client.onApplyCommittedNewConversationState = { conversationId ->
+                events += "apply-committed:$conversationId"
+                applyCommittedError?.let { throw it }
+            }
+            client.onPublishAcceptedNewConversation = { _, modelId, _ ->
+                events += "publish-new:$modelId"
+                selectNewConversation
+            }
+            clients.attach(client)
             executor = DirectAcceptedInputEffectExecutor(
                 conversations = conversations,
                 settings = settings,
                 executionCoordinator = ConversationExecutionCoordinator(),
                 graphWriter = graphWriter,
-                clients = ChatClients().apply {
-                    attach(object : ChatClient {
-                        override val openConversationId: String? =
-                            CONVERSATION_ID.takeIf { conversationOpen }
-                        override val renderStore = ConversationRenderStore()
-                        override fun isConversationVisible(conversationId: String) = false
-                    })
-                },
+                clients = clients,
                 requestBuilder = requestBuilder,
                 terminalSettlement = terminalSettlement,
                 boundRunGenerationLauncher = boundLauncher,
-                acceptanceNotifier = SendAcceptanceNotifier { _, messageId ->
-                    events += "accept-event:$messageId"
-                },
+                acceptanceNotifier = SendAcceptanceNotifier(clients),
                 toUiMessage = ::toUiMessage,
-                applyCommittedNewConversationState = { conversationId ->
-                    events += "apply-committed:$conversationId"
-                    applyCommittedError?.let { throw it }
-                },
-                publishNewConversation = { _, modelId, _ ->
-                    events += "publish-new:$modelId"
-                    selectNewConversation
-                },
                 onUserMessagePersisted = { messageId, _ ->
                     events += "persist-user:$messageId"
                 },
@@ -393,6 +388,7 @@ class DirectAcceptedInputEffectExecutorTest {
             newConversationSettings = newConversationSettings,
             newChatPersistSnapshot = newChatPersistSnapshot,
             alreadyHoldsLock = false,
+            origin = client,
             requestScroll = { _, messageId -> events += "scroll:$messageId" },
             onAccepted = { events += "accept-callback:${it.messageId}" },
             onModelMessageCreated = null,

@@ -1,4 +1,4 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
 import com.newoether.agora.automation.ConversationExecutionCoordinator
 import com.newoether.agora.data.local.MessageEntity
@@ -207,7 +207,6 @@ class ConversationEditServiceTest {
             conversations = conversations,
             requestBuilder = requestBuilder,
             executionCoordinator = executionCoordinator,
-            transitions = transitions,
             inputCloner = inputCloner,
             terminalSettlement = terminalSettlement,
             boundRunGenerationLauncher = boundLauncher,
@@ -217,7 +216,6 @@ class ConversationEditServiceTest {
             projectGraph = { _, messages, _, _ ->
                 events += "project:${messages.joinToString(",") { it.id }}"
             },
-            awaitProjectedPath = { _, messageId -> events += "await:$messageId" },
             onUserMessagePersisted = { messageId, text ->
                 events += "indexed:$messageId:$text"
             },
@@ -237,6 +235,9 @@ class ConversationEditServiceTest {
             newText = "edited text",
             modelId = "provider:model",
             visiblePath = listOf(SOURCE_MESSAGE, SOURCE_ASSISTANT),
+            origin = FakeChatClient(open = "conversation", branchTransitions = transitions).apply {
+                onAwaitProjectedPath = { _, messageId -> events += "await:$messageId" }
+            },
         )
     }
 

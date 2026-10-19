@@ -9,19 +9,14 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ChatClientsTest {
-    private class FakeClient(var open: String?, var visible: Boolean = false) : ChatClient {
-        override val openConversationId: String? get() = open
-        override val renderStore = ConversationRenderStore()
-        override fun isConversationVisible(conversationId: String) = visible && open == conversationId
-    }
 
     private fun message(id: String) = ChatMessage(id = id, text = id, participant = Participant.USER)
 
     @Test
     fun `open and visible mean any attached client`() {
         val clients = ChatClients()
-        val phone = FakeClient(open = "a", visible = false)
-        val web = FakeClient(open = "b", visible = true)
+        val phone = FakeChatClient(open = "a", visible = false)
+        val web = FakeChatClient(open = "b", visible = true)
         clients.attach(phone)
         clients.attach(web)
 
@@ -39,9 +34,9 @@ class ChatClientsTest {
     @Test
     fun `graph commits reach only clients showing that conversation`() {
         val clients = ChatClients()
-        val first = FakeClient(open = "a")
-        val second = FakeClient(open = "a")
-        val other = FakeClient(open = "b")
+        val first = FakeChatClient(open = "a")
+        val second = FakeChatClient(open = "a")
+        val other = FakeChatClient(open = "b")
         listOf(first, second, other).forEach(clients::attach)
 
         clients.commitGraph(
@@ -63,8 +58,8 @@ class ChatClientsTest {
     @Test
     fun `fences open per showing client and a client that left is still released`() {
         val clients = ChatClients()
-        val stays = FakeClient(open = "a")
-        val leaves = FakeClient(open = "a")
+        val stays = FakeChatClient(open = "a")
+        val leaves = FakeChatClient(open = "a")
         clients.attach(stays)
         clients.attach(leaves)
 
@@ -86,5 +81,23 @@ class ChatClientsTest {
         // Released fence: a later Room projection on the store that left is no longer deferred.
         leaves.renderStore.setAllMessages(listOf(message("m3")))
         assertEquals(listOf("m3"), leaves.renderStore.allMessages.map { it.id })
+    }
+
+    @Test
+    fun `effects go to the origin, or to every client showing the conversation without one`() {
+        val clients = ChatClients()
+        val origin = FakeChatClient(open = "b")
+        val showingA = FakeChatClient(open = "a")
+        val alsoA = FakeChatClient(open = "a")
+        listOf(origin, showingA, alsoA).forEach(clients::attach)
+
+        assertEquals(listOf(origin), clients.effectTargets("a", origin))
+        assertEquals(listOf(showingA, alsoA), clients.effectTargets("a", origin = null))
+        assertTrue(clients.effectTargets("c", origin = null).isEmpty())
+
+        val accepted = mutableListOf<String>()
+        showingA.onAccepted = { conversationId, messageId -> accepted += "$conversationId:$messageId" }
+        SendAcceptanceNotifier(clients).publish(SendAcceptance.Queued("m1", "a"), origin = null)
+        assertEquals(listOf("a:m1"), accepted)
     }
 }
