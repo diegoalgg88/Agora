@@ -18,6 +18,7 @@ internal class WebUiSettingsStore(private val dataStore: DataStore<Preferences>)
     val enabled: Flow<Boolean> = dataStore.data.map { it[ENABLED] ?: false }
     val port: Flow<Int> = dataStore.data.map { it[PORT] ?: DEFAULT_PORT }
     val passwordHash: Flow<String?> = dataStore.data.map { it[PASSWORD_HASH] }
+    val https: Flow<Boolean> = dataStore.data.map { it[HTTPS] ?: true }
 
     suspend fun saveEnabled(enabled: Boolean) {
         dataStore.edit { it[ENABLED] = enabled }
@@ -26,6 +27,10 @@ internal class WebUiSettingsStore(private val dataStore: DataStore<Preferences>)
     suspend fun savePort(port: Int) {
         require(port in PORT_RANGE) { "Port $port is outside $PORT_RANGE" }
         dataStore.edit { it[PORT] = port }
+    }
+
+    suspend fun saveHttps(enabled: Boolean) {
+        dataStore.edit { it[HTTPS] = enabled }
     }
 
     suspend fun savePasswordHash(hash: String) {
@@ -39,5 +44,6 @@ internal class WebUiSettingsStore(private val dataStore: DataStore<Preferences>)
         private val ENABLED = booleanPreferencesKey("webui_enabled")
         private val PORT = intPreferencesKey("webui_port")
         private val PASSWORD_HASH = stringPreferencesKey("webui_password_hash")
+        private val HTTPS = booleanPreferencesKey("webui_https")
     }
 }

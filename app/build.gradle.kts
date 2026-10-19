@@ -17,6 +17,9 @@ if (keystorePropertiesFile.exists()) {
 
 android {
     namespace = "com.newoether.agora"
+    // Robolectric instala Conscrypt como primer security provider de todo el test JVM;
+    // en JDK 17+ su TLS server necesita acceso reflectivo a java.net (InetAddress.holder).
+    testOptions.unitTests.all { it.jvmArgs("--add-opens=java.base/java.net=ALL-UNNAMED") }
     compileSdk {
         version = release(36)
     }
@@ -188,6 +191,8 @@ dependencies {
     // WebUI server (FEAT-01): HTTP embebido con el engine pure-Kotlin CIO.
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
+    // Certificado TLS auto-firmado del WebUI (EC P-256, SANs por dirección).
+    implementation(libs.bouncycastle.pkix)
     testImplementation(libs.ktor.server.test.host)
     implementation(libs.androidx.webkit)
     // Embedded .litertlm engine (second Local format). Statically-linked JNI AAR:

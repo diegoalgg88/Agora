@@ -10,9 +10,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Fingerprint
 import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
+import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material.icons.filled.Numbers
+import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Web
 import androidx.compose.material3.AlertDialog
@@ -39,6 +42,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.newoether.agora.AgoraApplication
 import com.newoether.agora.R
+import com.newoether.agora.ui.theme.MonoFamily
+import com.newoether.agora.viewmodel.ChatViewModel
 import com.newoether.agora.webui.WebUiController
 import com.newoether.agora.webui.WebUiSettingsStore
 import com.newoether.agora.webui.WebUiStatus
@@ -47,15 +52,17 @@ import kotlinx.coroutines.launch
 
 /** Settings > WebUI: enciende el control remoto por navegador, elige puerto y contraseña. */
 @Composable
-fun SettingsWebUiPage(onBack: () -> Unit) {
+fun SettingsWebUiPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val context = LocalContext.current
     val webUi = remember { (context.applicationContext as AgoraApplication).requireContainer().webUi }
     val enabled by webUi.enabled.collectAsState(initial = false)
     val port by webUi.port.collectAsState(initial = WebUiSettingsStore.DEFAULT_PORT)
     val hasPassword by webUi.hasPassword.collectAsState(initial = false)
     val status by webUi.status.collectAsState()
+    val https by webUi.https.collectAsState(initial = true)
     val scope = rememberCoroutineScope()
     var passwordDialog by remember { mutableStateOf(false) }
+    val passwordRequired = stringResource(R.string.webui_password_required)
 
     CollapsingSettingsScaffold(title = stringResource(R.string.settings_webui), onBack = onBack) {
         SettingsGroupColumn {
@@ -63,7 +70,15 @@ fun SettingsWebUiPage(onBack: () -> Unit) {
                 title = stringResource(R.string.settings_webui),
                 items = listOf(
                     {
-                        val toggle = { scope.launch { webUi.setEnabled(!enabled) }; Unit }
+                        // Nunca disabled: sin contraseña, un tap explica qué falta.
+                        val toggle = {
+                            if (!enabled && !hasPassword) {
+                                viewModel.emitSnackbar(passwordRequired)
+                            } else {
+                                scope.launch { webUi.setEnabled(!enabled) }
+                            }
+                            Unit
+                        }
                         SettingsItem(
                             headlineContent = { Text(stringResource(R.string.webui_enable)) },
                             supportingContent = {
@@ -79,13 +94,9 @@ fun SettingsWebUiPage(onBack: () -> Unit) {
                                 Icon(Icons.Default.Web, null, tint = MaterialTheme.colorScheme.primary)
                             },
                             trailingContent = {
-                                Switch(
-                                    checked = enabled,
-                                    enabled = hasPassword || enabled,
-                                    onCheckedChange = { toggle() },
-                                )
+                                Switch(checked = enabled, onCheckedChange = { toggle() })
                             },
-                            modifier = Modifier.clickable(enabled = hasPassword || enabled) { toggle() },
+                            modifier = Modifier.clickable { toggle() },
                         )
                     },
                     {
@@ -115,14 +126,24 @@ fun SettingsWebUiPage(onBack: () -> Unit) {
             )
             SettingsGroup(
                 title = stringResource(R.string.webui_access),
-                items = listOf(
+                items = listOf<@Composable () -> Unit>(
                     {
                         SettingsIconContent(icon = Icons.Default.Link) {
                             val running = status as? WebUiStatus.Running
-                            val urls = running?.let { webUi.accessUrls(it.port) }.orEmpty()
+                            val urls = running?.let { webUi.accessUrls(it.port, it.https) }.orEmpty()
+                            Text(
+                                stringResource(R.string.about_links),
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                            Spacer(Modifier.height(4.dp))
                             Text(
                                 stringResource(
-                                    if (running != null && urls.isEmpty()) R.string.webui_access_none else R.string.webui_access_urls_desc,
+                                    when {
+                                        running == null -> R.string.webui_access_off
+                                        urls.isEmpty() -> R.string.webui_access_none
+                                        else -> R.string.webui_access_urls_desc
+                                    },
                                 ),
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -135,7 +156,11 @@ fun SettingsWebUiPage(onBack: () -> Unit) {
                             }
                         }
                     },
-                    {
+                ) + if (https) {
+                    emptyList()
+                } else {
+                    // Solo HTTP plano: con HTTPS la conexión ya va cifrada.
+                    listOf<@Composable () -> Unit>({
                         SettingsIconContent(icon = Icons.Default.Warning) {
                             Text(
                                 stringResource(R.string.webui_http_warning),
@@ -143,9 +168,10 @@ fun SettingsWebUiPage(onBack: () -> Unit) {
                                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                         }
-                    },
-                ),
+                    })
+                },
             )
+            WebUiHttpsGroup(webUi = webUi, https = https)
         }
     }
 
@@ -154,6 +180,100 @@ fun SettingsWebUiPage(onBack: () -> Unit) {
             webUi = webUi,
             isChange = hasPassword,
             onDismiss = { passwordDialog = false },
+        )
+    }
+}
+
+/** Switch de HTTPS y, con él activado, el fingerprint del certificado y la acción de regenerar. */
+@Composable
+private fun WebUiHttpsGroup(webUi: WebUiController, https: Boolean) {
+    val scope = rememberCoroutineScope()
+    val fingerprint by webUi.certificateFingerprint.collectAsState()
+    var confirmRegenerate by remember { mutableStateOf(false) }
+    var regenerating by remember { mutableStateOf(false) }
+    LaunchedEffect(https) { if (https && fingerprint == null) webUi.loadCertificate() }
+    val toggle = { scope.launch { webUi.setHttps(!https) }; Unit }
+    SettingsGroup(
+        title = stringResource(R.string.webui_security),
+        items = listOf<@Composable () -> Unit>(
+            {
+                SettingsItem(
+                    headlineContent = { Text(stringResource(R.string.webui_https)) },
+                    supportingContent = { Text(stringResource(R.string.webui_https_desc)) },
+                    leadingContent = {
+                        Icon(Icons.Default.Lock, null, tint = MaterialTheme.colorScheme.primary)
+                    },
+                    trailingContent = { Switch(checked = https, onCheckedChange = { toggle() }) },
+                    modifier = Modifier.clickable { toggle() },
+                )
+            },
+        ) + if (!https) {
+            emptyList()
+        } else {
+            listOf<@Composable () -> Unit>(
+                {
+                    SettingsIconContent(icon = Icons.Default.Fingerprint) {
+                        Text(
+                            stringResource(R.string.webui_certificate_fingerprint),
+                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
+                            color = MaterialTheme.colorScheme.onSurface,
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        Text(
+                            stringResource(R.string.webui_certificate_fingerprint_desc),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        Spacer(Modifier.height(8.dp))
+                        SelectionContainer {
+                            Text(
+                                fingerprint.orEmpty(),
+                                style = MaterialTheme.typography.bodyMedium.copy(fontFamily = MonoFamily),
+                                color = MaterialTheme.colorScheme.onSurface,
+                            )
+                        }
+                    }
+                },
+                {
+                    SettingsItem(
+                        headlineContent = { Text(stringResource(R.string.webui_certificate_regenerate)) },
+                        supportingContent = { Text(stringResource(R.string.webui_certificate_regenerate_desc)) },
+                        leadingContent = {
+                            Icon(Icons.Default.Refresh, null, tint = MaterialTheme.colorScheme.primary)
+                        },
+                        modifier = Modifier.clickable { confirmRegenerate = true },
+                    )
+                },
+            )
+        },
+    )
+    if (confirmRegenerate) {
+        AlertDialog(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer,
+            onDismissRequest = { if (!regenerating) confirmRegenerate = false },
+            title = { Text(stringResource(R.string.webui_certificate_regenerate), fontWeight = FontWeight.Bold) },
+            text = { Text(stringResource(R.string.webui_certificate_regenerate_desc)) },
+            confirmButton = {
+                TextButton(
+                    enabled = !regenerating,
+                    onClick = {
+                        regenerating = true
+                        scope.launch {
+                            try {
+                                webUi.regenerateCertificate()
+                            } finally {
+                                regenerating = false
+                                confirmRegenerate = false
+                            }
+                        }
+                    },
+                ) { Text(stringResource(R.string.webui_certificate_regenerate_action)) }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmRegenerate = false }, enabled = !regenerating) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
         )
     }
 }
@@ -202,7 +322,11 @@ private fun WebUiPortField(port: Int, onPortChange: (Int) -> Unit) {
 }
 
 @Composable
-private fun WebUiPasswordDialog(webUi: WebUiController, isChange: Boolean, onDismiss: () -> Unit) {
+private fun WebUiPasswordDialog(
+    webUi: WebUiController,
+    isChange: Boolean,
+    onDismiss: () -> Unit,
+) {
     var password by remember { mutableStateOf("") }
     var confirm by remember { mutableStateOf("") }
     var saving by remember { mutableStateOf(false) }

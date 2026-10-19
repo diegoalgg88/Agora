@@ -7,7 +7,7 @@
     <string name="webui_status_starting">Iniciando…</string>
     <string name="webui_status_running">Em execução na porta %1$d</string>
     <string name="webui_status_failed">Não foi possível iniciar: %1$s</string>
-    <string name="webui_password_required">Precisa de uma senha. Toque para definir e ativar.</string>
+    <string name="webui_password_required">Defina uma senha abaixo para ativar a WebUI.</string>
     <string name="webui_port">Porta</string>
     <string name="webui_port_desc">De 1024 a 65535. Alterar reinicia o servidor.</string>
     <string name="webui_password_set">Definir senha</string>
@@ -29,4 +29,12 @@
     <string name="webui_notification_running">Abrir %1$s</string>
     <string name="webui_notification_failed">Parado: %1$s</string>
     <string name="webui_notification_stop">Parar</string>
+    <string name="webui_security">Segurança</string>
+    <string name="webui_https">HTTPS</string>
+    <string name="webui_https_desc">Criptografa a conexão. Os navegadores avisam uma vez porque o certificado é autoassinado; aceite-o depois de conferir a impressão digital.</string>
+    <string name="webui_certificate_fingerprint">Impressão digital SHA-256</string>
+    <string name="webui_certificate_fingerprint_desc">Compare com a impressão digital que o navegador mostra antes de aceitar o certificado.</string>
+    <string name="webui_certificate_regenerate">Gerar novo certificado</string>
+    <string name="webui_certificate_regenerate_desc">Cria um certificado novo. Cada navegador terá de aceitá-lo de novo.</string>
+    <string name="webui_certificate_regenerate_action">Gerar novo</string>
 </resources>

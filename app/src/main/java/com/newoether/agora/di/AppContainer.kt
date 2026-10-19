@@ -491,6 +491,13 @@ class AppContainer(
             // jamás se exportan (device-local por diseño del WebUiSettingsStore).
             store = com.newoether.agora.webui.WebUiSettingsStore(appContext.dataStore),
             scope = appScope,
+            // Almacenamiento no respaldado: la llave TLS jamás sale del device.
+            certificates = com.newoether.agora.webui.WebUiCertificateStore(
+                directory = java.io.File(appContext.noBackupFilesDir, "webui"),
+                seal = com.newoether.agora.util.SecretCrypto::encrypt,
+                unseal = com.newoether.agora.util.SecretCrypto::decrypt,
+                addresses = com.newoether.agora.webui.WebUiController::interfaceAddresses,
+            ),
         )
     }
 

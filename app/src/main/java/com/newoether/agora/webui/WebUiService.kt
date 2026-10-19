@@ -78,7 +78,7 @@ class WebUiService : Service() {
     private fun render(status: WebUiStatus) {
         val text = when (status) {
             WebUiStatus.Stopped, WebUiStatus.Starting -> getString(R.string.webui_notification_starting)
-            is WebUiStatus.Running -> controller?.accessUrls(status.port)?.firstOrNull()
+            is WebUiStatus.Running -> controller?.accessUrls(status.port, status.https)?.firstOrNull()
                 ?.let { getString(R.string.webui_notification_running, it) }
                 ?: getString(R.string.webui_notification_running, "port ${status.port}")
             is WebUiStatus.Failed -> getString(R.string.webui_notification_failed, status.message)

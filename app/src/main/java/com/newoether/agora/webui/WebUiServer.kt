@@ -40,6 +40,8 @@ internal class WebUiServer(
     private val themeCss: () -> String = { "" },
     /** El archivo de fuente de la app servido en [WebUiTheme.FONT_PATH], o null con fuente del sistema. */
     private val readAppFont: () -> ByteArray? = { null },
+    /** True cuando este request llegó por HTTPS: su cookie de sesión se marca Secure. */
+    private val secureCookies: (ApplicationCall) -> Boolean = { false },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun install(application: Application) = with(application) {
@@ -67,7 +69,7 @@ internal class WebUiServer(
             post("/api/logout") {
                 if (!call.acceptsPost()) return@post
                 auth.logout(call.request.cookies[SESSION_COOKIE])
-                call.response.cookies.append(sessionCookie(value = "", maxAge = 0))
+                call.response.cookies.append(call.sessionCookie(value = "", maxAge = 0))
                 call.respond(HttpStatusCode.NoContent)
             }
             get("/api/session") {
@@ -160,12 +162,13 @@ internal class WebUiServer(
         respond(TextContent(json.encodeToString(body), ContentType.Application.Json, status))
     }
 
-    private fun sessionCookie(value: String, maxAge: Int?) = Cookie(
+    private fun ApplicationCall.sessionCookie(value: String, maxAge: Int?) = Cookie(
         name = SESSION_COOKIE,
         value = value,
         maxAge = maxAge,
         path = "/",
         httpOnly = true,
+        secure = secureCookies(this),
         extensions = mapOf("SameSite" to "Strict"),
     )
 

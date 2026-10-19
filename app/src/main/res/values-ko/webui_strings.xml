@@ -7,7 +7,7 @@
     <string name="webui_status_starting">시작하는 중…</string>
     <string name="webui_status_running">포트 %1$d에서 실행 중</string>
     <string name="webui_status_failed">시작할 수 없음: %1$s</string>
-    <string name="webui_password_required">비밀번호가 필요합니다. 탭하여 설정하면 켜집니다.</string>
+    <string name="webui_password_required">WebUI를 켜려면 아래에서 비밀번호를 설정하세요.</string>
     <string name="webui_port">포트</string>
     <string name="webui_port_desc">1024~65535. 변경하면 서버가 다시 시작됩니다.</string>
     <string name="webui_password_set">비밀번호 설정</string>
@@ -29,4 +29,12 @@
     <string name="webui_notification_running">%1$s 열기</string>
     <string name="webui_notification_failed">중지됨: %1$s</string>
     <string name="webui_notification_stop">중지</string>
+    <string name="webui_security">보안</string>
+    <string name="webui_https">HTTPS</string>
+    <string name="webui_https_desc">연결을 암호화합니다. 자체 서명 인증서라 브라우저가 처음에 경고합니다. 지문을 확인한 뒤 수락하세요.</string>
+    <string name="webui_certificate_fingerprint">SHA-256 지문</string>
+    <string name="webui_certificate_fingerprint_desc">인증서를 수락하기 전에 브라우저에 표시된 지문과 비교하세요.</string>
+    <string name="webui_certificate_regenerate">인증서 다시 생성</string>
+    <string name="webui_certificate_regenerate_desc">새 인증서를 만듭니다. 모든 브라우저에서 다시 수락해야 합니다.</string>
+    <string name="webui_certificate_regenerate_action">다시 생성</string>
 </resources>
