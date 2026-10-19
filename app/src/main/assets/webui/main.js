@@ -1,4 +1,4 @@
-// Agora WebUI entry: the session check, then sign-in or the chat frame.
+// Agora WebUI entry: the session check, then sign-in or the read-only chat mirror.
 import { render } from "./vendor/preact.mjs";
 import { useEffect, useState } from "./vendor/preact-hooks.mjs";
 import { html } from "./html.js";

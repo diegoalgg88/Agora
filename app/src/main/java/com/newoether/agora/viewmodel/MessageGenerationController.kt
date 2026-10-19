@@ -463,7 +463,9 @@ internal class MessageGenerationController(
             generationSnapshot = generationSnapshot,
             newConversation = conversationSnapshot.takeIf { target.wasNewChat },
             newConversationSettings = workspace?.conversationSettings,
-            newChatPersistSnapshot = if (target.wasNewChat) {
+            // El workspace session-local (WebUI) jamás toca el New Chat singleton persistido del
+            // teléfono, así que su admisión no lleva persist snapshot.
+            newChatPersistSnapshot = if (target.wasNewChat && workspace?.sessionLocal != true) {
                 (workspace?.persisted ?: NewChatPersistEntity()).copy(
                     draftText = composer.text,
                     draftAttachments = composer.attachments

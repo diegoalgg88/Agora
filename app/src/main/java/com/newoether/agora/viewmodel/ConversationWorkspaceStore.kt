@@ -38,6 +38,12 @@ internal data class NewChatWorkspaceSnapshot(
     val modelId: String?,
     val systemPromptId: String?,
     val conversationSettings: ConversationSettings?,
+    /**
+     * True cuando este workspace vive solo en la memoria de un cliente de sesión (p. ej. el
+     * WebUI): un send desde él jamás toca el New Chat singleton persistido del teléfono, así la
+     * admisión no lleva persist snapshot para él.
+     */
+    val sessionLocal: Boolean = false,
     private val pendingPersisted: CompletableDeferred<NewChatPersistEntity?>? = null,
 ) {
     suspend fun awaitCaptured(): NewChatWorkspaceSnapshot =

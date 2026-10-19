@@ -46,7 +46,8 @@ internal fun SettingsRepository.validChatModels(
     ).collect { emit(it) }
 }.stateIn(scope, SharingStarted.Eagerly, null)
 
-private fun resolveValidModel(
+// internal: los clientes de sesión (WebUI) resuelven el modelo válido de su propia página New Chat.
+internal fun resolveValidModel(
     referencedModel: String?,
     defaultModel: String,
     validModels: Set<String>,

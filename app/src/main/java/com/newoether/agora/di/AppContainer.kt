@@ -515,6 +515,21 @@ class AppContainer(
             ),
             customProviders = settingsRepository.customProviders,
             parseInlineDollarMath = settingsRepository.parseInlineDollarMath,
+            // Una sesión de navegador por conexión, con el scope de esa conexión.
+            openChatSession = { scope ->
+                com.newoether.agora.webui.WebUiChatSession(
+                    generation = chatRuntime.messageGeneration,
+                    generationStop = chatRuntime.generationStop,
+                    clients = chatRuntime.clients,
+                    conversations = conversationRepository,
+                    registry = conversationStateRegistry,
+                    executionCoordinator = conversationExecutionCoordinator,
+                    settings = settingsRepository,
+                    transfers = conversationSettingsTransfers,
+                    attachmentProcessor = com.newoether.agora.viewmodel.AttachmentImportProcessor(application),
+                    scope = scope,
+                )
+            },
         )
     }
 
