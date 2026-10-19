@@ -1131,6 +1131,7 @@
     <string name="conversation_search_hint">Tìm kiếm…</string>
     <string name="conversation_share">Chia sẻ</string>
     <string name="conversation_share_failed">Không thể chia sẻ cuộc trò chuyện: %1$s</string>
+    <string name="conversation_deleted_elsewhere">Cuộc trò chuyện này đã bị xóa trên thiết bị khác.</string>
     <string name="custom_provider_protocol_label">Định dạng API</string>
     <string name="file_path_unknown">Tệp không xác định</string>
     <string name="queue_clear_all">Xóa tất cả</string>

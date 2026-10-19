@@ -1122,6 +1122,7 @@
     <string name="conversation_search_hint">Suchen…</string>
     <string name="conversation_share">Teilen</string>
     <string name="conversation_share_failed">Unterhaltung konnte nicht geteilt werden: %1$s</string>
+    <string name="conversation_deleted_elsewhere">Diese Unterhaltung wurde auf einem anderen Gerät gelöscht.</string>
     <string name="custom_provider_protocol_label">API-Format</string>
     <string name="file_path_unknown">Unbekannte Datei</string>
     <string name="import_file_too_large">Datei zu groß (%1$d MB). Bitte wähle eine kleinere Exportdatei.</string>

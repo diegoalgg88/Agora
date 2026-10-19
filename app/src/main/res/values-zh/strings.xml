@@ -281,6 +281,7 @@
     <string name="conversation_search_hint">搜索…</string>
     <string name="conversation_fork_failed">无法创建对话分支：%1$s</string>
     <string name="conversation_share_failed">无法分享对话：%1$s</string>
+    <string name="conversation_deleted_elsewhere">此对话已在另一台设备上删除。</string>
     <string name="img_saved">已保存到相册</string>
     <string name="img_save_failed">保存失败</string>
     <string name="img_info_dimensions">尺寸</string>

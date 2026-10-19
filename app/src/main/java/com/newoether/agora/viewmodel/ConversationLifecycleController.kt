@@ -2,28 +2,31 @@ package com.newoether.agora.viewmodel
 
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.util.DebugLog
-import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-/** Coordinates durable conversation metadata changes and deletion cleanup. */
+/**
+ * Coordina los cambios durables de metadata de conversaciones y la limpieza tras borrado para
+ * cada cliente.
+ *
+ * Un borrado lo emite un [ChatClient] (su origen). El origen cubre su propia página mientras
+ * muestra la conversación; cada cliente que aún muestra la conversación cuando se borra cae a
+ * New Chat, y los clientes distintos del origen reciben antes el porqué.
+ */
 internal class ConversationLifecycleController(
-    private val currentConversationId: StateFlow<String?>,
     private val conversations: ConversationRepository,
     private val scope: CoroutineScope,
+    private val clients: ChatClients,
     private val stopLoop: suspend (String) -> Unit,
     private val tryWithConversationLock: suspend (String, suspend () -> Unit) -> Boolean,
     private val removeRuntime: (String) -> Unit,
-    private val stopVisibleGeneration: () -> Unit,
-    private val settleDeletedSelectedConversation: (String) -> Unit,
-    private val beginSelectedDeleteTransition: suspend (String) -> Long? = { null },
-    private val abortSelectedDeleteTransition: (Long?) -> Unit = {},
-    private val isDeleteLocked: (String) -> Boolean = { false },
+    private val stopGeneration: (conversationId: String, origin: ChatClient) -> Unit,
+    private val deletedElsewhereText: () -> String,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
     private val mainDispatcher: CoroutineDispatcher = Dispatchers.Main,
 ) {
@@ -34,42 +37,50 @@ internal class ConversationLifecycleController(
     }
 
     fun delete(
+        origin: ChatClient,
         conversationId: String,
         expectedMessageIds: Set<String>? = null,
         onResult: (Boolean) -> Unit = {},
     ): Boolean {
-        if (isDeleteLocked(conversationId)) return false
+        if (clients.isSubmissionFrozen(conversationId)) return false
         scope.launch(ioDispatcher) {
             var deleted = false
-            var selectedAtCommit = false
-            val selectedAtDispatch = currentConversationId.value == conversationId
+            var viewersAtCommit = emptyList<ChatClient>()
+            val selectedAtDispatch = origin.openConversationId == conversationId
             var transitionRequestId: Long? = null
             try {
                 if (selectedAtDispatch) {
-                    // This suspends for the overlay fade, so no destructive storage work can begin
-                    // until the underlying selected-page loading surface is visible.
-                    transitionRequestId = beginSelectedDeleteTransition(conversationId)
+                    // Esto suspende por el fade del overlay, así que ningún trabajo destructivo de
+                    // storage puede empezar antes de que la superficie de carga de la página
+                    // seleccionada sea visible.
+                    transitionRequestId = origin.beginTreeMutation(
+                        conversationId = conversationId,
+                        scrollToTarget = false,
+                    )
                 }
                 tryWithConversationLock(conversationId) {
-                    // Send admission uses this same lock. Only the winner may stop live work.
-                    if (isDeleteLocked(conversationId)) return@tryWithConversationLock
+                    // La admisión de Send usa este mismo lock. Solo el ganador puede parar trabajo vivo.
+                    if (clients.isSubmissionFrozen(conversationId)) return@tryWithConversationLock
                     if (
                         expectedMessageIds != null &&
                         conversations.getMessageTopologySnapshot(conversationId)
                             .mapTo(linkedSetOf()) { it.id } != expectedMessageIds
                     ) return@tryWithConversationLock
-                    selectedAtCommit = currentConversationId.value == conversationId
-                    if (selectedAtCommit) stopVisibleGeneration()
+                    viewersAtCommit = clients.showing(conversationId)
+                    if (viewersAtCommit.isNotEmpty()) stopGeneration(conversationId, origin)
                     stopLoop(conversationId)
                     conversations.deleteConversation(conversationId)
                     deleted = true
                 }
                 if (deleted) {
                     removeRuntime(conversationId)
-                    if (selectedAtCommit) {
+                    if (viewersAtCommit.isNotEmpty()) {
                         withContext(mainDispatcher) {
-                            // Hand the already-visible overlay to the New Chat transition.
-                            settleDeletedSelectedConversation(conversationId)
+                            viewersAtCommit.forEach { viewer ->
+                                if (viewer !== origin) viewer.showSnackbar(deletedElsewhereText())
+                                // El origen entrega su overlay ya visible a New Chat.
+                                viewer.settleDeletedConversation(conversationId)
+                            }
                         }
                     }
                 }
@@ -85,8 +96,8 @@ internal class ConversationLifecycleController(
                 }
             } finally {
                 withContext(NonCancellable + mainDispatcher) {
-                    if (selectedAtDispatch && (!deleted || !selectedAtCommit)) {
-                        abortSelectedDeleteTransition(transitionRequestId)
+                    if (selectedAtDispatch && (!deleted || origin !in viewersAtCommit)) {
+                        origin.failTreeMutation(transitionRequestId)
                     }
                     onResult(deleted)
                 }

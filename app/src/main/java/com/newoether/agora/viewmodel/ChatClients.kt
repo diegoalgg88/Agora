@@ -57,6 +57,18 @@ internal interface ChatClient {
 
     fun showSnackbar(message: String)
 
+    /** Abre [conversationId] en este cliente (p. ej. la conversación que su fork creó). */
+    fun openConversation(conversationId: String)
+
+    /** Entrega el texto de share producido para el share request de este cliente a su superficie. */
+    fun showShareText(text: String)
+
+    /** [conversationId], mostrada por este cliente, fue borrada; mueve este cliente a New Chat. */
+    fun settleDeletedConversation(conversationId: String)
+
+    /** True mientras el composer de este cliente está submitting hacia [conversationId]. */
+    fun isSubmissionFrozen(conversationId: String): Boolean
+
     // -- Avisos de estado del runtime que cada cliente adjunto recibe.
     /** El slot de generación de [conversationId] pasó a activo o idle; alimenta el loading del cliente. */
     fun onGenerationActivityChanged(conversationId: String, active: Boolean)
@@ -136,7 +148,15 @@ internal class ChatClients {
 
     /** El cliente origen de un comando, o cada cliente que muestra [conversationId] cuando no hay origen. */
     fun effectTargets(conversationId: String, origin: ChatClient?): List<ChatClient> =
-        origin?.let(::listOf) ?: attached.filter { it.openConversationId == conversationId }
+        origin?.let(::listOf) ?: showing(conversationId)
+
+    /** Cada cliente adjunto que tiene [conversationId] abierta. */
+    fun showing(conversationId: String): List<ChatClient> =
+        attached.filter { it.openConversationId == conversationId }
+
+    /** True mientras cualquier cliente adjunto está submitting hacia [conversationId]. */
+    fun isSubmissionFrozen(conversationId: String): Boolean =
+        attached.any { it.isSubmissionFrozen(conversationId) }
 
     fun generationActivityChanged(conversationId: String, active: Boolean) =
         attached.forEach { it.onGenerationActivityChanged(conversationId, active) }

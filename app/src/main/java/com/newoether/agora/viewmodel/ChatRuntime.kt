@@ -141,6 +141,30 @@ class ChatRuntime(
         )
     }
 
+    internal val conversationLifecycle = ConversationLifecycleController(
+        conversations = conversations,
+        scope = scope,
+        clients = clients,
+        stopLoop = { conversationId -> loopManager.stopLoop(conversationId) },
+        tryWithConversationLock = { conversationId, block ->
+            executionCoordinator.tryWithConversationLock(conversationId) { block() }
+        },
+        removeRuntime = registry::remove,
+        stopGeneration = { conversationId, origin -> generationStop.stop(conversationId, origin) },
+        deletedElsewhereText = { appContext.getString(R.string.conversation_deleted_elsewhere) },
+    )
+
+    internal val conversationForkShare = ConversationForkShareController(
+        service = ConversationForkShareService(
+            conversations,
+            settings,
+            java.io.File(application.filesDir, "fork-attachments"),
+        ),
+        scope = scope,
+        forkFailureText = { reason -> appContext.getString(R.string.conversation_fork_failed, reason) },
+        shareFailureText = { reason -> appContext.getString(R.string.conversation_share_failed, reason) },
+    )
+
     // Loop cycles for a conversation some client shows use the regular Send path; the bridge
     // waits for that exact durable turn and returns a typed result to the automation lease owner.
     private val foregroundAutomationBridge = ForegroundAutomationBridgeController(

@@ -21,7 +21,6 @@ internal open class FakeChatClient(
     var onBeginTreeMutation: suspend (String, Boolean) -> Long? = { _, _ -> null }
     var onSettleTreeMutation: (Long?, String?) -> Unit = { _, _ -> }
     var onFailTreeMutation: (Long?) -> Unit = {}
-    var onGenerationActivity: (conversationId: String, active: Boolean) -> Unit = { _, _ -> }
     val snackbars = mutableListOf<String>()
 
     override suspend fun awaitProjectedPath(conversationId: String, messageId: String) =
@@ -45,9 +44,23 @@ internal open class FakeChatClient(
     override fun settleTreeMutation(requestId: Long?, targetMessageId: String?) =
         onSettleTreeMutation(requestId, targetMessageId)
     override fun failTreeMutation(requestId: Long?) = onFailTreeMutation(requestId)
-    override fun onGenerationActivityChanged(conversationId: String, active: Boolean) =
-        onGenerationActivity(conversationId, active)
     override fun showSnackbar(message: String) {
         snackbars += message
+    }
+    val openedConversations = mutableListOf<String>()
+    override fun openConversation(conversationId: String) {
+        openedConversations += conversationId
+    }
+    val shareTexts = mutableListOf<String>()
+    override fun showShareText(text: String) {
+        shareTexts += text
+    }
+    var onSettleDeleted: (String) -> Unit = {}
+    override fun settleDeletedConversation(conversationId: String) = onSettleDeleted(conversationId)
+    var frozen = false
+    override fun isSubmissionFrozen(conversationId: String) = frozen
+    val activityChanges = mutableListOf<Pair<String, Boolean>>()
+    override fun onGenerationActivityChanged(conversationId: String, active: Boolean) {
+        activityChanges += conversationId to active
     }
 }

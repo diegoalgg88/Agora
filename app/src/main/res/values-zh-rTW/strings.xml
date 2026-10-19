@@ -1169,6 +1169,7 @@
     <string name="conversation_search_hint">搜尋…</string>
     <string name="conversation_share">分享</string>
     <string name="conversation_share_failed">無法分享對話：%1$s</string>
+    <string name="conversation_deleted_elsewhere">此對話已在另一台裝置上刪除。</string>
     <string name="queue_clear_all">全部清除</string>
     <string name="more">更多</string>
     <string name="delete_message_title">刪除訊息？</string>

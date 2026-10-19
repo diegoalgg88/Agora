@@ -304,6 +304,7 @@
     <string name="conversation_search_hint">Search…</string>
     <string name="conversation_fork_failed">Could not fork conversation: %1$s</string>
     <string name="conversation_share_failed">Could not share conversation: %1$s</string>
+    <string name="conversation_deleted_elsewhere">This conversation was deleted on another device.</string>
     <string name="img_saved">Saved to gallery</string>
     <string name="img_save_failed">Save failed</string>
     <string name="img_info_dimensions">Dimensions</string>

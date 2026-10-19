@@ -1122,6 +1122,7 @@
     <string name="conversation_search_hint">بحث…</string>
     <string name="conversation_share">مشاركة</string>
     <string name="conversation_share_failed">تعذرت مشاركة المحادثة: %1$s</string>
+    <string name="conversation_deleted_elsewhere">تم حذف هذه المحادثة على جهاز آخر.</string>
     <string name="custom_provider_protocol_label">تنسيق API</string>
     <string name="file_path_unknown">ملف غير معروف</string>
     <string name="import_file_too_large">الملف كبير جدًا (%1$d م.ب.). اختر ملف تصدير أصغر.</string>

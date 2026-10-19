@@ -1122,6 +1122,7 @@
     <string name="conversation_search_hint">Поиск…</string>
     <string name="conversation_share">Поделиться</string>
     <string name="conversation_share_failed">Не удалось поделиться диалогом: %1$s</string>
+    <string name="conversation_deleted_elsewhere">Этот диалог был удалён на другом устройстве.</string>
     <string name="custom_provider_protocol_label">Формат API</string>
     <string name="file_path_unknown">Неизвестный файл</string>
     <string name="import_file_too_large">Файл слишком большой (%1$d МБ). Выберите файл экспорта меньшего размера.</string>

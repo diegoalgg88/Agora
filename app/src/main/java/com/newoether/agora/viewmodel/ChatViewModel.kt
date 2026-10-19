@@ -133,53 +133,6 @@ class ChatViewModel(
         backupSchedule = AndroidAutoBackupSchedulePort(application),
         scope = viewModelScope,
     )
-    private val conversationForkShare =
-        ConversationForkShareService(
-            conversationRepository,
-            settingsRepository,
-            File(application.filesDir, "fork-attachments"),
-        )
-    private val conversationForkShareController by lazy {
-        ConversationForkShareController(
-            currentConversationId = currentConversationId,
-            service = conversationForkShare,
-            scope = viewModelScope,
-            onConversationForked = selectionController::selectConversation,
-            onShareReady = _conversationShareText::emit,
-            forkFailureText = { reason ->
-                appContext.getString(R.string.conversation_fork_failed, reason)
-            },
-            shareFailureText = { reason ->
-                appContext.getString(R.string.conversation_share_failed, reason)
-            },
-            onFailure = { message -> _snackbarMessage.emit(SnackbarEvent(message)) },
-        )
-    }
-    private val conversationLifecycleController by lazy {
-        ConversationLifecycleController(
-            currentConversationId = currentConversationId,
-            conversations = convRepo,
-            scope = viewModelScope,
-            stopLoop = { conversationId -> loopManager.stopLoop(conversationId) },
-            tryWithConversationLock = { conversationId, block ->
-                conversationExecutionCoordinator.tryWithConversationLock(conversationId) { block() }
-            },
-            removeRuntime = generationRegistry::remove,
-            stopVisibleGeneration = { stopGeneration() },
-            settleDeletedSelectedConversation =
-                selectionController::settleDeletedSelectedConversation,
-            beginSelectedDeleteTransition = { conversationId ->
-                selectionController.beginTreeMutation(
-                    conversationId = conversationId,
-                    scrollToTarget = false,
-                )
-            },
-            abortSelectedDeleteTransition = selectionController::failTreeMutation,
-            isDeleteLocked = { conversationId ->
-                conversationComposerSubmission.isFrozen(conversationId)
-            },
-        )
-    }
 
     /** Embedding subsystem delegado al runtime (CRUD + cache RAG + indexado + keys). */
     val ragManager get() = chatRuntime.ragManager
@@ -430,7 +383,7 @@ class ChatViewModel(
     private val renderStore: ConversationRenderStore get() = conversationUi.renderStore
 
     /** Esta UI del teléfono como [ChatClient] del runtime del proceso; adjunta en init, desadjunta en onCleared. */
-    private val phoneClient = object : ChatClient {
+    private val phoneClient: ChatClient = object : ChatClient {
         override val openConversationId: String? get() = currentConversationId.value
         override val renderStore: ConversationRenderStore get() = conversationUi.renderStore
         override fun isConversationVisible(conversationId: String): Boolean =
@@ -477,6 +430,16 @@ class ChatViewModel(
             selectionController.markTreeMutationReady(requestId, targetMessageId)
         override fun failTreeMutation(requestId: Long?) = selectionController.failTreeMutation(requestId)
         override fun showSnackbar(message: String) = emitSnackbar(message)
+        override fun openConversation(conversationId: String) {
+            viewModelScope.launch { selectionController.selectConversation(conversationId) }
+        }
+        override fun showShareText(text: String) {
+            _conversationShareText.tryEmit(text)
+        }
+        override fun settleDeletedConversation(conversationId: String) =
+            selectionController.settleDeletedSelectedConversation(conversationId)
+        override fun isSubmissionFrozen(conversationId: String): Boolean =
+            conversationComposerSubmission.isFrozen(conversationId)
         override fun onGenerationActivityChanged(conversationId: String, active: Boolean) =
             if (active) conversationUi.markActive(conversationId) else conversationUi.markIdle(conversationId)
     }
@@ -801,17 +764,17 @@ class ChatViewModel(
         selectionController.restoreConversationDestination(id, onFailure)
 
     fun forkConversationFrom(messageId: String? = null) =
-        conversationForkShareController.fork(messageId)
+        chatRuntime.conversationForkShare.fork(phoneClient, messageId)
 
-    fun shareConversation() = conversationForkShareController.shareConversation()
+    fun shareConversation() = chatRuntime.conversationForkShare.shareConversation(phoneClient)
 
     fun shareGeneration(assistantMessageId: String) =
-        conversationForkShareController.shareGeneration(assistantMessageId)
+        chatRuntime.conversationForkShare.shareGeneration(phoneClient, assistantMessageId)
 
     fun shareMessages(messageIds: Set<String>) =
-        conversationForkShareController.shareMessages(messageIds)
+        chatRuntime.conversationForkShare.shareMessages(phoneClient, messageIds)
 
-    fun renameConversation(id: String, newTitle: String) = conversationLifecycleController.rename(id, newTitle)
+    fun renameConversation(id: String, newTitle: String) = chatRuntime.conversationLifecycle.rename(id, newTitle)
 
     fun generateTitle(conversationId: String) =
         generationController.generateTitle(conversationId, phoneClient)
@@ -826,10 +789,9 @@ class ChatViewModel(
         id: String,
         expectedMessageIds: Set<String>? = null,
         onResult: (Boolean) -> Unit = {},
-    ): Boolean = conversationLifecycleController.delete(id, expectedMessageIds, onResult)
+    ): Boolean = chatRuntime.conversationLifecycle.delete(phoneClient, id, expectedMessageIds, onResult)
 
-    fun isConversationDeleteLocked(id: String): Boolean =
-        conversationComposerSubmission.isFrozen(id)
+    fun isConversationDeleteLocked(id: String): Boolean = chatRuntime.clients.isSubmissionFrozen(id)
 
     suspend fun compactContextManual(
         model: String,

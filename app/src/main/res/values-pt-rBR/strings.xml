@@ -1122,6 +1122,7 @@
     <string name="conversation_search_hint">Pesquisar…</string>
     <string name="conversation_share">Compartilhar</string>
     <string name="conversation_share_failed">Não foi possível compartilhar a conversa: %1$s</string>
+    <string name="conversation_deleted_elsewhere">Esta conversa foi excluída em outro dispositivo.</string>
     <string name="custom_provider_protocol_label">Formato da API</string>
     <string name="file_path_unknown">Arquivo desconhecido</string>
     <string name="import_file_too_large">Arquivo muito grande (%1$d MB). Escolha um arquivo de exportação menor.</string>
