@@ -71,8 +71,6 @@ class GenerationRequestBuilderProviderDisplayTest {
             providerRegistry = mockk<ProviderRegistry>(),
             ragManager = mockk<RagManager>(),
             appContext = mockk<Context>(),
-            pendingConversationSettings = MutableStateFlow<ConversationSettings?>(null),
-            onSnackbar = {},
         )
 
         val effective = builder.buildEffectiveConversationSettings("conversation")
@@ -297,11 +295,9 @@ class GenerationRequestBuilderProviderDisplayTest {
             providerRegistry = providerRegistry,
             ragManager = mockk<RagManager>(),
             appContext = mockk<Context>(),
-            pendingConversationSettings = MutableStateFlow<ConversationSettings?>(null),
-            onSnackbar = {},
         )
 
-        val result = async { builder.awaitProviderKey(modelId) }
+        val result = async { builder.awaitProviderKey(modelId) {} }
         runCurrent()
 
         assertEquals(listOf("await"), events)
@@ -345,11 +341,9 @@ class GenerationRequestBuilderProviderDisplayTest {
             providerRegistry = providerRegistry,
             ragManager = mockk<RagManager>(),
             appContext = appContext,
-            pendingConversationSettings = MutableStateFlow<ConversationSettings?>(null),
-            onSnackbar = snackbars::add,
         )
 
-        assertNull(builder.resolveProviderKey(modelId))
+        assertNull(builder.resolveProviderKey(modelId, snackbars::add))
         assertEquals(1, snackbars.size)
         assertTrue(snackbars.single().contains(providerAlias))
         assertFalse(snackbars.single().contains(providerId))
@@ -500,8 +494,6 @@ private class RequestBuilderFixture(
             providerRegistry = providerRegistry,
             ragManager = ragManager,
             appContext = mockk(),
-            pendingConversationSettings = MutableStateFlow(null),
-            onSnackbar = {},
         )
     }
 }

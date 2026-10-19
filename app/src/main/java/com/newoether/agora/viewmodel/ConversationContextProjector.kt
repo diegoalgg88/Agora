@@ -27,6 +27,7 @@ internal class ConversationContextProjector(
     private val generationManager: () -> GenerationManager,
     private val generationErrorFormatter: (String) -> String,
     private val newChatSystemPromptId: () -> String? = { null },
+    private val newChatConversationSettings: () -> com.newoether.agora.data.ConversationSettings? = { null },
     private val contextLoader: DurableSelectedContextLoader =
         DurableSelectedContextLoader(conversations, generationErrorFormatter),
 ) {

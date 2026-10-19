@@ -519,9 +519,10 @@ class AppContainer(
     }
 
     /**
-     * Runtime de chat process-scoped: posee GenerationManager + RagManager fuera del ViewModel,
-     * con fan-out de snackbar events a todos los clientes conectados. La vida de la generación
-     * sobrevive rotaciones/recreaciones de Activity; prerequisite del WebUI (segundo cliente).
+     * Runtime de chat process-scoped: posee GenerationManager + RagManager + los comandos de
+     * mensajes (send/regenerate/edit/delete/compact/stop) fuera del ViewModel, con fan-out de
+     * snackbar events a todos los clientes conectados. La vida de la generación sobrevive
+     * rotaciones/recreaciones de Activity; prerequisite del WebUI (segundo cliente).
      */
     val chatRuntime: com.newoether.agora.viewmodel.ChatRuntime by lazy {
         com.newoether.agora.viewmodel.ChatRuntime(
@@ -536,6 +537,11 @@ class AppContainer(
             mcpToolProvider = mcpToolProvider,
             askUser = askUserController,
             shellConfirmation = shellConfirmationController,
+            registry = conversationStateRegistry,
+            providerRegistry = providerRegistry,
+            localProvider = localProvider,
+            executionCoordinator = conversationExecutionCoordinator,
+            loopManager = loopManager,
             scope = appScope,
             extraToolProviders = listOf(heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider, emailToolProvider),
         )

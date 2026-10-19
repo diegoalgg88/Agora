@@ -502,8 +502,6 @@ class TaskExecutionEngine(
                 providerRegistry = providerRegistry,
                 ragManager = ragManager,
                 appContext = appContext,
-                pendingConversationSettings = MutableStateFlow(null),
-                onSnackbar = {},
             )
             val captured = builder.captureAdmissionSnapshot(
                 conversationId = conversationId,

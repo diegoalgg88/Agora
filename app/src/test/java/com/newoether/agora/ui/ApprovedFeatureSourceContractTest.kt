@@ -826,8 +826,8 @@ class ApprovedFeatureSourceContractTest {
             admission.indexOf("providerRegistry.awaitInitialSync()") in
                 0 until admission.indexOf("providerRegistry.canonicalModelId(modelId)"),
         )
-        assertTrue(builder.contains("internal suspend fun awaitProviderKey(modelId: String)"))
-        assertTrue(builder.contains("providerRegistry.awaitInitialSync()\n        return resolveProviderKey(modelId)"))
+        assertTrue(builder.contains("internal suspend fun awaitProviderKey(modelId: String, report: (String) -> Unit)"))
+        assertTrue(builder.contains("providerRegistry.awaitInitialSync()\n        return resolveProviderKey(modelId, report)"))
         assertEquals(3, Regex("requestBuilder\\.awaitProviderKey\\(").findAll(generation).count())
         assertFalse(generation.contains("requestBuilder.resolveProviderKey("))
         val queuedLaunch = queuedDrain.substringAfter("fun launchClaim(")
@@ -928,10 +928,9 @@ class ApprovedFeatureSourceContractTest {
             .substringAfter("internal fun captureForegroundSendTarget(")
             .substringBefore("internal suspend fun prepareForegroundSend(")
         assertTrue(foregroundTargetCapture.contains("val wasNewChat ="))
-        assertTrue(foregroundTargetCapture.contains("modelId = currentActiveModel.value"))
-
-        val foregroundAdmission = generation
-            .substringAfter("internal suspend fun prepareForegroundSend(")
+        assertTrue(foregroundTargetCapture.contains("modelId = modelId"))
+        assertTrue(source(root, "com/newoether/agora/viewmodel/ChatViewModel.kt").contains("modelId = currentActiveModel.value"))
+        val foregroundAdmission = generation.substringAfter("internal suspend fun prepareForegroundSend(")
             .substringBefore("internal suspend fun sendMessage(")
         assertTrue(foregroundTargetCapture.contains("captureNewChatWorkspace()"))
         assertTrue(foregroundAdmission.contains("target.newChatWorkspace?.awaitCaptured()"))

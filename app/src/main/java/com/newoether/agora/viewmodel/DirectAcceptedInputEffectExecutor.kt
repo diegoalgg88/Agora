@@ -95,7 +95,8 @@ internal class DirectAcceptedInputEffectExecutor(
     private val acceptanceNotifier: SendAcceptanceNotifier,
     private val toUiMessage: (MessageEntity) -> ChatMessage,
     private val onUserMessagePersisted: (messageId: String, text: String) -> Unit,
-    private val onGenerateTitle: (String) -> Unit,
+    /** Generación de título para un send de New Chat; sus avisos van al cliente origen del send. */
+    private val onGenerateTitle: (conversationId: String, origin: ChatClient?) -> Unit,
     private val idFactory: () -> String = { UUID.randomUUID().toString() },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
@@ -319,7 +320,7 @@ internal class DirectAcceptedInputEffectExecutor(
                     kotlinx.coroutines.currentCoroutineContext().isActive &&
                     lastMessage?.status != MessageStatus.ERROR
                 ) {
-                    onGenerateTitle(request.conversationId)
+                    onGenerateTitle(request.conversationId, request.origin)
                 }
             }
         } catch (error: CancellationException) {

@@ -90,7 +90,7 @@ internal enum class SendScrollPolicy {
  * cliente que muestra otra conversación.
  */
 internal class MessageGenerationController(
-    private val viewModelScope: CoroutineScope,
+    private val scope: CoroutineScope,
     private val application: Application,
     private val appContext: Context,
     // -- Process-scoped collaborators --
@@ -105,14 +105,8 @@ internal class MessageGenerationController(
     private val executionCoordinator: ConversationExecutionCoordinator,
     /** Cada cliente adjunto; proyecciones con scope de conversación y visibilidad van por aquí. */
     private val clients: ChatClients,
-    private val currentConversationId: StateFlow<String?>,
-    private val isNewChatMode: StateFlow<Boolean>,
-    private val newChatEntryId: StateFlow<Long>,
-    private val captureNewChatWorkspace: () -> NewChatWorkspaceSnapshot,
-    private val currentActiveModel: StateFlow<String>,
     // -- Mensajes runtime-wide (no atados al cliente origen de un comando) --
     private val onSnackbar: (String) -> Unit,
-    private val onSnackbarSuspend: suspend (String) -> Unit,  // sequential emit inside generateTitle
     // Called once when a hidden task/loop execution becomes searchable. The callback
     // only enqueues background work; embedding computation must not run under the send lock.
     // Called after a USER message row is persisted (send / edit), so incremental RAG
@@ -254,7 +248,7 @@ internal class MessageGenerationController(
         },
     )
     private val branchMutationService = ConversationBranchMutationService(
-        scope = viewModelScope,
+        scope = scope,
         conversations = convRepo,
         executionCoordinator = executionCoordinator,
         toUiMessage = { it.toUiChatMessage(appContext) },
@@ -370,7 +364,7 @@ internal class MessageGenerationController(
         if (newText.isBlank()) return false
         val genId = conversationId ?: return false
         val state = registry.getOrCreate(genId)
-        requestBuilder.awaitProviderKey(modelId) ?: return false
+        requestBuilder.awaitProviderKey(modelId, origin::showSnackbar) ?: return false
         return editService.edit(
             ConversationEditRequest(
                 conversationId = genId,
@@ -388,12 +382,23 @@ internal class MessageGenerationController(
     // sendMessage
     // ==================================
 
-    internal fun captureForegroundSendTarget(ownerId: String): ForegroundSendTarget? {
-        val currentId = currentConversationId.value
+    /**
+     * Captura el target de un send desde el estado del cliente que envía: la conversación que
+     * muestra ([currentId]), si muestra su página de New Chat, la entrada de esa página y su
+     * modelo activo.
+     */
+    internal fun captureForegroundSendTarget(
+        ownerId: String,
+        currentId: String?,
+        isNewChatMode: Boolean,
+        newChatEntryId: Long,
+        modelId: String,
+        captureNewChatWorkspace: () -> NewChatWorkspaceSnapshot,
+    ): ForegroundSendTarget? {
         val wasNewChat = ownerId == NEW_CHAT_WORKSPACE_ID
         if (wasNewChat) {
-            if (!isNewChatMode.value || currentId != null) return null
-        } else if (isNewChatMode.value || currentId != ownerId) {
+            if (!isNewChatMode || currentId != null) return null
+        } else if (isNewChatMode || currentId != ownerId) {
             return null
         }
         return ForegroundSendTarget(
@@ -401,8 +406,8 @@ internal class MessageGenerationController(
             conversationId = if (wasNewChat) UUID.randomUUID().toString() else ownerId,
             runId = UUID.randomUUID().toString(),
             wasNewChat = wasNewChat,
-            newChatEntryId = newChatEntryId.value.takeIf { wasNewChat },
-            modelId = currentActiveModel.value,
+            newChatEntryId = newChatEntryId.takeIf { wasNewChat },
+            modelId = modelId,
             newChatWorkspace = if (wasNewChat) captureNewChatWorkspace() else null,
         )
     }
@@ -410,18 +415,20 @@ internal class MessageGenerationController(
     internal suspend fun prepareForegroundSend(
         target: ForegroundSendTarget,
         composer: ConversationComposerSnapshot,
+        origin: ChatClient,
     ): ForegroundSendAdmission? {
         settings.awaitInitialLoad()
         if (target.modelId.isBlank()) {
-            onSnackbar(application.getString(R.string.no_model_selected))
+            origin.showSnackbar(application.getString(R.string.no_model_selected))
             return null
         }
-        val selectedProvider = requestBuilder.awaitProviderKey(target.modelId) ?: return null
+        val selectedProvider =
+            requestBuilder.awaitProviderKey(target.modelId, origin::showSnackbar) ?: return null
         if (selectedProvider.providerName == Constants.PROVIDER_LOCAL) {
             val localModelId = target.modelId.substringAfter("${Constants.PROVIDER_LOCAL}:")
             val localConfig = settings.localChatModels.value.find { it.modelId == localModelId }
             if (localConfig == null || !java.io.File(localConfig.localFilePath).exists()) {
-                onSnackbar(application.getString(R.string.local_model_not_found))
+                origin.showSnackbar(application.getString(R.string.local_model_not_found))
                 return null
             }
         }
@@ -561,13 +568,13 @@ internal class MessageGenerationController(
     ): SendAcceptance? {
         val state = registry.getOrCreate(genId)
         if (admissionSnapshot == null) {
-            val providerName = requestBuilder.awaitProviderKey(modelId)?.providerName ?: return null
+            val report: (String) -> Unit = { message -> origin?.showSnackbar(message) ?: onSnackbar(message) }
+            val providerName = requestBuilder.awaitProviderKey(modelId, report)?.providerName ?: return null
             if (providerName == Constants.PROVIDER_LOCAL) {
                 val localModelId = modelId.substringAfter("${Constants.PROVIDER_LOCAL}:")
                 val config = settings.localChatModels.value.find { it.modelId == localModelId }
                 if (config == null || !java.io.File(config.localFilePath).exists()) {
-                    val message = application.getString(R.string.local_model_not_found)
-                    origin?.showSnackbar(message) ?: onSnackbar(message)
+                    report(application.getString(R.string.local_model_not_found))
                     return null
                 }
             }
@@ -826,21 +833,23 @@ internal class MessageGenerationController(
         }
     }
 
-    fun generateTitle(conversationId: String) {
-        viewModelScope.launch {
+    /** Los avisos del título van a [origin], o runtime-wide cuando el request no tiene origen. */
+    fun generateTitle(conversationId: String, origin: ChatClient?) {
+        scope.launch {
+            val report: (String) -> Unit = { message -> origin?.showSnackbar(message) ?: onSnackbar(message) }
             settings.awaitInitialLoad()
             if (settings.titleGenerationNotificationsEnabled.value) {
-                onSnackbarSuspend(appContext.getString(R.string.snackbar_generating_title))
+                report(appContext.getString(R.string.snackbar_generating_title))
             }
             when (titleGenerator.generateAndPersist(conversationId)) {
                 is ConversationTitleGenerator.Result.Success -> {
                     if (settings.titleGenerationNotificationsEnabled.value) {
-                        onSnackbarSuspend(appContext.getString(R.string.snackbar_title_generated))
+                        report(appContext.getString(R.string.snackbar_title_generated))
                     }
                 }
                 is ConversationTitleGenerator.Result.Failure -> {
                     if (settings.titleGenerationNotificationsEnabled.value) {
-                        onSnackbarSuspend(appContext.getString(R.string.snackbar_title_error))
+                        report(appContext.getString(R.string.snackbar_title_error))
                     }
                 }
             }

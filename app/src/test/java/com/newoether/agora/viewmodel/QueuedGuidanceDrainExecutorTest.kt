@@ -56,7 +56,7 @@ class QueuedGuidanceDrainExecutorTest {
         val lease = checkNotNull(state.claimQueuedSends())
         val claim = checkNotNull(fixture.executor.claimUnderLock(state, lease))
         every {
-            fixture.requestBuilder.resolveProviderKey("provider:model-2")
+            fixture.requestBuilder.resolveProviderKey("provider:model-2", any())
         } returns GenerationRequestBuilder.ProviderKey("provider", "active-key")
         coEvery {
             fixture.conversations.getProviderContextTopologySnapshot("conversation")

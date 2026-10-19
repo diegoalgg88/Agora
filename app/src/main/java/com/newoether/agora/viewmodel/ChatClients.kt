@@ -94,7 +94,7 @@ internal class ChatClients {
         streamingMessage: ChatMessage?,
         fences: ChatClientRoomFences? = null,
     ) {
-        val stores = storesShowing(conversationId)
+        val stores = renderStoresShowing(conversationId)
         stores.forEach { store ->
             store.commitGraph(
                 committedMessages = committedMessages,
@@ -114,14 +114,14 @@ internal class ChatClients {
         allMessages: List<ChatMessage>,
         selectedChildren: Map<String?, String>,
     ) {
-        storesShowing(conversationId).forEach { store ->
+        renderStoresShowing(conversationId).forEach { store ->
             store.replaceGraph(allMessages = allMessages, selectedChildren = selectedChildren)
         }
     }
 
     /** Abre un fence en cada cliente que muestra [conversationId]; null cuando ningún cliente la muestra. */
     fun beginRoomProjectionFences(conversationId: String): ChatClientRoomFences? =
-        storesShowing(conversationId)
+        renderStoresShowing(conversationId)
             .associateWith { it.beginRoomMessageProjectionFence() }
             .takeIf { it.isNotEmpty() }
             ?.let(::ChatClientRoomFences)
@@ -134,6 +134,7 @@ internal class ChatClients {
     fun effectTargets(conversationId: String, origin: ChatClient?): List<ChatClient> =
         origin?.let(::listOf) ?: attached.filter { it.openConversationId == conversationId }
 
-    private fun storesShowing(conversationId: String): List<ConversationRenderStore> =
+    /** Render stores de cada cliente que tiene [conversationId] abierta. */
+    fun renderStoresShowing(conversationId: String): List<ConversationRenderStore> =
         attached.filter { it.openConversationId == conversationId }.map { it.renderStore }
 }

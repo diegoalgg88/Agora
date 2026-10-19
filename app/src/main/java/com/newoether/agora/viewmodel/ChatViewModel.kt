@@ -166,7 +166,7 @@ class ChatViewModel(
                 conversationExecutionCoordinator.tryWithConversationLock(conversationId) { block() }
             },
             removeRuntime = generationRegistry::remove,
-            stopVisibleGeneration = generationStopAdapter::stopVisibleConversation,
+            stopVisibleGeneration = { stopGeneration() },
             settleDeletedSelectedConversation =
                 selectionController::settleDeletedSelectedConversation,
             beginSelectedDeleteTransition = { conversationId ->
@@ -615,19 +615,6 @@ class ChatViewModel(
         foreground + automation
     }.stateIn(viewModelScope, SharingStarted.Eagerly, emptySet())
 
-    private val generationStopAdapter by lazy {
-        GenerationStopAdapter(
-            currentConversationId = currentConversationId,
-            registry = generationRegistry,
-            renderStore = renderStore,
-            finalizer = GenerationFinalizer(convRepo, ragManager::indexMessageForRag),
-            failureText = {
-                getApplication<Application>().getString(R.string.failed_to_generate)
-            },
-            onFailure = { message -> emitSnackbar(message) },
-        )
-    }
-
     val isSwitching: StateFlow<Boolean> get() = selectionController.isSwitching
 
     private val regenerationTransitions = BranchReplacementTransitionCoordinator()
@@ -680,28 +667,17 @@ class ChatViewModel(
         setConversationSettings(null, value)
     fun setConversationSettings(convId: String?, value: ConversationSettings?) =
         conversationWorkspaces.setConversationSettings(convId ?: NEW_CHAT_WORKSPACE_ID, value)
-    private val payloadBuilder by lazy(::MessagePayloadBuilder)
 
-    private val requestBuilder = GenerationRequestBuilder(
-        settings = settings,
-        convRepo = convRepo,
-        memoryManager = memoryManager,
-        skillManager = skillManager,
-        providerRegistry = providerRegistry,
-        ragManager = ragManager,
-        appContext = appContext,
-        pendingConversationSettings = pendingConversationSettings,
-        onSnackbar = { msg -> emitSnackbar(msg) },
-    )
     private val contextProjector by lazy {
         ConversationContextProjector(
             conversations = convRepo,
-            requestBuilder = requestBuilder,
+            requestBuilder = chatRuntime.requestBuilder,
             generationManager = { generationManager },
             generationErrorFormatter = { raw ->
                 normalizePersistedGenerationErrorText(appContext, raw)
             },
             newChatSystemPromptId = { pendingSystemPromptId.value },
+            newChatConversationSettings = { pendingConversationSettings.value },
         )
     }
 
@@ -724,40 +700,26 @@ class ChatViewModel(
         }
     }
 
-    private val generationController by lazy {
-        MessageGenerationController(
-            viewModelScope = viewModelScope,
-            application = getApplication(),
-            appContext = appContext,
-            convRepo = convRepo,
-            settings = settings,
-            registry = generationRegistry,
-            generationManagerProvider = { generationManager },
-            requestBuilder = requestBuilder,
-            payloadBuilder = payloadBuilder,
-            providerRegistry = providerRegistry,
-            localProvider = localProvider,
-            executionCoordinator = conversationExecutionCoordinator,
-            // Cada cliente adjunto; proyecciones con scope de conversación y visibilidad van por aquí.
-            clients = chatRuntime.clients,
-            currentConversationId = currentConversationId,
-            isNewChatMode = isNewChatMode,
-            newChatEntryId = newChatEntryId,
-            captureNewChatWorkspace = conversationWorkspaces::captureNewChatSnapshot,
-            currentActiveModel = currentActiveModel,
-            onSnackbar = { msg -> emitSnackbar(msg) },
-            onSnackbarSuspend = { msg -> _snackbarMessage.emit(SnackbarEvent(msg)) },
-            onUserMessagePersisted = ragManager::indexMessageForRag,
-            pauseConversationTasks = { conversationId -> loopManager.stopLoop(conversationId) },
-        )
-    }
+    private val generationController: MessageGenerationController
+        get() = chatRuntime.messageGeneration
     internal val conversationComposerSubmission by lazy {
         ConversationComposerSubmissionController(
             scope = viewModelScope,
             composers = conversationComposer,
             drafts = composerDrafts,
-            captureTarget = generationController::captureForegroundSendTarget,
-            prepare = generationController::prepareForegroundSend,
+            captureTarget = { ownerId ->
+                generationController.captureForegroundSendTarget(
+                    ownerId = ownerId,
+                    currentId = currentConversationId.value,
+                    isNewChatMode = isNewChatMode.value,
+                    newChatEntryId = newChatEntryId.value,
+                    modelId = currentActiveModel.value,
+                    captureNewChatWorkspace = conversationWorkspaces::captureNewChatSnapshot,
+                )
+            },
+            prepare = { target, composer ->
+                generationController.prepareForegroundSend(target, composer, phoneClient)
+            },
             send = { admission, text, attachments, onAccepted ->
                 generationController.sendMessage(admission, text, attachments, onAccepted, phoneClient)
             },
@@ -889,7 +851,8 @@ class ChatViewModel(
 
     fun renameConversation(id: String, newTitle: String) = conversationLifecycleController.rename(id, newTitle)
 
-    fun generateTitle(conversationId: String) = generationController.generateTitle(conversationId)
+    fun generateTitle(conversationId: String) =
+        generationController.generateTitle(conversationId, phoneClient)
     fun setConversationPinned(id: String, pinned: Boolean) = viewModelScope.launch { convRepo.setConversationPinned(id, pinned) }
 
     fun setConversationSystemPrompt(id: String, promptId: String?) =
@@ -955,7 +918,7 @@ class ChatViewModel(
 
     fun removeQueuedSend(id: String) = currentRuntimeFacade.removeQueuedSend(id)
 
-    fun stopGeneration() = generationStopAdapter.stopVisibleConversation()
+    fun stopGeneration() = chatRuntime.generationStop.stop(currentConversationId.value, phoneClient)
 
     fun regenerate(messageId: String): Boolean = generationController.regenerate(
         phoneClient, currentConversationId.value, messageId,

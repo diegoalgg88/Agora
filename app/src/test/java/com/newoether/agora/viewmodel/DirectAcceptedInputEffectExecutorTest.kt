@@ -362,7 +362,7 @@ class DirectAcceptedInputEffectExecutorTest {
                 onUserMessagePersisted = { messageId, _ ->
                     events += "persist-user:$messageId"
                 },
-                onGenerateTitle = { events += "generate-title" },
+                onGenerateTitle = { _, _ -> events += "generate-title" },
                 idFactory = ids::removeFirst,
                 clock = { 100L },
             )
