@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_webui">WebUI</string>
+    <string name="settings_webui_desc">Agora im Browser steuern</string>
+    <string name="webui_enable">WebUI aktivieren</string>
+    <string name="webui_status_stopped">Aus. Wenn aktiv, läuft auf diesem Telefon ein Webserver mit einer Benachrichtigung.</string>
+    <string name="webui_status_starting">Wird gestartet…</string>
+    <string name="webui_status_running">Läuft auf Port %1$d</string>
+    <string name="webui_status_failed">Start nicht möglich: %1$s</string>
+    <string name="webui_password_required">Lege ein Passwort fest, bevor du die WebUI aktivierst.</string>
+    <string name="webui_port">Port</string>
+    <string name="webui_port_desc">1024 bis 65535. Eine Änderung startet den Server neu.</string>
+    <string name="webui_password_set">Passwort festlegen</string>
+    <string name="webui_password_change">Passwort ändern</string>
+    <string name="webui_password_desc_unset">Nicht festgelegt</string>
+    <string name="webui_password_desc_set">Festgelegt. Eine Änderung meldet alle Browser ab.</string>
+    <string name="webui_password_new">Neues Passwort</string>
+    <string name="webui_password_confirm">Passwort bestätigen</string>
+    <string name="webui_password_too_short">Verwende mindestens %1$d Zeichen.</string>
+    <string name="webui_password_mismatch">Die Passwörter stimmen nicht überein.</string>
+    <string name="webui_access">Zugriff</string>
+    <string name="webui_access_urls_desc">Öffne eine dieser Adressen in einem Browser im selben Netzwerk.</string>
+    <string name="webui_access_none">Keine Netzwerkadresse gefunden.</string>
+    <string name="webui_http_warning">HTTP ist nicht verschlüsselt. Alle im selben Netzwerk können das Passwort und die Unterhaltungen mitlesen. Nutze es nur in vertrauenswürdigen Netzwerken wie Tailscale.</string>
+    <string name="webui_notification_channel">WebUI-Server</string>
+    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_starting">Wird gestartet…</string>
+    <string name="webui_notification_running">%1$s öffnen</string>
+    <string name="webui_notification_failed">Gestoppt: %1$s</string>
+    <string name="webui_notification_stop">Stoppen</string>
+</resources>

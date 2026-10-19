@@ -125,6 +125,7 @@ class MainActivity : ComponentActivity() {
         val agoraApplication = application as AgoraApplication
         lifecycleScope.launch {
             val databaseStartupState = agoraApplication.awaitDatabaseStartup()
+            agoraApplication.awaitContainer()?.webUi?.startIfEnabled()
             val needsErrorDialog = databaseStartupState is DatabaseStartupState.Blocked
             withContext(Dispatchers.IO) {
                 runCatching {
@@ -388,9 +389,8 @@ fun MainNavigation(
     val accessibilityManager = LocalAccessibilityManager.current
     var chatSnackbarOffset by remember { mutableStateOf(0.dp) }
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    // Full-screen media viewer (and settings) drop the snackbar to the bottom (nav-bar inset only);
-    // in chat it floats above the bottom bar. The animateDpAsState below turns the change into a
-    // rise/fall animation as the viewer opens/closes.
+    // Full-screen viewer/settings drop the snackbar to nav-bar inset; in chat it floats above the
+    // bottom bar; animateDpAsState turns the change into a rise/fall animation.
     val targetSnackbarPadding = if (showSettings || mediaPreviewTarget != null) navBarPadding else chatSnackbarOffset
     val snackbarBottomPadding by animateDpAsState(
         targetValue = targetSnackbarPadding,

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="settings_webui">WebUI</string>
+    <string name="settings_webui_desc">Điều khiển Agora từ trình duyệt</string>
+    <string name="webui_enable">Bật WebUI</string>
+    <string name="webui_status_stopped">Đang tắt. Khi bật, điện thoại này chạy một máy chủ web kèm thông báo.</string>
+    <string name="webui_status_starting">Đang khởi động…</string>
+    <string name="webui_status_running">Đang chạy trên cổng %1$d</string>
+    <string name="webui_status_failed">Không thể khởi động: %1$s</string>
+    <string name="webui_password_required">Hãy đặt mật khẩu trước khi bật WebUI.</string>
+    <string name="webui_port">Cổng</string>
+    <string name="webui_port_desc">Từ 1024 đến 65535. Thay đổi sẽ khởi động lại máy chủ.</string>
+    <string name="webui_password_set">Đặt mật khẩu</string>
+    <string name="webui_password_change">Đổi mật khẩu</string>
+    <string name="webui_password_desc_unset">Chưa đặt</string>
+    <string name="webui_password_desc_set">Đã đặt. Đổi mật khẩu sẽ đăng xuất mọi trình duyệt.</string>
+    <string name="webui_password_new">Mật khẩu mới</string>
+    <string name="webui_password_confirm">Xác nhận mật khẩu</string>
+    <string name="webui_password_too_short">Dùng ít nhất %1$d ký tự.</string>
+    <string name="webui_password_mismatch">Mật khẩu không khớp.</string>
+    <string name="webui_access">Truy cập</string>
+    <string name="webui_access_urls_desc">Mở một trong các địa chỉ này trong trình duyệt cùng mạng.</string>
+    <string name="webui_access_none">Không tìm thấy địa chỉ mạng.</string>
+    <string name="webui_http_warning">HTTP không được mã hóa. Bất kỳ ai trong cùng mạng đều có thể đọc mật khẩu và các cuộc trò chuyện. Chỉ dùng trên mạng đáng tin cậy, chẳng hạn Tailscale.</string>
+    <string name="webui_notification_channel">Máy chủ WebUI</string>
+    <string name="webui_notification_title">Agora WebUI</string>
+    <string name="webui_notification_starting">Đang khởi động…</string>
+    <string name="webui_notification_running">Mở %1$s</string>
+    <string name="webui_notification_failed">Đã dừng: %1$s</string>
+    <string name="webui_notification_stop">Dừng</string>
+</resources>

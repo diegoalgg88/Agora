@@ -185,6 +185,10 @@ dependencies {
     implementation(libs.work.runtime.ktx)
     implementation(libs.jsch)
     implementation(libs.commons.compress)
+    // WebUI server (FEAT-01): HTTP embebido con el engine pure-Kotlin CIO.
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.cio)
+    testImplementation(libs.ktor.server.test.host)
     implementation(libs.androidx.webkit)
     // Embedded .litertlm engine (second Local format). Statically-linked JNI AAR:
     // only system libs NEEDED (no libc++_shared conflict); minSdk 24; Apache-2.0.

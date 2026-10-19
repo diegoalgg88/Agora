@@ -6,6 +6,7 @@ import androidx.work.WorkManager
 import com.newoether.agora.data.MemoryManager
 import com.newoether.agora.data.SkillManager
 import com.newoether.agora.data.SettingsManager
+import com.newoether.agora.data.dataStore
 import com.newoether.agora.data.local.ChatDao
 import com.newoether.agora.data.local.ChatDatabase
 import com.newoether.agora.data.local.semanticModelSnapshot
@@ -480,6 +481,17 @@ class AppContainer(
     /** ask_user process-scoped: la interaction bar y el AskUserReceiver comparten esta instancia. */
     val askUserController: com.newoether.agora.viewmodel.AskUserController by lazy {
         com.newoether.agora.viewmodel.AskUserController()
+    }
+
+    /** WebUI: dueño process-scoped del servidor embebido (settings, auth, Ktor engine). */
+    internal val webUi: com.newoether.agora.webui.WebUiController by lazy {
+        com.newoether.agora.webui.WebUiController(
+            appContext = appContext,
+            // Mismo DataStore "settings" del resto de la app; las keys webui_* viven aparte y
+            // jamás se exportan (device-local por diseño del WebUiSettingsStore).
+            store = com.newoether.agora.webui.WebUiSettingsStore(appContext.dataStore),
+            scope = appScope,
+        )
     }
 
     /**
