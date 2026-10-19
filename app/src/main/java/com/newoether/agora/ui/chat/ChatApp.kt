@@ -876,6 +876,8 @@ fun ChatApp(
                             isRunning = currentConversationId in runningLoopIds,
                             onStop = { viewModel.stopCurrentLoop() },
                         )
+                        // ask_user/shell: hermano ENCIMA del composer (en su Box lo ocluía).
+                        ChatUserInteractionBarHost(viewModel, currentConversationId)
 
                         Surface(
                             modifier = Modifier
@@ -887,7 +889,6 @@ fun ChatApp(
                             shape = CHAT_BOTTOM_BAR_OUTER_SHAPE,
                         ) {
                             Box(contentAlignment = Alignment.BottomCenter) {
-                                ChatUserInteractionBarHost(viewModel, currentConversationId)
                                 ChatBottomBar(
                         submissionController = viewModel.conversationComposerSubmission,
                         composerOwnerId = composerOwnerId,
