@@ -60,6 +60,8 @@ internal class WebUiServer(
     private val themeCss: () -> String = { "" },
     /** El archivo de fuente de la app servido en [WebUiTheme.FONT_PATH], o null con fuente del sistema. */
     private val readAppFont: () -> ByteArray? = { null },
+    /** El archivo de la fuente de código de la app para un nombre de estilo, o null si es desconocido. */
+    private val readMonoFont: (String) -> ByteArray? = { null },
     /** True cuando este request llegó por HTTPS: su cookie de sesión se marca Secure. */
     private val secureCookies: (ApplicationCall) -> Boolean = { false },
     private val clock: () -> Long = System::currentTimeMillis,
@@ -100,6 +102,15 @@ internal class WebUiServer(
                     call.respond(HttpStatusCode.NotFound)
                 } else {
                     call.respondBytes(bytes, fontTypeOf(bytes))
+                }
+            }
+            // La fuente de código detrás de los estilos Markdown de style.css.
+            get("$MONO_FONT_PATH/{style}") {
+                val bytes = call.parameters["style"]?.let(readMonoFont)
+                if (bytes == null) {
+                    call.respond(HttpStatusCode.NotFound)
+                } else {
+                    call.respondBytes(bytes, ContentType("font", "ttf"))
                 }
             }
             post("/api/login") { call.login() }
@@ -241,6 +252,7 @@ internal class WebUiServer(
     companion object {
         const val SESSION_COOKIE = "agora_session"
         const val INDEX = "index.html"
+        const val MONO_FONT_PATH = "/fonts/mono"
         private const val MAX_LOGIN_BODY_BYTES = 4_096L
         /** Los comandos del navegador son pequeños; esto acota lo que un frame entrante puede alocar. */
         private const val MAX_SYNC_FRAME_BYTES = 64L * 1024L
@@ -259,6 +271,7 @@ internal class WebUiServer(
             "svg" -> ContentType.Image.SVG
             "png" -> ContentType.Image.PNG
             "json" -> ContentType.Application.Json
+            "woff2" -> ContentType("font", "woff2")
             else -> ContentType.Application.OctetStream
         }
 

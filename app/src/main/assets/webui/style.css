@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Agora WebUI styles. Colors and font come from /theme.css, which the app writes from its
  * current Material color scheme and font. The values below only apply until the app has
  * published its theme (they approximate the default Forest tonal-spot scheme).
@@ -15,6 +15,9 @@
   --md-on-surface-variant: #424940;
   --md-surface-container: #ebefe6;
   --md-surface-container-high: #e5e9e0;
+  --md-surface-variant: #dee5d8;
+  --md-secondary-container: #d7e8cd;
+  --md-on-secondary-container: #121f0e;
   --md-outline: #72796f;
   --md-outline-variant: #c2c9bd;
   --md-error: #ba1a1a;
@@ -34,6 +37,9 @@
     --md-on-surface-variant: #c2c9bd;
     --md-surface-container: #1c211b;
     --md-surface-container-high: #272b25;
+    --md-surface-variant: #424940;
+    --md-secondary-container: #3b4b38;
+    --md-on-secondary-container: #d6e8ce;
     --md-outline: #8c9388;
     --md-outline-variant: #424940;
     --md-error: #ffb4ab;
@@ -48,9 +54,6 @@ html, body { height: 100%; }
 
 body {
   margin: 0;
-  display: grid;
-  place-items: center;
-  padding: 16px;
   background: var(--md-background);
   color: var(--md-on-background);
   font-family: var(--app-font);
@@ -58,9 +61,23 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 
+#app { min-height: 100%; }
+/*
+ * Flex, not a grid: an auto grid track sizes to the card's max-content (its one-line hint), so on
+ * a narrow phone the card grew past the screen once the app font loaded.
+ */
+.sign-in-page {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+}
 /* Dialog-like surface, as the app's AlertDialog: surfaceContainer, 28 dp corners, 24 dp inset. */
 .card {
-  width: min(400px, 100%);
+  width: 100%;
+  max-width: 400px;
   padding: 24px;
   border-radius: 28px;
   background: var(--md-surface-container);
@@ -247,6 +264,11 @@ p {
 :focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
 .field input:focus-visible { outline: none; }
 
+.icon-button:disabled {
+  cursor: default;
+  background: transparent;
+  color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+}
 /* Error banner, as an errorContainer card. */
 .banner {
   margin: 0 0 16px;
@@ -256,4 +278,367 @@ p {
   color: var(--md-on-error-container);
   font-size: 13px;
   line-height: 19px;
+}
+/*
+ * Chat frame, mirroring the app's chat screen. Tonal surfaces follow Compose's
+ * surfaceColorAtElevation (primary over surface at (4.5 ln(e + 1) + 2) %), and shadows approximate
+ * the Material 3 elevation levels used by the app's shadowElevation values.
+ */
+:root {
+  --tonal-1: color-mix(in srgb, var(--md-primary) 5.1%, var(--md-surface));
+  --tonal-2: color-mix(in srgb, var(--md-primary) 6.9%, var(--md-surface));
+  --tonal-4: color-mix(in srgb, var(--md-primary) 9.2%, var(--md-surface));
+  --tonal-8: color-mix(in srgb, var(--md-primary) 11.9%, var(--md-surface));
+  --shadow-3: 0 1px 2px rgb(0 0 0 / 0.3), 0 2px 6px 2px rgb(0 0 0 / 0.15);
+  --shadow-4: 0 1px 3px rgb(0 0 0 / 0.3), 0 4px 8px 3px rgb(0 0 0 / 0.15);
+  --shadow-8: 0 2px 3px rgb(0 0 0 / 0.3), 0 6px 10px 4px rgb(0 0 0 / 0.15);
+  --drawer-motion: 250ms cubic-bezier(0.2, 0, 0, 1);
+}
+.shell {
+  position: relative;
+  height: 100vh;
+  height: 100dvh;
+  overflow: hidden;
+  background: var(--md-background);
+}
+.chat {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  transition: left var(--drawer-motion);
+}
+/* Side-by-side drawer (wider than 960 px): the chat narrows beside the open drawer. */
+.side-by-side.drawer-open .chat { left: 360px; }
+/* ModalDrawerSheet: surface at 1 dp tonal elevation, 24 dp end corners, 16 x 20 dp padding. */
+.drawer {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  width: min(100vw, 360px);
+  padding: calc(20px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+  border-radius: 0 24px 24px 0;
+  background: var(--tonal-1);
+  color: var(--md-on-surface);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform var(--drawer-motion), visibility 0s linear 250ms;
+}
+.drawer-open .drawer {
+  transform: none;
+  visibility: visible;
+  transition: transform var(--drawer-motion);
+}
+.scrim {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  background: rgb(0 0 0 / 0.32);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--drawer-motion);
+}
+.modal.drawer-open .scrim { opacity: 1; pointer-events: auto; }
+.side-by-side .scrim { display: none; }
+/* ChatType.conversationsTitle 25/32 bold. */
+.drawer-title { margin: 0 0 12px; font-size: 25px; line-height: 32px; font-weight: 700; }
+/* DrawerSearchBar: 44 dp capsule at 8 dp tonal elevation, 14 dp padding, 20 dp icon. */
+.drawer-search {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  height: 44px;
+  margin-bottom: 12px;
+  padding: 0 14px;
+  border-radius: 22px;
+  background: var(--tonal-8);
+}
+.drawer-search svg { flex: none; width: 20px; height: 20px; fill: var(--md-on-surface-variant); }
+.drawer-search input {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--md-on-surface);
+  font: inherit;
+  font-size: 16px;
+  line-height: 23px;
+}
+.drawer-search input::placeholder {
+  color: color-mix(in srgb, var(--md-on-surface-variant) 60%, transparent);
+  opacity: 1;
+}
+/* Drawer buttons: 20 dp icon, 8 dp gap, ChatType.drawerButton 14/20 medium. */
+.drawer-button {
+  position: relative;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  border: 0;
+  font: inherit;
+  font-size: 14px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.drawer-button svg { width: 20px; height: 20px; fill: currentColor; }
+/* FilledTonalButton; Tasks and Remote form one group with 5 dp inner corners. */
+.drawer-button.tonal { background: var(--md-secondary-container); color: var(--md-on-secondary-container); }
+.drawer-button.group-top { height: 46px; margin-bottom: 2px; border-radius: 24px 24px 5px 5px; }
+.drawer-button.group-bottom { height: 46px; margin-bottom: 10px; border-radius: 5px 5px 24px 24px; }
+.drawer-button.new-chat {
+  height: 42px;
+  margin-bottom: 16px;
+  border-radius: 21px;
+  background: var(--md-primary);
+  color: var(--md-on-primary);
+}
+.drawer-button.settings { height: 42px; margin-top: 12px; border-radius: 21px; }
+.drawer-button:disabled,
+.drawer-button.tonal:disabled {
+  cursor: default;
+  background: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+  color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+}
+.drawer-list { flex: 1; min-height: 0; overflow-y: auto; }
+/* ChatTopBar: 52 dp row, 12 dp sides, 8 dp above and below, over a fading background. */
+.top-bar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 1;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  min-height: 180px;
+  padding: calc(8px + env(safe-area-inset-top)) 12px 8px;
+  background: linear-gradient(
+    to bottom,
+    color-mix(in srgb, var(--md-background) 98%, transparent) 0%,
+    color-mix(in srgb, var(--md-background) 80%, transparent) 60%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+/* ChatTopBarCapsule: full capsule at 4 dp tonal elevation with a 4 dp shadow. */
+.capsule {
+  display: flex;
+  align-items: center;
+  height: 52px;
+  border-radius: 26px;
+  background: var(--tonal-4);
+  box-shadow: var(--shadow-4);
+  pointer-events: auto;
+}
+.title-capsule { flex: 0 1 auto; min-width: 0; max-width: 260px; padding-left: 5px; }
+.actions-capsule { flex: none; width: 98px; padding: 0 5px; }
+.menu-anchor { position: relative; }
+/* IconButton: 44 dp; Menu and More icons 26 dp, New Chat 30 dp. */
+.bar-button {
+  position: relative;
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-on-surface);
+  cursor: pointer;
+}
+.bar-button svg { width: 26px; height: 26px; fill: currentColor; }
+.bar-button.add svg { width: 30px; height: 30px; }
+.bar-button:hover { background: color-mix(in srgb, var(--md-on-surface) 8%, transparent); }
+.bar-button:active { background: color-mix(in srgb, var(--md-on-surface) 12%, transparent); }
+.bar-button:disabled {
+  cursor: default;
+  background: transparent;
+  color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+}
+/* ChatType.brandTitle 20/26 bold, at most 180 dp, 20 dp end padding. */
+.brand-title {
+  margin: 0 20px 0 5px;
+  min-width: 0;
+  max-width: 180px;
+  overflow: hidden;
+  font-size: 20px;
+  line-height: 26px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* AgoraDropdownMenu on surfaceContainer: 24 dp corners, 48 dp items, highlight inset 8 dp. */
+.dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 4;
+  min-width: 180px;
+  padding: 8px 0;
+  border-radius: 24px;
+  background: var(--md-surface-container);
+  box-shadow: var(--shadow-3);
+}
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 16px);
+  height: 48px;
+  margin: 0 8px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 24px;
+  background: transparent;
+  color: var(--md-on-surface);
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  text-align: start;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.dropdown-item svg { flex: none; width: 24px; height: 24px; fill: var(--md-on-surface-variant); }
+.dropdown-item:hover, .dropdown-item:focus-visible {
+  background: color-mix(in srgb, var(--md-on-surface) 8%, transparent);
+  outline: none;
+}
+.dropdown-item:disabled {
+  cursor: default;
+  background: transparent;
+  color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+}
+.dropdown-item:disabled svg { fill: currentColor; }
+.messages { flex: 1; min-height: 0; overflow-y: auto; }
+/* ChatComposerSurface: 12 dp above, 8 dp around, content at most 840 dp. */
+.composer-host {
+  flex: none;
+  padding: 12px 8px calc(8px + env(safe-area-inset-bottom));
+}
+/* Surface at 2 dp tonal elevation, 8 dp shadow, 28 dp corners; host insets 4 / 8 / 10 dp. */
+.composer {
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 8px 4px 10px;
+  border-radius: 28px;
+  background: var(--tonal-2);
+  box-shadow: var(--shadow-8);
+}
+.composer-field { position: relative; }
+/* ChatType.input 16/23; text starts 18 dp in and 16 dp down, ends 22 dp above the controls. */
+.composer-field textarea {
+  display: block;
+  width: 100%;
+  max-height: calc(6 * 23px + 24px);
+  padding: 8px 16px 16px 14px;
+  border: 0;
+  outline: 0;
+  resize: none;
+  background: transparent;
+  color: var(--md-on-surface);
+  font: inherit;
+  font-size: 16px;
+  line-height: 23px;
+  letter-spacing: 0.5px;
+  caret-color: var(--md-primary);
+}
+.composer-field textarea::placeholder {
+  color: color-mix(in srgb, var(--md-on-surface-variant) 60%, transparent);
+  opacity: 1;
+}
+/* 40 dp expand button whose 20 dp icon sits 18 dp from the card's top and end. */
+.expand-button {
+  position: absolute;
+  top: 0;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    var(--tonal-2) 0%,
+    color-mix(in srgb, var(--tonal-2) 50%, transparent) 50%,
+    transparent 100%
+  );
+  color: color-mix(in srgb, var(--md-primary) 90%, transparent);
+}
+.expand-button svg { width: 20px; height: 20px; fill: currentColor; }
+.expand-button:disabled { color: color-mix(in srgb, var(--md-on-surface) 38%, transparent); }
+/* Controls row: 6 dp above, 10 dp from the card sides. */
+.composer-controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 6px 0;
+}
+/* ComposerControlGroup: 48 dp capsule at 8 dp tonal elevation, 8 dp side padding. */
+.control-group {
+  display: flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 8px;
+  border-radius: 24px;
+  background: var(--tonal-8);
+}
+.control-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-on-surface);
+}
+.control-icon svg { width: 20px; height: 20px; fill: currentColor; }
+.control-icon:disabled { color: color-mix(in srgb, var(--md-on-surface) 38%, transparent); }
+/* ComposerModelSelector: 38 dp, 8 dp padding, labelMedium at 13 sp; no model reads at 50%. */
+.model-selector {
+  height: 38px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 19px;
+  background: transparent;
+  color: color-mix(in srgb, var(--md-on-surface) 50%, transparent);
+  font: inherit;
+  font-size: 13px;
+  line-height: 16px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+/* ComposerSendButton: 48 dp circle; surfaceVariant with a 24 dp arrow while it cannot send. */
+.send-button {
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--md-surface-variant);
+  color: var(--md-on-surface-variant);
+}
+.send-button svg { width: 24px; height: 24px; fill: currentColor; }
+@media (prefers-reduced-motion: reduce) {
+  .chat, .drawer, .drawer-open .drawer, .scrim { transition: none; }
 }

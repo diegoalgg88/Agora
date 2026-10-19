@@ -56,4 +56,21 @@ class WebUiThemeTest {
         font = null
         assertEquals(HttpStatusCode.NotFound, client.get(WebUiTheme.FONT_PATH).status)
     }
+
+    @Test
+    fun serverServesTheCodeFontByStyleName() = testApplication {
+        val auth = WebUiAuth(passwordHash = { null }, hasher = WebUiPasswordHasher(iterations = 1_000))
+        application {
+            WebUiServer(
+                auth = auth,
+                readAsset = { null },
+                syncSession = { _, _ -> },
+                readMonoFont = { style -> if (style == "bold") byteArrayOf(0, 1, 0, 0) else null },
+            ).install(this)
+        }
+        val bold = client.get("${WebUiServer.MONO_FONT_PATH}/bold")
+        assertEquals(HttpStatusCode.OK, bold.status)
+        assertEquals("font/ttf", bold.headers[HttpHeaders.ContentType])
+        assertEquals(HttpStatusCode.NotFound, client.get("${WebUiServer.MONO_FONT_PATH}/light").status)
+    }
 }

@@ -7,6 +7,7 @@ import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.model.ChatConversation
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageSegment
+import com.newoether.agora.model.Participant
 import com.newoether.agora.ui.components.parseLatexSpans
 import com.newoether.agora.util.DebugLog
 import com.newoether.agora.viewmodel.ConversationMessagePayloadHydration
@@ -281,7 +282,8 @@ private fun ChatMessage.toWeb(inlineDollarMath: Boolean) = WebMessage(
     status = status.name,
     timestamp = timestamp,
     modelName = modelName,
-    text = text.toWebText(inlineDollarMath),
+    // El bubble del usuario muestra texto plano, así su math no se separa.
+    text = if (participant == Participant.USER) WebText(text) else text.toWebText(inlineDollarMath),
     thoughts = thoughts?.toWebText(inlineDollarMath),
     thoughtTitle = thoughtTitle,
     thoughtTimeMs = thoughtTimeMs,

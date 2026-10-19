@@ -88,6 +88,7 @@ internal class WebUiController(
         syncSession = syncSession,
         themeCss = { theme?.toCss().orEmpty() },
         readAppFont = ::readAppFont,
+        readMonoFont = ::readMonoFont,
         secureCookies = { call -> call.request.local.localPort == tlsBackendPort },
     )
     private val serverLock = Mutex()
@@ -242,6 +243,11 @@ internal class WebUiController(
         }
     }.getOrNull()
 
+    private fun readMonoFont(style: String): ByteArray? {
+        val font = MONO_FONTS[style] ?: return null
+        return runCatching { appContext.resources.openRawResource(font).use { it.readBytes() } }.getOrNull()
+    }
+
     private fun readAsset(path: String): ByteArray? = runCatching {
         appContext.assets.open("$ASSET_ROOT/$path").use { it.readBytes() }
     }.getOrNull()
@@ -254,6 +260,14 @@ internal class WebUiController(
         private const val NO_PORT = -1
         private const val STOP_GRACE_MILLIS = 500L
         private const val STOP_TIMEOUT_MILLIS = 2_000L
+
+        /** Los archivos del MonoFamily de la app (ui/theme/Type.kt) por los nombres de estilo que pide style.css. */
+        private val MONO_FONTS = mapOf(
+            "regular" to com.newoether.agora.R.font.jetbrains_mono_regular,
+            "bold" to com.newoether.agora.R.font.jetbrains_mono_bold,
+            "italic" to com.newoether.agora.R.font.jetbrains_mono_italic,
+            "bolditalic" to com.newoether.agora.R.font.jetbrains_mono_bolditalic,
+        )
 
         /** Direcciones IPv4 no-loopback de interfaces activas (LAN, Tailscale, hotspot). */
         fun interfaceAddresses(): List<Inet4Address> = runCatching {
