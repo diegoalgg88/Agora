@@ -3,6 +3,7 @@ package com.newoether.agora.automation
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -12,6 +13,37 @@ import org.junit.Test
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
 class AutomationExecutionGateTest {
+    @Test
+    fun exclusiveImportFailsClosedWhenActiveExecutionNeverDrains() = runTest {
+        // Reproduce el hang verificado on-device (2026-10-18): una ejecución que nunca
+        // termina (heartbeat daemon in-flight) dejaba el import colgado en "Importando...".
+        // Con el drain acotado, el import aborta con error claro tras el timeout en vez de
+        // esperar para siempre. La ejecución atascada va en backgroundScope (nunca completa).
+        val gate = AutomationExecutionGate()
+        val firstStarted = CompletableDeferred<Unit>()
+        backgroundScope.launch {
+            gate.withExecution {
+                firstStarted.complete(Unit)
+                // Simula una ejecución inalcanzable por onQuiescing: nunca completa.
+                CompletableDeferred<Unit>().await()
+            }
+        }
+        firstStarted.await()
+        val import = async {
+            try {
+                gate.withExclusiveImport(onQuiescing = {}) { "imported" }
+            } catch (e: IllegalStateException) {
+                "failed: ${e.message}"
+            }
+        }
+        runCurrent()
+        // Avanza el virtual time más allá del DRAIN_TIMEOUT del gate para disparar el
+        // withTimeoutOrNull; sin esto el await del test nunca despertaría.
+        advanceTimeBy(60_001)
+        val outcome = import.await()
+        assertTrue(outcome.startsWith("failed: Automation did not quiesce"))
+    }
+
     @Test
     fun exclusiveImportWaitsForActiveExecutionAndBlocksNewOnes() = runTest {
         val gate = AutomationExecutionGate()

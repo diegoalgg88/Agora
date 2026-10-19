@@ -68,7 +68,20 @@ class AutomationExecutionGate {
                     // waiting for active engine calls to drain, otherwise a long provider call
                     // could make destructive import wait indefinitely.
                     onQuiescing()
-                    acquisition.waitForIdle?.await()
+                    // Bounded drain: onQuiescing cancela WorkManager jobs, pero una ejecución
+                    // directa del daemon (heartbeat loop) no es alcanzable por esa vía — el
+                    // await indefinido dejaba el import colgado en "Importando..." para siempre
+                    // (verificado on-device 2026-10-18). Fail-closed con error claro en vez de
+                    // hang: el import aborta y el usuario puede apagar el daemon y reintentar.
+                    acquisition.waitForIdle?.let { idleSignal ->
+                        val drained = kotlinx.coroutines.withTimeoutOrNull(DRAIN_TIMEOUT_MS) {
+                            idleSignal.await()
+                        }
+                        check(drained != null) {
+                            "Automation did not quiesce within ${DRAIN_TIMEOUT_MS / 1000}s; " +
+                                "disable the daemon and retry the import"
+                        }
+                    }
                 } else {
                     acquisition.waitForIdle?.await()
                 }
@@ -90,6 +103,15 @@ class AutomationExecutionGate {
     )
 
     private companion object {
+        /**
+         * Límite del drain de ejecuciones activas antes del import exclusivo. onQuiescing cancela
+         * Workers de WorkManager, pero una ejecución directa del daemon (heartbeat loop) vive en
+         * su propio scope y esa vía no la alcanza: sin límite, el import colgaba en
+         * "Importando..." indefinidamente (verificado on-device 2026-10-18). Un heartbeat genera
+         * en segundos; 60s cubre generaciones largas con margen sin esperar para siempre.
+         */
+        const val DRAIN_TIMEOUT_MS = 60_000L
+
         fun completedSignal() = CompletableDeferred<Unit>().apply { complete(Unit) }
     }
 }
