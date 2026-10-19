@@ -1088,6 +1088,9 @@
 
     <!-- Remote shell confirmation gate -->
     <string name="shell_confirm_title">Cho phép hành động trên \"%1$s\"?</string>
+    <string name="ask_user_title">Câu hỏi từ trợ lý</string>
+    <string name="ask_user_skip">Bỏ qua</string>
+    <string name="ask_user_send">Gửi</string>
     <string name="shell_confirm_allow">Cho phép một lần</string>
     <string name="shell_confirm_always">Luôn cho phép máy chủ này</string>
     <string name="shell_confirm_deny">Từ chối</string>

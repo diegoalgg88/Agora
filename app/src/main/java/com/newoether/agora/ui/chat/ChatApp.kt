@@ -886,9 +886,8 @@ fun ChatApp(
                             shadowElevation = 8.dp,
                             shape = CHAT_BOTTOM_BAR_OUTER_SHAPE,
                         ) {
-                            Box(
-                                contentAlignment = Alignment.BottomCenter,
-                            ) {
+                            Box(contentAlignment = Alignment.BottomCenter) {
+                                ChatUserInteractionBarHost(viewModel, currentConversationId)
                                 ChatBottomBar(
                         submissionController = viewModel.conversationComposerSubmission,
                         composerOwnerId = composerOwnerId,

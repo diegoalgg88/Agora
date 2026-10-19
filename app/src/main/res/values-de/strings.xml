@@ -1079,6 +1079,9 @@
     <string name="shell_ssh_unpin">Angehefteten Schlüssel entfernen</string>
     <!-- Remote shell confirmation gate -->
     <string name="shell_confirm_title">Aktion auf \"%1$s\" zulassen?</string>
+    <string name="ask_user_title">Frage vom Assistenten</string>
+    <string name="ask_user_skip">Überspringen</string>
+    <string name="ask_user_send">Senden</string>
     <string name="shell_confirm_allow">Einmal zulassen</string>
     <string name="shell_confirm_always">Diesen Server immer zulassen</string>
     <string name="shell_confirm_deny">Ablehnen</string>

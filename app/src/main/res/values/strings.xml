@@ -1144,6 +1144,9 @@
     <string name="shell_ssh_unpin">Remove Pinned Key</string>
     <!-- Remote shell confirmation gate -->
     <string name="shell_confirm_title">Allow action on \"%1$s\"?</string>
+    <string name="ask_user_title">Question from the assistant</string>
+    <string name="ask_user_skip">Skip</string>
+    <string name="ask_user_send">Send</string>
     <string name="shell_confirm_allow">Allow once</string>
     <string name="shell_confirm_always">Always allow this server</string>
     <string name="shell_confirm_deny">Deny</string>

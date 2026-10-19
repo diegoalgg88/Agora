@@ -158,6 +158,7 @@ class SettingsManager(val context: Context) {
     val accessPastConversations: Flow<Boolean> = context.dataStore.data.map { it[ACCESS_PAST_CONVERSATIONS] ?: true }
     val accessSavedMemories: Flow<Boolean> = context.dataStore.data.map { it[ACCESS_SAVED_MEMORIES] ?: true }
     val accessActiveMemory: Flow<Boolean> = context.dataStore.data.map { it[ACCESS_ACTIVE_MEMORY] ?: true }
+    val askUserEnabled: Flow<Boolean> = context.dataStore.data.map { it[ASK_USER_ENABLED] ?: true }
     val accessSkills: Flow<Boolean> = context.dataStore.data.map { it[ACCESS_SKILLS] ?: true }
     /** Modify access follows the legacy single access_skills value until explicitly set. */
     val accessSkillsModify: Flow<Boolean> = context.dataStore.data.map { pref ->
@@ -482,6 +483,9 @@ class SettingsManager(val context: Context) {
     }
     suspend fun saveAccessActiveMemory(enabled: Boolean) {
         context.dataStore.edit { it[ACCESS_ACTIVE_MEMORY] = enabled }
+    }
+    suspend fun saveAskUserEnabled(enabled: Boolean) {
+        context.dataStore.edit { it[ASK_USER_ENABLED] = enabled }
     }
     suspend fun saveAccessSkills(enabled: Boolean) {
         context.dataStore.edit { it[ACCESS_SKILLS] = enabled }

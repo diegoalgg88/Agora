@@ -83,7 +83,7 @@ class ChatViewModel(
     private val conversationExecutionCoordinator: com.newoether.agora.automation.ConversationExecutionCoordinator,
     private val automationExecutionGate: com.newoether.agora.automation.AutomationExecutionGate,
     private val generationRegistry: ConversationStateRegistry,
-    private val shellConfirmation: ShellConfirmationController,
+    val shellConfirmation: ShellConfirmationController,
     private val mcpRegistry: com.newoether.agora.mcp.McpRegistry,
     private val mcpToolProvider: com.newoether.agora.tool.McpToolProvider,
     private val taskExecutionEngine: com.newoether.agora.automation.TaskExecutionEngine, private val heartbeatToolProvider: HeartbeatToolProvider, private val smsToolProvider: SmsToolProvider,
@@ -262,9 +262,10 @@ class ChatViewModel(
         }
     }
 
-    // Per-conversation generation lifecycle (IO scope, job, slot, race-free stop/persist tokens)
+    /** ask_user: el modelo pausa y pregunta; el bar responde. Process-scoped. */
+    val askUser = com.newoether.agora.viewmodel.AskUserController()
+    // Per-conversation generation lifecycle (scope, job, slot, race-free stop/persist tokens)
     // lives in [ConversationGenerationState], one per conversation via [generationRegistry].
-
     private val generationManager by lazy {
         GenerationManager(
             app = application,
@@ -273,7 +274,7 @@ class ChatViewModel(
             skillManager = skillManager,
             context = appContext,
             sandboxFactory = sandboxFactory,
-            additionalToolProviders = listOf(automationToolProvider, mcpToolProvider, heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider, emailToolProvider),
+            additionalToolProviders = listOf(automationToolProvider, mcpToolProvider, heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider, emailToolProvider) + com.newoether.agora.tool.AskUserToolProvider(askUser),
             customProviders = { settings.customProviders.value },
         ).also { gm ->
             // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).

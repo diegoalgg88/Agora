@@ -459,6 +459,7 @@ class GenerationRequestBuilder(
             conversationId = currentId,
             accessSavedMemories = settings.accessSavedMemories.value,
             accessActiveMemory = settings.accessActiveMemory.value,
+            askUserEnabled = settings.askUserEnabled.value,
             skillReadAccess = skillReadAccess,
             skillModifyAccess = skillModifyAccess,
             skillCatalog = skillCatalog,

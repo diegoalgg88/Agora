@@ -1079,6 +1079,9 @@
     <string name="shell_ssh_unpin">Удалить закреплённый ключ</string>
     <!-- Remote shell confirmation gate -->
     <string name="shell_confirm_title">Разрешить действие на \"%1$s\"?</string>
+    <string name="ask_user_title">Вопрос от ассистента</string>
+    <string name="ask_user_skip">Пропустить</string>
+    <string name="ask_user_send">Отправить</string>
     <string name="shell_confirm_allow">Разрешить один раз</string>
     <string name="shell_confirm_always">Всегда разрешать этот сервер</string>
     <string name="shell_confirm_deny">Отклонить</string>

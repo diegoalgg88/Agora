@@ -31,10 +31,14 @@ class ShellConfirmationController(
     private val appForeground: StateFlow<Boolean> = AppForegroundTracker.foreground,
 ) {
     data class PendingShellCommand(
+        /** Id estable para keys de UI y acciones de notificación; autonumerado por proceso. */
+        val id: Long,
         val server: String,
         val summary: String,
         val deferred: CompletableDeferred<Boolean>
     )
+
+    private val nextShellId = java.util.concurrent.atomic.AtomicLong(1)
 
     private val _pendingShellCommand = MutableStateFlow<PendingShellCommand?>(null)
     val pendingShellCommand: StateFlow<PendingShellCommand?> = _pendingShellCommand.asStateFlow()
@@ -60,7 +64,12 @@ class ShellConfirmationController(
             if (sessionAllowedServers.contains(server)) return@withLock true
             if (!appForeground.value) return@withLock false
             val deferred = CompletableDeferred<Boolean>()
-            _pendingShellCommand.value = PendingShellCommand(server, summary, deferred)
+            _pendingShellCommand.value = PendingShellCommand(
+                id = nextShellId.getAndIncrement(),
+                server = server,
+                summary = summary,
+                deferred = deferred,
+            )
             try {
                 // Activity recreation keeps this process-scoped prompt alive. Moving the whole app
                 // to the background is different: there is no visible decision surface, so cancel

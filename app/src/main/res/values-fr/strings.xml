@@ -1079,6 +1079,9 @@
     <string name="shell_ssh_unpin">Retirer la clé épinglée</string>
     <!-- Remote shell confirmation gate -->
     <string name="shell_confirm_title">Autoriser l\'action sur \"%1$s\" ?</string>
+    <string name="ask_user_title">Question de l\'assistant</string>
+    <string name="ask_user_skip">Ignorer</string>
+    <string name="ask_user_send">Envoyer</string>
     <string name="shell_confirm_allow">Autoriser une fois</string>
     <string name="shell_confirm_always">Toujours autoriser ce serveur</string>
     <string name="shell_confirm_deny">Refuser</string>

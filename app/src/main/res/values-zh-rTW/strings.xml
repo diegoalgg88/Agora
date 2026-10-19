@@ -1126,6 +1126,9 @@
     <string name="shell_ssh_unpin">移除已固定的金鑰</string>
     <!-- Remote shell confirmation gate -->
     <string name="shell_confirm_title">允許在 \"%1$s\" 上執行操作？</string>
+    <string name="ask_user_title">來自助手的提問</string>
+    <string name="ask_user_skip">略過</string>
+    <string name="ask_user_send">傳送</string>
     <string name="shell_confirm_allow">允許一次</string>
     <string name="shell_confirm_always">總是允許此伺服器</string>
     <string name="shell_confirm_deny">拒絕</string>

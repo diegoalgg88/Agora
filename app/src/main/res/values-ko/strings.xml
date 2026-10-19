@@ -1079,6 +1079,9 @@
     <string name="shell_ssh_unpin">고정된 키 제거</string>
     <!-- Remote shell confirmation gate -->
     <string name="shell_confirm_title">\"%1$s\"에서 작업을 허용하시겠습니까?</string>
+    <string name="ask_user_title">어시스턴트의 질문</string>
+    <string name="ask_user_skip">건너뛰기</string>
+    <string name="ask_user_send">보내기</string>
     <string name="shell_confirm_allow">한 번 허용</string>
     <string name="shell_confirm_always">이 서버 항상 허용</string>
     <string name="shell_confirm_deny">거부</string>

@@ -54,6 +54,7 @@ internal val IMAGE_TRANSCRIPTION_PROMPT = stringPreferencesKey("image_transcript
 internal val ACCESS_PAST_CONVERSATIONS = booleanPreferencesKey("access_past_conversations")
 internal val ACCESS_SAVED_MEMORIES = booleanPreferencesKey("access_saved_memories")
 internal val ACCESS_ACTIVE_MEMORY = booleanPreferencesKey("access_active_memory")
+internal val ASK_USER_ENABLED = booleanPreferencesKey("ask_user_enabled")
 internal val ACCESS_SKILLS = booleanPreferencesKey("access_skills")
 internal val ACCESS_SKILLS_MODIFY = booleanPreferencesKey("access_skills_modify")
 internal val RAG_SEARCH_ENABLED = booleanPreferencesKey("rag_search_enabled")

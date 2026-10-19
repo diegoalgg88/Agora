@@ -454,6 +454,7 @@ private class RequestBuilderFixture(
         every { settings.accessSkillsModify } returns MutableStateFlow(true)
         every { settings.accessSavedMemories } returns MutableStateFlow(true)
         every { settings.accessActiveMemory } returns MutableStateFlow(true)
+        every { settings.askUserEnabled } returns MutableStateFlow(true)
         every { settings.accessPastConversations } returns MutableStateFlow(true)
         every { settings.modelSearchMethod } returns MutableStateFlow("keyword")
         every { settings.ragThreshold } returns MutableStateFlow(0.5f)

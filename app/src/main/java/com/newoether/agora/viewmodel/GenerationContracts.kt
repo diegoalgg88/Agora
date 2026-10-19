@@ -63,6 +63,8 @@ data class GenerationContext(
     val conversationId: String? = null,
     val accessSavedMemories: Boolean = true,
     val accessActiveMemory: Boolean = true,
+    /** Habilita el tool ask_user: el modelo puede pausar y preguntar al usuario. */
+    val askUserEnabled: Boolean = false,
     val skillReadAccess: Boolean = true,
     val skillModifyAccess: Boolean = true,
     val skillCatalog: String = "",

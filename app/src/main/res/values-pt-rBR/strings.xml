@@ -1079,6 +1079,9 @@
     <string name="shell_ssh_unpin">Remover chave fixada</string>
     <!-- Remote shell confirmation gate -->
     <string name="shell_confirm_title">Permitir ação em \"%1$s\"?</string>
+    <string name="ask_user_title">Pergunta do assistente</string>
+    <string name="ask_user_skip">Ignorar</string>
+    <string name="ask_user_send">Enviar</string>
     <string name="shell_confirm_allow">Permitir uma vez</string>
     <string name="shell_confirm_always">Sempre permitir este servidor</string>
     <string name="shell_confirm_deny">Negar</string>

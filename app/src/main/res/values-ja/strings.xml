@@ -1079,6 +1079,9 @@
     <string name="shell_ssh_unpin">固定したキーを削除</string>
     <!-- Remote shell confirmation gate -->
     <string name="shell_confirm_title">\"%1$s\" での操作を許可しますか?</string>
+    <string name="ask_user_title">アシスタントからの質問</string>
+    <string name="ask_user_skip">スキップ</string>
+    <string name="ask_user_send">送信</string>
     <string name="shell_confirm_allow">1 回のみ許可</string>
     <string name="shell_confirm_always">このサーバーを常に許可</string>
     <string name="shell_confirm_deny">拒否</string>
