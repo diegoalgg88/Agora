@@ -56,6 +56,10 @@ internal interface ChatClient {
     fun failTreeMutation(requestId: Long?)
 
     fun showSnackbar(message: String)
+
+    // -- Avisos de estado del runtime que cada cliente adjunto recibe.
+    /** El slot de generación de [conversationId] pasó a activo o idle; alimenta el loading del cliente. */
+    fun onGenerationActivityChanged(conversationId: String, active: Boolean)
 }
 
 /** Fences de proyección de Room abiertas en cada render store de cliente para un input aceptado. */
@@ -133,6 +137,12 @@ internal class ChatClients {
     /** El cliente origen de un comando, o cada cliente que muestra [conversationId] cuando no hay origen. */
     fun effectTargets(conversationId: String, origin: ChatClient?): List<ChatClient> =
         origin?.let(::listOf) ?: attached.filter { it.openConversationId == conversationId }
+
+    fun generationActivityChanged(conversationId: String, active: Boolean) =
+        attached.forEach { it.onGenerationActivityChanged(conversationId, active) }
+
+    fun commitTerminalStreamingMessage(conversationId: String, message: ChatMessage) =
+        renderStoresShowing(conversationId).forEach { it.commitTerminalStreamingMessage(message) }
 
     /** Render stores de cada cliente que tiene [conversationId] abierta. */
     fun renderStoresShowing(conversationId: String): List<ConversationRenderStore> =

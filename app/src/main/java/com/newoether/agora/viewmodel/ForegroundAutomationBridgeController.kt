@@ -3,7 +3,6 @@ package com.newoether.agora.viewmodel
 import com.newoether.agora.automation.TaskExecutionEngine.BridgeOutcome
 import com.newoether.agora.data.local.MessageEntity
 import com.newoether.agora.model.MessageStatus
-import kotlinx.coroutines.flow.StateFlow
 
 internal typealias ForegroundSendBridge = suspend (
     conversationId: String,
@@ -12,9 +11,13 @@ internal typealias ForegroundSendBridge = suspend (
     requestKind: String,
 ) -> BridgeOutcome
 
-/** Owns one ViewModel-scoped foreground automation bridge registration. */
+/**
+ * Posee el registro del bridge de automation en foreground del runtime. Un ciclo de Loop se
+ * delega al path regular de Send solo mientras algún cliente tiene su conversación abierta; de
+ * lo contrario el engine lo corre headless.
+ */
 internal class ForegroundAutomationBridgeController(
-    private val currentConversationId: StateFlow<String?>,
+    private val isConversationOpen: (String) -> Boolean,
     private val send: suspend (
         conversationId: String,
         userText: String,
@@ -48,7 +51,7 @@ internal class ForegroundAutomationBridgeController(
         modelId: String,
         requestKind: String,
     ): BridgeOutcome {
-        if (currentConversationId.value != conversationId) {
+        if (!isConversationOpen(conversationId)) {
             return BridgeOutcome.NotDelegated
         }
         val delivered = when (

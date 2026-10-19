@@ -129,7 +129,7 @@ class ForegroundAutomationBridgeControllerTest {
         val sendInputs = mutableListOf<List<String>>()
         val loadedMessageIds = mutableListOf<String>()
         val controller = ForegroundAutomationBridgeController(
-            currentConversationId = MutableStateFlow(currentConversationId),
+            isConversationOpen = { it == currentConversationId },
             send = { conversationId, text, modelId, requestKind ->
                 sendInputs += listOf(conversationId, text, modelId, requestKind)
                 sendOutcome

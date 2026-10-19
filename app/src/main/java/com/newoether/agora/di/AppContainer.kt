@@ -542,6 +542,7 @@ class AppContainer(
             localProvider = localProvider,
             executionCoordinator = conversationExecutionCoordinator,
             loopManager = loopManager,
+            taskExecutionEngine = taskExecutionEngine,
             scope = appScope,
             extraToolProviders = listOf(heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider, emailToolProvider),
         )
@@ -705,7 +706,7 @@ class AppContainer(
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
             askUserController, chatRuntime,
-            mcpRegistry, mcpToolProvider, taskExecutionEngine,
+            mcpRegistry, mcpToolProvider,
             heartbeatToolProvider, smsToolProvider, smsDraftStore, smsStore, smsPoller, smsSender,
             emailDraftStore, emailStore, emailPoller,
             notificationToolProvider, assistantDeviceToolProvider, emailToolProvider,

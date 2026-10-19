@@ -21,6 +21,7 @@ internal open class FakeChatClient(
     var onBeginTreeMutation: suspend (String, Boolean) -> Long? = { _, _ -> null }
     var onSettleTreeMutation: (Long?, String?) -> Unit = { _, _ -> }
     var onFailTreeMutation: (Long?) -> Unit = {}
+    var onGenerationActivity: (conversationId: String, active: Boolean) -> Unit = { _, _ -> }
     val snackbars = mutableListOf<String>()
 
     override suspend fun awaitProjectedPath(conversationId: String, messageId: String) =
@@ -44,6 +45,8 @@ internal open class FakeChatClient(
     override fun settleTreeMutation(requestId: Long?, targetMessageId: String?) =
         onSettleTreeMutation(requestId, targetMessageId)
     override fun failTreeMutation(requestId: Long?) = onFailTreeMutation(requestId)
+    override fun onGenerationActivityChanged(conversationId: String, active: Boolean) =
+        onGenerationActivity(conversationId, active)
     override fun showSnackbar(message: String) {
         snackbars += message
     }

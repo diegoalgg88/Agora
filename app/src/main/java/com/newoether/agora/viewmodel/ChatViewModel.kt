@@ -88,8 +88,7 @@ class ChatViewModel(
     /** Runtime process-scoped: generación + RAG viven aquí; la vida sobrevive al ViewModel. */
     private val chatRuntime: ChatRuntime,
     private val mcpRegistry: com.newoether.agora.mcp.McpRegistry,
-    private val mcpToolProvider: com.newoether.agora.tool.McpToolProvider,
-    private val taskExecutionEngine: com.newoether.agora.automation.TaskExecutionEngine, private val heartbeatToolProvider: HeartbeatToolProvider, private val smsToolProvider: SmsToolProvider,
+    private val mcpToolProvider: com.newoether.agora.tool.McpToolProvider, private val heartbeatToolProvider: HeartbeatToolProvider, private val smsToolProvider: SmsToolProvider,
     private val smsDraftStore: com.newoether.agora.data.SmsDraftStore, private val smsStore: com.newoether.agora.data.SmsStore, private val smsPoller: com.newoether.agora.data.SmsPoller, private val smsSender: com.newoether.agora.sms.SmsSender, private val emailDraftStore: com.newoether.agora.data.EmailDraftStore, private val emailStore: com.newoether.agora.data.EmailStore, private val emailPoller: com.newoether.agora.data.EmailPoller,
     private val notificationToolProvider: com.newoether.agora.tool.NotificationToolProvider,
     private val assistantDeviceToolProvider: com.newoether.agora.tool.AssistantDeviceToolProvider, private val emailToolProvider: com.newoether.agora.tool.EmailToolProvider, val modelManager: ModelManager, val localModelDownloadManager: com.newoether.agora.data.LocalModelDownloadManager, val modelCatalogRepository: com.newoether.agora.data.catalog.ModelCatalogRepository,) : AndroidViewModel(application) {
@@ -286,11 +285,9 @@ class ChatViewModel(
 
     override fun onCleared() {
         super.onCleared()
-        // The engine and the registry are process-scoped while this ViewModel is not, so every
-        // reference either of them holds must be released here or the whole graph leaks.
-        foregroundAutomationBridge.close()
+        // The runtime is process-scoped while this ViewModel is not; detaching the phone client
+        // releases every reference the runtime holds to this ViewModel graph.
         chatRuntime.clients.detach(phoneClient)
-        generationRegistry.detachUiCallbacks(generationCallbackOwner)
         dataControl.destroy()
     }
 
@@ -480,6 +477,8 @@ class ChatViewModel(
             selectionController.markTreeMutationReady(requestId, targetMessageId)
         override fun failTreeMutation(requestId: Long?) = selectionController.failTreeMutation(requestId)
         override fun showSnackbar(message: String) = emitSnackbar(message)
+        override fun onGenerationActivityChanged(conversationId: String, active: Boolean) =
+            if (active) conversationUi.markActive(conversationId) else conversationUi.markIdle(conversationId)
     }
     val allMessages: StateFlow<List<ChatMessage>> = conversationUi.allMessages
     val loadedMessagesConversationId: StateFlow<String?> =
@@ -572,42 +571,9 @@ class ChatViewModel(
     ): List<com.newoether.agora.model.ConversationRuntimeTraceEntry> =
         generationRegistry.get(conversationId)?.runtimeTraceSnapshot().orEmpty()
 
-    /** Per-conversation generation state registry. Each conversation owns an independent
-     *  ConversationGenerationState; the global loading/render mirrors
-     *  below are now a MIRROR of whichever conversation is currently open (see init collectors). */
-    private val generationCallbackOwner = Any()
-    private val foregroundAutomationBridge by lazy {
-        ForegroundAutomationBridgeController(
-            currentConversationId = currentConversationId,
-            send = generationController::sendMessageFromAutomationAwaitingCompletion,
-            loadMessage = convRepo::getMessage,
-            attach = taskExecutionEngine::attachForegroundSendBridge,
-            detach = taskExecutionEngine::detachForegroundSendBridge,
-        )
-    }
-    private val generationCallbacksAttached = Unit.also {
-        generationRegistry.attachUiCallbacks(generationCallbackOwner) { state ->
-            state.onActive = { conversationId ->
-                // Publish synchronously with the slot claim so Stop and edit closure are immediate.
-                conversationUi.markActive(conversationId)
-            }
-            state.onIdle = { conversationId ->
-                conversationUi.markIdle(conversationId)
-            }
-            state.onStreamCommit = { conversationId, message ->
-                conversationUi.commitTerminalStreamingMessage(conversationId, message)
-            }
-            state.onQueueDrainRequested = { settledState ->
-                settledState.scope.launch {
-                    generationController.drainQueuedAfterGeneration(settledState)
-                }
-            }
-        }
-    }
-
     /** Every conversation currently mutating its message tree through foreground generation or
      * headless Task/Loop execution. Drawer rows use this per-id set instead of the open
-     * conversation's open UI loading mirror. */
+     *  conversation's open UI loading mirror. */
     val generatingConversationIds: StateFlow<Set<String>> = combine(
         generationRegistry.activeConversationIds,
         conversationExecutionCoordinator.activeAutomationConversationIds,
@@ -752,10 +718,6 @@ class ChatViewModel(
         startInitJobs()
         unreadGenerationAcknowledger.start()
         conversationUi.start()
-
-        // Loop cycles for the open conversation use the regular Send path; the bridge waits for
-        // that exact durable turn and returns a typed result to the automation lease owner.
-        foregroundAutomationBridge.start()
     }
 
     // ── Custom providers ──────────────────────────────────────
