@@ -1147,6 +1147,10 @@
     <string name="ask_user_title">Question from the assistant</string>
     <string name="ask_user_skip">Skip</string>
     <string name="ask_user_send">Send</string>
+    <string name="ask_user_setting">Let the model ask you questions</string>
+    <string name="ask_user_setting_desc">When on, the model can pause and ask you to choose between options instead of guessing.</string>
+    <string name="ask_user_notification_channel">Questions from chats</string>
+    <string name="ask_user_notification_desc">Posted when the model asks the user a question and the chat is not on screen.</string>
     <string name="shell_confirm_allow">Allow once</string>
     <string name="shell_confirm_always">Always allow this server</string>
     <string name="shell_confirm_deny">Deny</string>

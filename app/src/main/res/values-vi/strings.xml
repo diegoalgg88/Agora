@@ -1091,6 +1091,10 @@
     <string name="ask_user_title">Câu hỏi từ trợ lý</string>
     <string name="ask_user_skip">Bỏ qua</string>
     <string name="ask_user_send">Gửi</string>
+    <string name="ask_user_setting">Cho phép mô hình đặt câu hỏi</string>
+    <string name="ask_user_setting_desc">Khi bật, mô hình có thể tạm dừng và yêu cầu bạn chọn giữa các phương án thay vì đoán.</string>
+    <string name="ask_user_notification_channel">Câu hỏi từ cuộc trò chuyện</string>
+    <string name="ask_user_notification_desc">Đăng khi mô hình hỏi người dùng mà màn hình trò chuyện không hiển thị.</string>
     <string name="shell_confirm_allow">Cho phép một lần</string>
     <string name="shell_confirm_always">Luôn cho phép máy chủ này</string>
     <string name="shell_confirm_deny">Từ chối</string>

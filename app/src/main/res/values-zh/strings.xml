@@ -1245,6 +1245,10 @@
     <string name="ask_user_title">来自助手的提问</string>
     <string name="ask_user_skip">跳过</string>
     <string name="ask_user_send">发送</string>
+    <string name="ask_user_setting">允许模型提问</string>
+    <string name="ask_user_setting_desc">开启后，模型可以暂停并要求你在选项中做出选择，而不是猜测。</string>
+    <string name="ask_user_notification_channel">来自聊天的提问</string>
+    <string name="ask_user_notification_desc">当模型向用户提问且聊天不在前台时发布。</string>
     <string name="shell_confirm_allow">允许一次</string>
     <string name="shell_confirm_always">总是允许此服务器</string>
     <string name="shell_confirm_deny">拒绝</string>

@@ -151,6 +151,9 @@ class AppContainer(
         providerRegistry.ensureStarted()
         taskManager.start()
         automationScheduler.start()
+        // ask_user: espeja la pregunta en espera en una notificación cuando el chat no está
+        // en pantalla; el bar vive solo en la pantalla de chat.
+        com.newoether.agora.service.AskUserNotifier.start(appScope, appContext, askUserController)
         processServicesStarted = true
         appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
             try {
@@ -474,6 +477,11 @@ class AppContainer(
         DaemonController(appContext, settingsRepository, heartbeatScheduler, AppForegroundTracker)
     }
 
+    /** ask_user process-scoped: la interaction bar y el AskUserReceiver comparten esta instancia. */
+    val askUserController: com.newoether.agora.viewmodel.AskUserController by lazy {
+        com.newoether.agora.viewmodel.AskUserController()
+    }
+
     val heartbeatScheduler: HeartbeatScheduler by lazy {
         HeartbeatScheduler(
             appContext = appContext,
@@ -631,6 +639,7 @@ class AppContainer(
             ::startProcessServices, localProvider, providerRegistry,
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
+            askUserController,
             mcpRegistry, mcpToolProvider, taskExecutionEngine,
             heartbeatToolProvider, smsToolProvider, smsDraftStore, smsStore, smsPoller, smsSender,
             emailDraftStore, emailStore, emailPoller,

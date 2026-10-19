@@ -10,6 +10,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.QuestionAnswer
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.Memory
 import androidx.compose.material.icons.filled.MoreVert
@@ -38,6 +39,7 @@ import kotlinx.coroutines.withContext
 fun SettingsMemoryPage(viewModel: ChatViewModel, onBack: () -> Unit) {
     val accessSavedMemories by viewModel.settings.accessSavedMemories.collectAsState()
     val accessActiveMemory by viewModel.settings.accessActiveMemory.collectAsState()
+    val askUserEnabled by viewModel.settings.askUserEnabled.collectAsState()
     val catalogRevision by viewModel.memoryManager.catalogRevision.collectAsState()
     val activeMemoryRevision by viewModel.memoryManager.activeMemoryRevision.collectAsState()
     val scope = rememberCoroutineScope()
@@ -105,6 +107,17 @@ fun SettingsMemoryPage(viewModel: ChatViewModel, onBack: () -> Unit) {
                                     Switch(checked = accessActiveMemory, onCheckedChange = { viewModel.settings.setAccessActiveMemory(it) })
                                 },
                                 modifier = Modifier.clickable { viewModel.settings.setAccessActiveMemory(!accessActiveMemory) }
+                            )
+                        },
+                        {
+                            SettingsItem(
+                                headlineContent = { Text(stringResource(R.string.ask_user_setting)) },
+                                supportingContent = { Text(stringResource(R.string.ask_user_setting_desc)) },
+                                leadingContent = { Icon(Icons.Default.QuestionAnswer, null, tint = MaterialTheme.colorScheme.primary) },
+                                trailingContent = {
+                                    Switch(checked = askUserEnabled, onCheckedChange = { viewModel.settings.setAskUserEnabled(it) })
+                                },
+                                modifier = Modifier.clickable { viewModel.settings.setAskUserEnabled(!askUserEnabled) }
                             )
                         }
                     )

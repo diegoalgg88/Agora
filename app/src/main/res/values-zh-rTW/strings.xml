@@ -1129,6 +1129,10 @@
     <string name="ask_user_title">來自助手的提問</string>
     <string name="ask_user_skip">略過</string>
     <string name="ask_user_send">傳送</string>
+    <string name="ask_user_setting">允許模型提問</string>
+    <string name="ask_user_setting_desc">開啟後，模型可以暫停並要求你在選項中做出選擇，而不是猜測。</string>
+    <string name="ask_user_notification_channel">來自聊天的提問</string>
+    <string name="ask_user_notification_desc">當模型向使用者提問且聊天不在前景時發布。</string>
     <string name="shell_confirm_allow">允許一次</string>
     <string name="shell_confirm_always">總是允許此伺服器</string>
     <string name="shell_confirm_deny">拒絕</string>

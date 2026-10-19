@@ -1082,6 +1082,10 @@
     <string name="ask_user_title">Frage vom Assistenten</string>
     <string name="ask_user_skip">Überspringen</string>
     <string name="ask_user_send">Senden</string>
+    <string name="ask_user_setting">Modell darf Fragen stellen</string>
+    <string name="ask_user_setting_desc">Wenn aktiv, kann das Modell anhalten und dich zwischen Optionen wählen lassen, statt zu raten.</string>
+    <string name="ask_user_notification_channel">Fragen aus Chats</string>
+    <string name="ask_user_notification_desc">Wird gepostet, wenn das Modell dem Nutzer eine Frage stellt und der Chat nicht sichtbar ist.</string>
     <string name="shell_confirm_allow">Einmal zulassen</string>
     <string name="shell_confirm_always">Diesen Server immer zulassen</string>
     <string name="shell_confirm_deny">Ablehnen</string>

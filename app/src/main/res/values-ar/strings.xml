@@ -1082,6 +1082,10 @@
     <string name="ask_user_title">سؤال من المساعد</string>
     <string name="ask_user_skip">تخطي</string>
     <string name="ask_user_send">إرسال</string>
+    <string name="ask_user_setting">دع النموذج يسألك</string>
+    <string name="ask_user_setting_desc">عند التشغيل، يمكن للنموذج التوقف ليسألك الاختيار بين خيارات بدلاً من التخمين.</string>
+    <string name="ask_user_notification_channel">أسئلة من المحادثات</string>
+    <string name="ask_user_notification_desc">تنشر عندما يسأل النموذج المستخدم سؤالاً ولم تكن المحادثة معروضة.</string>
     <string name="shell_confirm_allow">السماح مرة واحدة</string>
     <string name="shell_confirm_always">السماح دائمًا لهذا الخادم</string>
     <string name="shell_confirm_deny">رفض</string>

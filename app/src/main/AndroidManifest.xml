@@ -183,6 +183,11 @@
             android:name=".automation.TaskConfirmationReceiver"
             android:exported="false" />
 
+        <!-- ask_user notification actions (answer from option actions / Skip). -->
+        <receiver
+            android:name=".service.AskUserReceiver"
+            android:exported="false" />
+
         <!-- WorkManager owns the foreground lifecycle for scheduled automation runs. -->
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"

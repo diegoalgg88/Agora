@@ -1082,6 +1082,10 @@
     <string name="ask_user_title">アシスタントからの質問</string>
     <string name="ask_user_skip">スキップ</string>
     <string name="ask_user_send">送信</string>
+    <string name="ask_user_setting">モデルに質問を許可</string>
+    <string name="ask_user_setting_desc">オンにすると、モデルは推測せずに立ち止まって選択肢から選んでもらうことができます。</string>
+    <string name="ask_user_notification_channel">チャットからの質問</string>
+    <string name="ask_user_notification_desc">モデルがユーザーに質問し、チャットが画面にないときに通知します。</string>
     <string name="shell_confirm_allow">1 回のみ許可</string>
     <string name="shell_confirm_always">このサーバーを常に許可</string>
     <string name="shell_confirm_deny">拒否</string>

@@ -1082,6 +1082,10 @@
     <string name="ask_user_title">Вопрос от ассистента</string>
     <string name="ask_user_skip">Пропустить</string>
     <string name="ask_user_send">Отправить</string>
+    <string name="ask_user_setting">Разрешить модели задавать вопросы</string>
+    <string name="ask_user_setting_desc">Если включено, модель может остановиться и попросить выбрать вариант вместо угадывания.</string>
+    <string name="ask_user_notification_channel">Вопросы из чатов</string>
+    <string name="ask_user_notification_desc">Публикуется, когда модель задаёт пользователю вопрос, а чат не на экране.</string>
     <string name="shell_confirm_allow">Разрешить один раз</string>
     <string name="shell_confirm_always">Всегда разрешать этот сервер</string>
     <string name="shell_confirm_deny">Отклонить</string>

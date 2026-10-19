@@ -1082,6 +1082,10 @@
     <string name="ask_user_title">Pergunta do assistente</string>
     <string name="ask_user_skip">Ignorar</string>
     <string name="ask_user_send">Enviar</string>
+    <string name="ask_user_setting">Permitir perguntas do modelo</string>
+    <string name="ask_user_setting_desc">Ativado, o modelo pode pausar e pedir que você escolha entre opções em vez de adivinhar.</string>
+    <string name="ask_user_notification_channel">Perguntas dos chats</string>
+    <string name="ask_user_notification_desc">Publicada quando o modelo faz uma pergunta ao usuário e o chat não está na tela.</string>
     <string name="shell_confirm_allow">Permitir uma vez</string>
     <string name="shell_confirm_always">Sempre permitir este servidor</string>
     <string name="shell_confirm_deny">Negar</string>
