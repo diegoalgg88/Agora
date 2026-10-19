@@ -85,6 +85,8 @@ class ChatViewModel(
     private val generationRegistry: ConversationStateRegistry,
     val shellConfirmation: ShellConfirmationController,
     val askUser: com.newoether.agora.viewmodel.AskUserController,
+    /** Runtime process-scoped: generación + RAG viven aquí; la vida sobrevive al ViewModel. */
+    private val chatRuntime: ChatRuntime,
     private val mcpRegistry: com.newoether.agora.mcp.McpRegistry,
     private val mcpToolProvider: com.newoether.agora.tool.McpToolProvider,
     private val taskExecutionEngine: com.newoether.agora.automation.TaskExecutionEngine, private val heartbeatToolProvider: HeartbeatToolProvider, private val smsToolProvider: SmsToolProvider,
@@ -180,13 +182,8 @@ class ChatViewModel(
         )
     }
 
-    /** Embedding subsystem: model CRUD + RAG cache + single-message indexing + key resolution. */
-    val ragManager = RagManager(
-        conversations = convRepo,
-        settings = settings,
-        appContext = appContext,
-        scope = viewModelScope,
-    ) { _snackbarMessage.emit(it) }
+    /** Embedding subsystem delegado al runtime (CRUD + cache RAG + indexado + keys). */
+    val ragManager get() = chatRuntime.ragManager
 
     /**
      * Data export/import orchestration (native backup + Claude + GPT formats).
@@ -265,22 +262,7 @@ class ChatViewModel(
 
     // Per-conversation generation lifecycle (scope, job, slot, race-free stop/persist tokens)
     // lives in [ConversationGenerationState], one per conversation via [generationRegistry].
-    private val generationManager by lazy {
-        GenerationManager(
-            app = application,
-            conversations = convRepo,
-            memoryManager = memoryManager,
-            skillManager = skillManager,
-            context = appContext,
-            sandboxFactory = sandboxFactory,
-            additionalToolProviders = listOf(automationToolProvider, mcpToolProvider, heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider, emailToolProvider) + com.newoether.agora.tool.AskUserToolProvider(askUser),
-            customProviders = { settings.customProviders.value },
-        ).also { gm ->
-            // Gate lives in RagManager.indexMessageForRag (autoCacheEnabled + active model).
-            gm.onMessagePersisted = { messageId, text -> ragManager.indexMessageForRag(messageId, text) }
-            gm.onConfirmShellCommand = { server, summary -> shellConfirmation.confirm(server, summary) }
-        }
-    }
+    private val generationManager: GenerationManager get() = chatRuntime.generationManager
     private val semanticSearchService by lazy {
         SemanticSearchService(
             settings = settings,

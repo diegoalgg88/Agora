@@ -482,6 +482,29 @@ class AppContainer(
         com.newoether.agora.viewmodel.AskUserController()
     }
 
+    /**
+     * Runtime de chat process-scoped: posee GenerationManager + RagManager fuera del ViewModel,
+     * con fan-out de snackbar events a todos los clientes conectados. La vida de la generación
+     * sobrevive rotaciones/recreaciones de Activity; prerequisite del WebUI (segundo cliente).
+     */
+    val chatRuntime: com.newoether.agora.viewmodel.ChatRuntime by lazy {
+        com.newoether.agora.viewmodel.ChatRuntime(
+            application = application,
+            appContext = appContext,
+            conversations = conversationRepository,
+            settings = settingsRepository,
+            memoryManager = memoryManager,
+            skillManager = skillManager,
+            sandboxFactory = sandboxManagerFactory,
+            automationToolProvider = automationToolProvider,
+            mcpToolProvider = mcpToolProvider,
+            askUser = askUserController,
+            shellConfirmation = shellConfirmationController,
+            scope = appScope,
+            extraToolProviders = listOf(heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider, emailToolProvider),
+        )
+    }
+
     val heartbeatScheduler: HeartbeatScheduler by lazy {
         HeartbeatScheduler(
             appContext = appContext,
@@ -639,7 +662,7 @@ class AppContainer(
             ::startProcessServices, localProvider, providerRegistry,
             taskManager, loopManager, automationToolProvider, conversationExecutionCoordinator,
             automationExecutionGate, conversationStateRegistry, shellConfirmationController,
-            askUserController,
+            askUserController, chatRuntime,
             mcpRegistry, mcpToolProvider, taskExecutionEngine,
             heartbeatToolProvider, smsToolProvider, smsDraftStore, smsStore, smsPoller, smsSender,
             emailDraftStore, emailStore, emailPoller,

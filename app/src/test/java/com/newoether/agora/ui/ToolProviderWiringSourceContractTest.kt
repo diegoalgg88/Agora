@@ -25,14 +25,22 @@ class ToolProviderWiringSourceContractTest {
 
     @Test
     fun interactiveChatRegistersEmailTools() {
-        val chatViewModel = source("com/newoether/agora/viewmodel/ChatViewModel.kt")
+        // La lista additionalToolProviders vive en el ChatRuntime process-scoped desde la
+        // extracción del generation core fuera del ViewModel; los extras del fork (email,
+        // SMS, heartbeat...) llegan vía extraToolProviders.
+        val chatRuntime = source("com/newoether/agora/viewmodel/ChatRuntime.kt")
         val registration = Regex(
             "additionalToolProviders\\s*=\\s*listOf\\(([^)]*)\\)",
-        ).find(chatViewModel)?.groupValues?.get(1)
-            ?: error("additionalToolProviders list not found in ChatViewModel")
+        ).find(chatRuntime)?.groupValues?.get(1)
+            ?: error("additionalToolProviders list not found in ChatRuntime")
+        val container = source("com/newoether/agora/di/AppContainer.kt")
+        val extras = Regex(
+            "extraToolProviders\\s*=\\s*listOf\\(([^)]*)\\)",
+        ).find(container)?.groupValues?.get(1)
+            ?: error("extraToolProviders list not found in AppContainer")
         assertTrue(
-            "emailToolProvider missing from interactive chat tools: $registration",
-            registration.contains("emailToolProvider"),
+            "emailToolProvider missing from interactive chat tools: $registration + $extras",
+            registration.contains("emailToolProvider") || extras.contains("emailToolProvider"),
         )
     }
 
