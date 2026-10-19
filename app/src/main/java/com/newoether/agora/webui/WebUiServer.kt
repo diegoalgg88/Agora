@@ -15,6 +15,7 @@ import io.ktor.server.request.receiveText
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
+import io.ktor.server.response.respondText
 import io.ktor.server.routing.get
 import io.ktor.server.routing.post
 import io.ktor.server.routing.routing
@@ -35,6 +36,10 @@ internal class WebUiServer(
     private val auth: WebUiAuth,
     /** Lee un archivo del frontend empaquetado por su path bajo el asset root, o null si falta. */
     private val readAsset: (String) -> ByteArray?,
+    /** CSS variables del tema actual de la app; vacío conserva los defaults de `style.css`. */
+    private val themeCss: () -> String = { "" },
+    /** El archivo de fuente de la app servido en [WebUiTheme.FONT_PATH], o null con fuente del sistema. */
+    private val readAppFont: () -> ByteArray? = { null },
     private val clock: () -> Long = System::currentTimeMillis,
 ) {
     fun install(application: Application) = with(application) {
@@ -44,6 +49,19 @@ internal class WebUiServer(
             get("/assets/{path...}") {
                 val path = call.parameters.getAll("path").orEmpty().joinToString("/")
                 call.respondAsset(path)
+            }
+            // Público como los otros archivos estáticos: la página de sign-in también lleva tema.
+            get("/theme.css") {
+                call.response.header(HttpHeaders.CacheControl, "no-store")
+                call.respondText(themeCss(), ContentType.Text.CSS.withParameter("charset", "utf-8"))
+            }
+            get(WebUiTheme.FONT_PATH) {
+                val bytes = readAppFont()
+                if (bytes == null) {
+                    call.respond(HttpStatusCode.NotFound)
+                } else {
+                    call.respondBytes(bytes, fontTypeOf(bytes))
+                }
             }
             post("/api/login") { call.login() }
             post("/api/logout") {
@@ -181,6 +199,14 @@ internal class WebUiServer(
             "json" -> ContentType.Application.Json
             else -> ContentType.Application.OctetStream
         }
+
+        /** Distingue la fuente servida por firma de archivo: OTTO = OpenType, resto = TrueType. */
+        private fun fontTypeOf(bytes: ByteArray): ContentType =
+            if (bytes.size >= 4 && String(bytes, 0, 4, Charsets.ISO_8859_1) == "OTTO") {
+                ContentType("font", "otf")
+            } else {
+                ContentType("font", "ttf")
+            }
     }
 }
 

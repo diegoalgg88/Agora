@@ -1,79 +1,259 @@
+﻿/*
+ * Agora WebUI styles. Colors and font come from /theme.css, which the app writes from its
+ * current Material color scheme and font. The values below only apply until the app has
+ * published its theme (they approximate the default Forest tonal-spot scheme).
+ * Sizes follow the app's type scale and Material 3 component metrics.
+ */
 :root {
   color-scheme: light dark;
-  --bg: #f7f7f8;
-  --surface: #ffffff;
-  --text: #1b1b1f;
-  --muted: #5d5e66;
-  --accent: #3f5bd8;
-  --on-accent: #ffffff;
-  --error: #b3261e;
-  --outline: #c6c6d0;
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", sans-serif;
+  --md-primary: #3b6939;
+  --md-on-primary: #ffffff;
+  --md-background: #f7fbf1;
+  --md-on-background: #181d17;
+  --md-surface: #f7fbf1;
+  --md-on-surface: #181d17;
+  --md-on-surface-variant: #424940;
+  --md-surface-container: #ebefe6;
+  --md-surface-container-high: #e5e9e0;
+  --md-outline: #72796f;
+  --md-outline-variant: #c2c9bd;
+  --md-error: #ba1a1a;
+  --md-error-container: #ffdad6;
+  --md-on-error-container: #93000a;
+  --app-font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg: #121316;
-    --surface: #1d1e22;
-    --text: #e4e2e6;
-    --muted: #a9aab3;
-    --accent: #b8c3ff;
-    --on-accent: #0f1b5c;
-    --error: #ffb4ab;
-    --outline: #45464f;
+    --md-primary: #a1d39a;
+    --md-on-primary: #0a390f;
+    --md-background: #10140f;
+    --md-on-background: #e0e4db;
+    --md-surface: #10140f;
+    --md-on-surface: #e0e4db;
+    --md-on-surface-variant: #c2c9bd;
+    --md-surface-container: #1c211b;
+    --md-surface-container-high: #272b25;
+    --md-outline: #8c9388;
+    --md-outline-variant: #424940;
+    --md-error: #ffb4ab;
+    --md-error-container: #93000a;
+    --md-on-error-container: #ffdad6;
   }
 }
 
 * { box-sizing: border-box; }
 
+html, body { height: 100%; }
+
 body {
   margin: 0;
-  min-height: 100vh;
   display: grid;
   place-items: center;
-  background: var(--bg);
-  color: var(--text);
+  padding: 16px;
+  background: var(--md-background);
+  color: var(--md-on-background);
+  font-family: var(--app-font);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
 }
 
+/* Dialog-like surface, as the app's AlertDialog: surfaceContainer, 28 dp corners, 24 dp inset. */
 .card {
-  width: min(360px, calc(100vw - 32px));
-  padding: 28px 24px;
-  border-radius: 20px;
-  background: var(--surface);
-  border: 1px solid var(--outline);
+  width: min(400px, 100%);
+  padding: 24px;
+  border-radius: 28px;
+  background: var(--md-surface-container);
+  color: var(--md-on-surface);
 }
 
-h1 { margin: 0 0 4px; font-size: 22px; font-weight: 600; }
-p { margin: 0 0 20px; color: var(--muted); font-size: 14px; line-height: 20px; }
-
-label { display: block; margin-bottom: 6px; font-size: 14px; }
-
-input {
-  width: 100%;
-  padding: 12px 14px;
-  border-radius: 12px;
-  border: 1px solid var(--outline);
-  background: transparent;
-  color: var(--text);
-  font-size: 16px;
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
 }
 
-input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.brand svg { width: 24px; height: 24px; fill: var(--md-primary); flex: none; }
 
-button {
-  width: 100%;
-  margin-top: 16px;
-  padding: 12px;
+/* brandTitle: bold 20/26. */
+.brand span { font-size: 20px; line-height: 26px; font-weight: 700; }
+
+/* Dialog title: headlineSmall 23/29, bold as the app's dialog titles. */
+h1 { margin: 0 0 8px; font-size: 23px; line-height: 29px; font-weight: 700; }
+
+/* bodyMedium 13/19 in onSurfaceVariant, as dialog text. */
+p {
+  margin: 0 0 20px;
+  color: var(--md-on-surface-variant);
+  font-size: 13px;
+  line-height: 19px;
+  letter-spacing: 0.25px;
+}
+
+/* Outlined text field: 16 dp corners (the app's shape), 56 dp tall, floating label. */
+.field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  height: 56px;
+  border: 1px solid var(--md-outline);
+  border-radius: 16px;
+  transition: border-color 150ms;
+}
+
+.field:hover { border-color: var(--md-on-surface); }
+
+.field:focus-within {
+  border: 2px solid var(--md-primary);
+  /* Keep the content still when the border thickens. */
+  margin: -1px;
+  height: 58px;
+}
+
+.field.invalid, .field.invalid:focus-within { border-color: var(--md-error); }
+
+.field input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  padding: 0 0 0 16px;
   border: 0;
-  border-radius: 999px;
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: 15px;
-  font-weight: 600;
+  outline: 0;
+  background: transparent;
+  color: var(--md-on-surface);
+  font: inherit;
+  font-size: 16px;
+  letter-spacing: 0.5px;
+  caret-color: var(--md-primary);
+}
+
+.field label {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  padding: 0 4px;
+  transform: translateY(-50%);
+  background: var(--md-surface-container);
+  color: var(--md-on-surface-variant);
+  font-size: 16px;
+  line-height: 20px;
+  pointer-events: none;
+  transition: top 150ms, font-size 150ms, color 150ms;
+}
+
+.field:focus-within label,
+.field input:not(:placeholder-shown) + label {
+  top: 0;
+  font-size: 11px;
+  line-height: 16px;
+}
+
+.field:focus-within label { color: var(--md-primary); }
+.field.invalid label { color: var(--md-error); }
+
+/* Trailing eye button, as SecretVisibilityToggle: 48 dp target, 24 dp icon. */
+.icon-button {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 48px;
+  height: 48px;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--md-on-surface-variant);
   cursor: pointer;
 }
 
-button:disabled { opacity: 0.6; cursor: default; }
-button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--outline); }
+.icon-button svg { width: 24px; height: 24px; fill: currentColor; }
+.icon-button:hover { background: color-mix(in srgb, var(--md-on-surface-variant) 8%, transparent); }
+.icon-button:active { background: color-mix(in srgb, var(--md-on-surface-variant) 12%, transparent); }
 
-.error { margin: 12px 0 0; color: var(--error); font-size: 14px; }
+/* bodySmall supporting text below a field. */
+.supporting {
+  min-height: 16px;
+  margin: 4px 16px 0;
+  color: var(--md-error);
+  font-size: 11px;
+  line-height: 16px;
+  letter-spacing: 0.4px;
+}
+
+.actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+
+/* Material 3 buttons: 40 dp tall capsule, labelLarge 13/18 medium. */
+.button {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 64px;
+  height: 40px;
+  padding: 0 24px;
+  border: 0;
+  border-radius: 20px;
+  font: inherit;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  letter-spacing: 0.1px;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.button::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: currentColor;
+  opacity: 0;
+  transition: opacity 150ms;
+}
+
+.button:hover::after { opacity: 0.08; }
+.button:active::after { opacity: 0.12; }
+
+.button.filled { background: var(--md-primary); color: var(--md-on-primary); }
+.button.text { padding: 0 12px; background: transparent; color: var(--md-primary); }
+
+.button:disabled {
+  cursor: default;
+  background: color-mix(in srgb, var(--md-on-surface) 12%, transparent);
+  color: color-mix(in srgb, var(--md-on-surface) 38%, transparent);
+}
+
+.button.text:disabled { background: transparent; }
+.button:disabled::after { opacity: 0; }
+
+/* Circular progress in the button while busy, as the app's inline 3 dp indicator. */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 2400ms; }
+  .field, .field label, .button::after { transition: none; }
+}
+
+:focus-visible { outline: 2px solid var(--md-primary); outline-offset: 2px; }
+.field input:focus-visible { outline: none; }
+
+/* Error banner, as an errorContainer card. */
+.banner {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  border-radius: 16px;
+  background: var(--md-error-container);
+  color: var(--md-on-error-container);
+  font-size: 13px;
+  line-height: 19px;
+}

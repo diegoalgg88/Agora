@@ -264,6 +264,7 @@ private val baseSettingsGroups = listOf(
     )),
     SettingsGroupData(titleRes = R.string.settings_group_network, items = listOf(
         SettingsCategory("proxy", R.string.settings_proxy, R.string.settings_proxy_desc, Icons.Default.Lan),
+        SettingsCategory("webui", R.string.settings_webui, R.string.settings_webui_desc, Icons.Default.Web),
     )),
     SettingsGroupData(titleRes = R.string.settings_group_assistant, items = listOf(
         SettingsCategory("assistant", R.string.settings_assistant, R.string.settings_assistant_desc, Icons.Default.SmartToy),
@@ -341,6 +342,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "assistant" -> SettingsAssistantPage(viewModel, onBack = { selectedCategory = null })
                 "liveVoice" -> SettingsLiveVoicePage(viewModel, onBack = { selectedCategory = null })
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })
+                "webui" -> SettingsWebUiPage(onBack = { selectedCategory = null })
                 "language" -> SettingsLanguagePage(viewModel, onBack = { selectedCategory = null })
                 "titlegen" -> SettingsTitleGenPage(viewModel, onBack = { selectedCategory = null })
                 "transcription" -> SettingsTranscriptionPage(viewModel, onBack = { selectedCategory = null })

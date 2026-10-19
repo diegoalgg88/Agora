@@ -223,9 +223,8 @@ class MainActivity : ComponentActivity() {
                         showOnboarding = !settingsManager.onboardingCompleted.first()
                     }
 
-                    // Create ViewModel via the process-scoped DI container (owned by AgoraApplication),
-                    // so the same shared singletons back both the UI and background task execution.
                     val container = agoraApplication.requireContainer()
+                    com.newoether.agora.webui.PublishWebUiTheme(container.webUi, fontPreference, customFontPath)
                     val factory = remember { container.chatViewModelFactory() }
                     val viewModel: ChatViewModel = viewModel(factory = factory)
 

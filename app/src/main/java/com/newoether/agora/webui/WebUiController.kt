@@ -30,6 +30,19 @@ internal sealed interface WebUiStatus {
 }
 
 /**
+ * Bindea y arranca el servidor, retornando cuando ya escucha.
+ *
+ * Función plana a propósito: dentro del cuerpo de una coroutine, `embeddedServer` resuelve a la
+ * sobrecarga `CoroutineScope.embeddedServer` de Ktor, que hace del servidor un hijo de esa
+ * coroutine — el `withContext` que la envuelve nunca retornaría mientras el servidor corre y el
+ * status quedaba pegado en Starting aunque ya respondiera (fix upstream 5e0f1db2).
+ */
+internal fun startWebUiEngine(port: Int, routes: WebUiServer): EmbeddedServer<*, *> =
+    embeddedServer(CIO, port = port, host = WebUiController.ANY_HOST) {
+        routes.install(this)
+    }.start(wait = false)
+
+/**
  * Dueño process-scoped del WebUI: settings, autenticación y el servidor embebido.
  *
  * [WebUiService] mantiene vivo el proceso y llama [startServer]/[stopServer]; la página de
@@ -44,7 +57,13 @@ internal class WebUiController(
 ) {
     @Volatile private var passwordHash: String? = null
     private val auth = WebUiAuth(passwordHash = { passwordHash }, hasher = hasher)
-    private val routes = WebUiServer(auth = auth, readAsset = ::readAsset)
+    @Volatile private var theme: WebUiTheme? = null
+    private val routes = WebUiServer(
+        auth = auth,
+        readAsset = ::readAsset,
+        themeCss = { theme?.toCss().orEmpty() },
+        readAppFont = ::readAppFont,
+    )
     private val serverLock = Mutex()
     private var engine: EmbeddedServer<*, *>? = null
     private val _status = MutableStateFlow<WebUiStatus>(WebUiStatus.Stopped)
@@ -100,9 +119,7 @@ internal class WebUiController(
         _status.value = WebUiStatus.Starting
         _status.value = withContext(Dispatchers.IO) {
             try {
-                engine = embeddedServer(CIO, port = port, host = ANY_HOST) {
-                    routes.install(this)
-                }.start(wait = false)
+                engine = startWebUiEngine(port, routes)
                 WebUiStatus.Running(port)
             } catch (error: Exception) {
                 DebugLog.e(TAG, "WebUI server failed to start on port $port", error)
@@ -133,6 +150,20 @@ internal class WebUiController(
             .distinct()
     }.getOrDefault(emptyList())
 
+    /** Lo llama el tema Compose; la próxima carga de página en el navegador lo usa. */
+    fun publishTheme(theme: WebUiTheme) {
+        this.theme = theme
+    }
+
+    private fun readAppFont(): ByteArray? = runCatching {
+        when (val font = theme?.font) {
+            WebUiFont.AppDefault ->
+                appContext.resources.openRawResource(com.newoether.agora.R.font.mioutfit_variable).use { it.readBytes() }
+            is WebUiFont.Custom -> java.io.File(font.path).takeIf { it.isFile }?.readBytes()
+            WebUiFont.System, null -> null
+        }
+    }.getOrNull()
+
     private fun readAsset(path: String): ByteArray? = runCatching {
         appContext.assets.open("$ASSET_ROOT/$path").use { it.readBytes() }
     }.getOrNull()
@@ -140,7 +171,7 @@ internal class WebUiController(
     companion object {
         const val MIN_PASSWORD_LENGTH = 8
         private const val TAG = "WebUi"
-        private const val ANY_HOST = "0.0.0.0"
+        const val ANY_HOST = "0.0.0.0"
         private const val ASSET_ROOT = "webui"
         private const val STOP_GRACE_MILLIS = 500L
         private const val STOP_TIMEOUT_MILLIS = 2_000L
