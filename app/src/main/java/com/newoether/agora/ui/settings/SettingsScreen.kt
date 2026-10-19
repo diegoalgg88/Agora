@@ -342,7 +342,7 @@ fun SettingsScreen(viewModel: ChatViewModel, onBack: () -> Unit) {
                 "assistant" -> SettingsAssistantPage(viewModel, onBack = { selectedCategory = null })
                 "liveVoice" -> SettingsLiveVoicePage(viewModel, onBack = { selectedCategory = null })
                 "proxy" -> SettingsProxyPage(viewModel, onBack = { selectedCategory = null })
-                "webui" -> SettingsWebUiPage(onBack = { selectedCategory = null })
+                "webui" -> SettingsWebUiPage(viewModel, onBack = { selectedCategory = null })
                 "language" -> SettingsLanguagePage(viewModel, onBack = { selectedCategory = null })
                 "titlegen" -> SettingsTitleGenPage(viewModel, onBack = { selectedCategory = null })
                 "transcription" -> SettingsTranscriptionPage(viewModel, onBack = { selectedCategory = null })

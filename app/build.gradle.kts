@@ -110,6 +110,10 @@ android {
         jniLibs {
             useLegacyPackaging = true
         }
+        // Los 3 jars de BouncyCastle (bcpkix/bcutil/bcprov) empaquetan el mismo LICENSE.md.
+        resources {
+            excludes += "META-INF/LICENSE.md"
+        }
     }
 
     externalNativeBuild {
