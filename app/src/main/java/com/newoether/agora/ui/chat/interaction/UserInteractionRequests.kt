@@ -30,10 +30,10 @@ internal sealed interface UserInteraction {
  * Recolecta los requests que la conversación [conversationId] debe mostrar, el más viejo
  * primero.
  *
- * Una pregunta sin conversation id vino de una superficie sin chat propio (un task run, por
- * ejemplo), así que cualquier conversación puede responderla. Las confirmaciones de shell son
- * process-wide por diseño: solo una pendiente a la vez y cualquier chat visible puede
- * responderla.
+ * Un request se muestra SOLO en la conversación que lo hizo; los requests de otras
+ * conversaciones se exponen como notificaciones. Uno sin conversation id vino de una superficie
+ * sin chat propio (un task run, por ejemplo), así que cualquier conversación puede responderlo.
+ * La confirmación de shell va primero, porque su comando queda retenido hasta decidirse.
  */
 internal fun userInteractions(
     conversationId: String?,
@@ -43,6 +43,8 @@ internal fun userInteractions(
     val visibleQuestions = questions
         .filter { it.conversationId == null || it.conversationId == conversationId }
         .map { UserInteraction.Question(it) }
-    val shell = shellCommand?.let { UserInteraction.ShellCommand(it) }
-    return if (shell == null) visibleQuestions else visibleQuestions + shell
+    val shell = shellCommand
+        ?.takeIf { it.conversationId == null || it.conversationId == conversationId }
+        ?.let { UserInteraction.ShellCommand(it) }
+    return if (shell == null) visibleQuestions else listOf(shell) + visibleQuestions
 }

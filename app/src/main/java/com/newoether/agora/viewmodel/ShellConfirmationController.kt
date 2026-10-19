@@ -35,7 +35,9 @@ class ShellConfirmationController(
         val id: Long,
         val server: String,
         val summary: String,
-        val deferred: CompletableDeferred<Boolean>
+        val deferred: CompletableDeferred<Boolean>,
+        /** Conversación cuyo tool call espera; null = visible en cualquier chat (comportamiento actual). */
+        val conversationId: String? = null,
     )
 
     private val nextShellId = java.util.concurrent.atomic.AtomicLong(1)
