@@ -84,13 +84,12 @@ internal class DirectAcceptedInputEffectExecutor(
     private val settings: SettingsRepository,
     private val executionCoordinator: ConversationExecutionCoordinator,
     private val graphWriter: AcceptedInputGraphWriter,
-    private val renderStore: ConversationRenderStore,
+    private val clients: ChatClients,
     private val requestBuilder: GenerationRequestBuilder,
     private val terminalSettlement: GenerationTerminalSettlementController,
     private val boundRunGenerationLauncher: BoundRunGenerationLauncher,
     private val acceptanceNotifier: SendAcceptanceNotifier,
     private val toUiMessage: (MessageEntity) -> ChatMessage,
-    private val isConversationOpen: (String) -> Boolean,
     private val applyCommittedNewConversationState: suspend (String) -> Unit,
     private val publishNewConversation: suspend (String, String, Long) -> Boolean,
     private val onUserMessagePersisted: (messageId: String, text: String) -> Unit,
@@ -131,7 +130,7 @@ internal class DirectAcceptedInputEffectExecutor(
         var newConversationPresentationPublished = false
         val userMessageId = idFactory()
         val modelMessageId = idFactory()
-        var roomProjectionFence: RoomMessageProjectionFence? = null
+        var roomProjectionFences: ChatClientRoomFences? = null
 
         suspend fun applyCommittedNewConversationStateIfNeeded() {
             if (request.wasNewChat && !newConversationTransferAttempted) {
@@ -218,8 +217,8 @@ internal class DirectAcceptedInputEffectExecutor(
                         requestKind = request.requestKind,
                     ),
                     beforeRoomCommit = {
-                        if (!request.wasNewChat && isConversationOpen(request.conversationId)) {
-                            roomProjectionFence = renderStore.beginRoomMessageProjectionFence()
+                        if (!request.wasNewChat) {
+                            roomProjectionFences = clients.beginRoomProjectionFences(request.conversationId)
                         }
                     },
                 )
@@ -261,11 +260,12 @@ internal class DirectAcceptedInputEffectExecutor(
                         state.loadingChange(request.uiToken, true)
                         state.streamUpdate(request.uiToken, placeholder)
                     }
-                    if (isConversationOpen(request.conversationId)) {
+                    if (clients.isConversationOpen(request.conversationId)) {
                         if (!request.wasNewChat) {
                             request.requestScroll(request.conversationId, userMessageId)
                         }
-                        renderStore.commitGraph(
+                        clients.commitGraph(
+                            conversationId = request.conversationId,
                             committedMessages = listOf(
                                 toUiMessage(userEntity),
                                 if (runBound) placeholder
@@ -273,12 +273,12 @@ internal class DirectAcceptedInputEffectExecutor(
                             ),
                             selectedChildren = graphCommit.messageSelections,
                             streamingMessage = if (runBound) placeholder else null,
-                            roomProjectionFence = roomProjectionFence,
+                            fences = roomProjectionFences,
                         )
-                        roomProjectionFence = null
+                        roomProjectionFences = null
                     }
-                    roomProjectionFence?.let(renderStore::releaseRoomMessageProjectionFence)
-                    roomProjectionFence = null
+                    roomProjectionFences?.let(clients::releaseRoomProjectionFences)
+                    roomProjectionFences = null
                 }
 
                 if (!runBound) {
@@ -359,7 +359,7 @@ internal class DirectAcceptedInputEffectExecutor(
                 error = error,
             )
         } finally {
-            roomProjectionFence?.let(renderStore::releaseRoomMessageProjectionFence)
+            roomProjectionFences?.let(clients::releaseRoomProjectionFences)
             if (!durableAcceptance.isCompleted) durableAcceptance.complete(null)
         }
     }

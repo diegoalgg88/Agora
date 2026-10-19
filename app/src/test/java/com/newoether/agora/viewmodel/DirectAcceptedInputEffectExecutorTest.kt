@@ -341,7 +341,14 @@ class DirectAcceptedInputEffectExecutorTest {
                 settings = settings,
                 executionCoordinator = ConversationExecutionCoordinator(),
                 graphWriter = graphWriter,
-                renderStore = ConversationRenderStore(),
+                clients = ChatClients().apply {
+                    attach(object : ChatClient {
+                        override val openConversationId: String? =
+                            CONVERSATION_ID.takeIf { conversationOpen }
+                        override val renderStore = ConversationRenderStore()
+                        override fun isConversationVisible(conversationId: String) = false
+                    })
+                },
                 requestBuilder = requestBuilder,
                 terminalSettlement = terminalSettlement,
                 boundRunGenerationLauncher = boundLauncher,
@@ -349,7 +356,6 @@ class DirectAcceptedInputEffectExecutorTest {
                     events += "accept-event:$messageId"
                 },
                 toUiMessage = ::toUiMessage,
-                isConversationOpen = { conversationOpen },
                 applyCommittedNewConversationState = { conversationId ->
                     events += "apply-committed:$conversationId"
                     applyCommittedError?.let { throw it }

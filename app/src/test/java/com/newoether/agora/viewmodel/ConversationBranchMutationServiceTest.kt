@@ -229,7 +229,7 @@ class ConversationBranchMutationServiceTest {
             chat(entity.id, entity.parentId, entity.participant)
         },
         isConversationOpen = { true },
-        projectGraph = { messages, _ -> events += "project:${messages.joinToString { it.id }}" },
+        projectGraph = { _, messages, _ -> events += "project:${messages.joinToString { it.id }}" },
         onMutationStart = { _, scrollToTarget -> start(scrollToTarget) },
         onMutationSettling = { _, target -> events += "settle:$target" },
         onMutationFailed = onFailed,

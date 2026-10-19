@@ -289,6 +289,7 @@ class ChatViewModel(
         // The engine and the registry are process-scoped while this ViewModel is not, so every
         // reference either of them holds must be released here or the whole graph leaks.
         foregroundAutomationBridge.close()
+        chatRuntime.clients.detach(phoneClient)
         generationRegistry.detachUiCallbacks(generationCallbackOwner)
         dataControl.destroy()
     }
@@ -446,6 +447,16 @@ class ChatViewModel(
         onConversationLoadFailed = selectionController::failConversationLoad,
     )
     private val renderStore: ConversationRenderStore get() = conversationUi.renderStore
+
+    /** Esta UI del teléfono como [ChatClient] del runtime del proceso; adjunta en init, desadjunta en onCleared. */
+    private val phoneClient = object : ChatClient {
+        override val openConversationId: String? get() = currentConversationId.value
+        override val renderStore: ConversationRenderStore get() = conversationUi.renderStore
+        override fun isConversationVisible(conversationId: String): Boolean =
+            com.newoether.agora.service.AppForegroundTracker.isInForeground &&
+                com.newoether.agora.service.AppForegroundTracker.isChatPresented &&
+                currentConversationId.value == conversationId
+    }
     val allMessages: StateFlow<List<ChatMessage>> = conversationUi.allMessages
     val loadedMessagesConversationId: StateFlow<String?> =
         conversationUi.loadedMessagesConversationId
@@ -701,6 +712,8 @@ class ChatViewModel(
             providerRegistry = providerRegistry,
             localProvider = localProvider,
             executionCoordinator = conversationExecutionCoordinator,
+            // Cada cliente adjunto; proyecciones con scope de conversación y visibilidad van por aquí.
+            clients = chatRuntime.clients,
             renderStore = renderStore,
             currentConversationId = currentConversationId,
             isNewChatMode = isNewChatMode,
@@ -783,6 +796,7 @@ class ChatViewModel(
         selectionController.failSwitchingScroll(requestId, reason)
 
     init {
+        chatRuntime.clients.attach(phoneClient)
         startInitJobs()
         unreadGenerationAcknowledger.start()
         conversationUi.start()

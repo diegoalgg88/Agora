@@ -15,7 +15,6 @@ import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.model.Participant
 import com.newoether.agora.model.RunEffect
 import com.newoether.agora.model.SelectedAttachment
-import com.newoether.agora.service.AppForegroundTracker
 import com.newoether.agora.util.Constants
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -85,11 +84,10 @@ internal enum class SendScrollPolicy {
  * conversation runtime. Durable accepted-input execution is delegated after mailbox admission.
  *
  * Generation state is held per-conversation in [ConversationGenerationState]
- * (obtained from [ConversationStateRegistry]); the StateFlows ChatViewModel
- * exposes to the UI are a mirror of whichever conversation is currently open.
- * Synchronous writes to those flows inside the generation coroutines are gated
- * on the open conversation via [ifOpenOn] so a background generation can't
- * clobber the visible conversation's UI.
+ * (obtained from [ConversationStateRegistry]). Las proyecciones de grafo se reparten vía
+ * [ChatClients] a cada cliente adjunto con la conversación abierta, y visibilidad significa que
+ * cualquier cliente adjunto pueda verla, así una generación en background jamás escribe en un
+ * cliente que muestra otra conversación.
  */
 internal class MessageGenerationController(
     private val viewModelScope: CoroutineScope,
@@ -105,6 +103,8 @@ internal class MessageGenerationController(
     private val providerRegistry: ProviderRegistry,
     private val localProvider: LocalProvider,
     private val executionCoordinator: ConversationExecutionCoordinator,
+    /** Cada cliente adjunto; proyecciones con scope de conversación y visibilidad van por aquí. */
+    private val clients: ChatClients,
     // -- Shared UI state: the SAME instances ChatViewModel exposes -never recreate --
     private val renderStore: ConversationRenderStore,
     private val currentConversationId: StateFlow<String?>,
@@ -186,9 +186,10 @@ internal class MessageGenerationController(
         terminalSettlement = terminalSettlement,
         boundRunGenerationLauncher = { boundRunGenerationLauncher },
         toUiMessage = { it.toUiChatMessage(appContext) },
-        isConversationOpen = { currentConversationId.value == it },
-        projectGraph = { _, committedMessages, selectedChildren, streamingMessage ->
-            renderStore.commitGraph(
+        isConversationOpen = clients::isConversationOpen,
+        projectGraph = { conversationId, committedMessages, selectedChildren, streamingMessage ->
+            clients.commitGraph(
+                conversationId = conversationId,
                 committedMessages = committedMessages,
                 selectedChildren = selectedChildren,
                 streamingMessage = streamingMessage,
@@ -209,13 +210,12 @@ internal class MessageGenerationController(
         settings = settings,
         executionCoordinator = executionCoordinator,
         graphWriter = AcceptedInputGraphWriter(convRepo),
-        renderStore = renderStore,
+        clients = clients,
         requestBuilder = requestBuilder,
         terminalSettlement = terminalSettlement,
         boundRunGenerationLauncher = boundRunGenerationLauncher,
         acceptanceNotifier = acceptanceNotifier,
         toUiMessage = { it.toUiChatMessage(appContext) },
-        isConversationOpen = { currentConversationId.value == it },
         applyCommittedNewConversationState = applyCommittedNewConversationState,
         publishNewConversation = { conversationId, modelId, entryId ->
             onConversationAcceptedBySend(conversationId, modelId, entryId).also { selected ->
@@ -233,9 +233,10 @@ internal class MessageGenerationController(
         terminalSettlement = terminalSettlement,
         boundRunGenerationLauncher = boundRunGenerationLauncher,
         toUiMessage = { it.toUiChatMessage(appContext) },
-        isConversationOpen = { currentConversationId.value == it },
-        projectGraph = { _, committedMessages, selectedChildren, streamingMessage ->
-            renderStore.commitGraph(
+        isConversationOpen = clients::isConversationOpen,
+        projectGraph = { conversationId, committedMessages, selectedChildren, streamingMessage ->
+            clients.commitGraph(
+                conversationId = conversationId,
                 committedMessages = committedMessages,
                 selectedChildren = selectedChildren,
                 streamingMessage = streamingMessage,
@@ -256,9 +257,10 @@ internal class MessageGenerationController(
         boundRunGenerationLauncher = boundRunGenerationLauncher,
         guidanceDrain = queuedGuidanceDrainExecutor,
         toUiMessage = { it.toUiChatMessage(appContext) },
-        isConversationOpen = { currentConversationId.value == it },
-        projectGraph = { _, committedMessages, selectedChildren, streamingMessage ->
-            renderStore.commitGraph(
+        isConversationOpen = clients::isConversationOpen,
+        projectGraph = { conversationId, committedMessages, selectedChildren, streamingMessage ->
+            clients.commitGraph(
+                conversationId = conversationId,
                 committedMessages = committedMessages,
                 selectedChildren = selectedChildren,
                 streamingMessage = streamingMessage,
@@ -280,9 +282,10 @@ internal class MessageGenerationController(
         boundRunGenerationLauncher = boundRunGenerationLauncher,
         guidanceDrain = queuedGuidanceDrainExecutor,
         toUiMessage = { it.toUiChatMessage(appContext) },
-        isConversationOpen = { currentConversationId.value == it },
-        projectGraph = { _, committedMessages, selectedChildren, streamingMessage ->
-            renderStore.commitGraph(
+        isConversationOpen = clients::isConversationOpen,
+        projectGraph = { conversationId, committedMessages, selectedChildren, streamingMessage ->
+            clients.commitGraph(
+                conversationId = conversationId,
                 committedMessages = committedMessages,
                 selectedChildren = selectedChildren,
                 streamingMessage = streamingMessage,
@@ -294,9 +297,9 @@ internal class MessageGenerationController(
         conversations = convRepo,
         executionCoordinator = executionCoordinator,
         toUiMessage = { it.toUiChatMessage(appContext) },
-        isConversationOpen = { currentConversationId.value == it },
-        projectGraph = { all, selected ->
-            renderStore.replaceGraph(allMessages = all, selectedChildren = selected)
+        isConversationOpen = clients::isConversationOpen,
+        projectGraph = { conversationId, all, selected ->
+            clients.replaceGraph(conversationId, allMessages = all, selectedChildren = selected)
         },
         onMutationStart = onTreeMutationStart,
         onMutationSettling = onTreeMutationSettling,
@@ -309,19 +312,8 @@ internal class MessageGenerationController(
             SendScrollPolicy.ATTACHED_ONLY -> onScrollToAttachedBottomAfter
         }
 
-    /**
-     * Run [block] only if the currently-open conversation is [genId]. Guards synchronous
-     * writes to the shared global flows so a background generation (operating on its own
-     * private [ConversationGenerationState] flows) cannot clobber the visible conversation's UI.
-     */
-    private fun ifOpenOn(genId: String, block: () -> Unit) {
-        if (currentConversationId.value == genId) block()
-    }
-
     private fun isConversationVisible(conversationId: String): Boolean =
-        AppForegroundTracker.isInForeground &&
-            AppForegroundTracker.isChatPresented &&
-            currentConversationId.value == conversationId
+        clients.isConversationVisible(conversationId)
 
     suspend fun compactManual(request: CompactRequest): CompactResult {
         val conversationId = currentConversationId.value

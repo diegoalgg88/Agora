@@ -22,7 +22,11 @@ internal class ConversationBranchMutationService(
     private val executionCoordinator: ConversationExecutionCoordinator,
     private val toUiMessage: (MessageEntity) -> ChatMessage,
     private val isConversationOpen: (String) -> Boolean,
-    private val projectGraph: (List<ChatMessage>, Map<String?, String>) -> Unit,
+    private val projectGraph: (
+        conversationId: String,
+        messages: List<ChatMessage>,
+        selectedChildren: Map<String?, String>,
+    ) -> Unit,
     private val onMutationStart: suspend (conversationId: String, scrollToTarget: Boolean) -> Long?,
     private val onMutationSettling: (Long?, String?) -> Unit,
     private val onMutationFailed: (Long?) -> Unit,
@@ -69,7 +73,7 @@ internal class ConversationBranchMutationService(
                             val selections = conversations.restoreBranchSelections(conversationId)
                             onMutationSettling(switchingRequestId, null)
                             if (isConversationOpen(conversationId)) {
-                                projectGraph(remainingChatMessages, selections)
+                                projectGraph(conversationId, remainingChatMessages, selections)
                             }
                             committed = true
                             return@lock
@@ -117,7 +121,7 @@ internal class ConversationBranchMutationService(
                         )
                         onMutationSettling(switchingRequestId, targetAfterDelete)
                         if (isConversationOpen(conversationId)) {
-                            projectGraph(remainingMessages, plan.messageSelections)
+                            projectGraph(conversationId, remainingMessages, plan.messageSelections)
                         }
                         committed = true
                     }

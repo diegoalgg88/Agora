@@ -57,6 +57,9 @@ class ChatRuntime(
     /** Mensajes runtime-wide que cada cliente conectado puede mostrar (p. ej. prompts de RAG). */
     val snackbarEvents: SharedFlow<SnackbarEvent> = _snackbarEvents.asSharedFlow()
 
+    /** Clientes actualmente adjuntos a este runtime (ver [ChatClient]). */
+    internal val clients = ChatClients()
+
     /** Subsistema de embeddings: CRUD de modelos + cache RAG + indexado single-message + keys. */
     val ragManager = RagManager(
         conversations = conversations,
