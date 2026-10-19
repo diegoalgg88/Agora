@@ -498,6 +498,23 @@ class AppContainer(
                 unseal = com.newoether.agora.util.SecretCrypto::decrypt,
                 addresses = com.newoether.agora.webui.WebUiController::interfaceAddresses,
             ),
+            syncSession = { incoming, send -> webUiSync.serve(incoming, send) },
+        )
+    }
+
+    // Se construye en la primera conexión del navegador; el arranque de la app jamás toca datos
+    // de conversaciones aquí.
+    private val webUiSync: com.newoether.agora.webui.WebUiSync by lazy {
+        com.newoether.agora.webui.WebUiSync(
+            conversations = conversationRepository,
+            registry = conversationStateRegistry,
+            executionCoordinator = conversationExecutionCoordinator,
+            hydration = com.newoether.agora.viewmodel.ConversationMessagePayloadHydration(
+                conversations = conversationRepository,
+                appContext = appContext,
+            ),
+            customProviders = settingsRepository.customProviders,
+            parseInlineDollarMath = settingsRepository.parseInlineDollarMath,
         )
     }
 

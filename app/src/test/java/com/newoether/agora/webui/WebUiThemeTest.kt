@@ -39,6 +39,7 @@ class WebUiThemeTest {
             WebUiServer(
                 auth = auth,
                 readAsset = { null },
+                syncSession = { _, _ -> },
                 themeCss = { ":root{--md-primary:#112233}" },
                 readAppFont = { font },
             ).install(this)

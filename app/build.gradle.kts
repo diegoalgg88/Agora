@@ -191,6 +191,7 @@ dependencies {
     // WebUI server (FEAT-01): HTTP embebido con el engine pure-Kotlin CIO.
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
+    implementation(libs.ktor.server.websockets)
     // Certificado TLS auto-firmado del WebUI (EC P-256, SANs por dirección).
     implementation(libs.bouncycastle.pkix)
     testImplementation(libs.ktor.server.test.host)

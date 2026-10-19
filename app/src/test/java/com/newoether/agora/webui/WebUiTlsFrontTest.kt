@@ -33,6 +33,7 @@ class WebUiTlsFrontTest {
             hasher = WebUiPasswordHasher(iterations = 1_000),
         ),
         readAsset = { path -> if (path == WebUiServer.INDEX) "<title>Agora</title>".toByteArray() else null },
+        syncSession = { _, _ -> },
         // As in WebUiController: only requests on the TLS backend connector get a Secure cookie.
         secureCookies = { call -> call.request.local.localPort == tlsPort },
     )

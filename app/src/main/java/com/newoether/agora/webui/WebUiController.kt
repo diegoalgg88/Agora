@@ -72,6 +72,8 @@ internal class WebUiController(
     private val store: WebUiSettingsStore,
     scope: CoroutineScope,
     private val certificates: WebUiCertificateStore,
+    /** Sirve una conexión `/api/sync`; [WebUiSync.serve] en producción. */
+    syncSession: suspend (kotlinx.coroutines.channels.ReceiveChannel<String>, suspend (String) -> Unit) -> Unit,
     private val hasher: WebUiPasswordHasher = WebUiPasswordHasher(),
 ) {
     @Volatile private var passwordHash: String? = null
@@ -83,6 +85,7 @@ internal class WebUiController(
     private val routes = WebUiServer(
         auth = auth,
         readAsset = ::readAsset,
+        syncSession = syncSession,
         themeCss = { theme?.toCss().orEmpty() },
         readAppFont = ::readAppFont,
         secureCookies = { call -> call.request.local.localPort == tlsBackendPort },

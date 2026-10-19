@@ -1,6 +1,12 @@
 ﻿package com.newoether.agora.webui
 
+import io.ktor.client.plugins.websocket.WebSockets as ClientWebSockets
+import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.client.request.get
+import io.ktor.websocket.CloseReason
+import io.ktor.websocket.Frame
+import io.ktor.websocket.readText
+import kotlinx.coroutines.channels.ReceiveChannel
 import io.ktor.client.request.header
 import io.ktor.client.request.post
 import io.ktor.client.request.setBody
@@ -148,12 +154,65 @@ class WebUiServerTest {
             setBody("""{"password":"$password"}""")
         }
 
+    @Test
+    fun syncRefusesTheUpgradeWithoutASessionOrFromAnotherOrigin() {
+        var served = 0
+        webUi(syncSession = { _, _ -> served++ }) { _ ->
+            val sockets = createClient { install(ClientWebSockets) }
+            val anonymous = runCatching { sockets.webSocket("/api/sync") {} }
+            assertTrue(anonymous.isFailure)
+            val token = sessionToken()
+            val crossSite = runCatching {
+                sockets.webSocket("/api/sync", request = {
+                    header(HttpHeaders.Cookie, "${WebUiServer.SESSION_COOKIE}=$token")
+                    header(HttpHeaders.Host, "192.168.1.5:8686")
+                    header(HttpHeaders.Origin, "http://evil.example")
+                }) {}
+            }
+            assertTrue(crossSite.isFailure)
+            assertEquals(0, served)
+            // The same browser from its own origin is let through.
+            sockets.webSocket("/api/sync", request = {
+                header(HttpHeaders.Cookie, "${WebUiServer.SESSION_COOKIE}=$token")
+                header(HttpHeaders.Host, "192.168.1.5:8686")
+                header(HttpHeaders.Origin, "http://192.168.1.5:8686")
+            }) {}
+        }
+        assertEquals(1, served)
+    }
+
+    @Test
+    fun syncServesTextFramesAndClosesWhenTheSessionEnds() = webUi(
+        syncSession = { incoming, send -> for (text in incoming) send("echo:$text") },
+    ) { auth ->
+        val token = sessionToken()
+        val sockets = createClient { install(ClientWebSockets) }
+        sockets.webSocket("/api/sync", request = {
+            header(HttpHeaders.Cookie, "${WebUiServer.SESSION_COOKIE}=$token")
+        }) {
+            send(Frame.Text("hello"))
+            assertEquals("echo:hello", (incoming.receive() as Frame.Text).readText())
+            auth.logout(token)
+            assertEquals(CloseReason.Codes.VIOLATED_POLICY.code, closeReason.await()?.code)
+        }
+    }
+
+    private suspend fun ApplicationTestBuilder.sessionToken(): String =
+        login("pw").headers.getAll(HttpHeaders.SetCookie)!!.single()
+            .substringAfter('=').substringBefore(';')
+
     private fun webUi(
         hash: String? = hasher.hash("pw"),
+        syncSession: suspend (ReceiveChannel<String>, suspend (String) -> Unit) -> Unit = { _, _ -> },
         block: suspend ApplicationTestBuilder.(WebUiAuth) -> Unit,
     ) {
         val auth = WebUiAuth(passwordHash = { hash }, hasher = hasher, clock = { 0L })
-        val server = WebUiServer(auth = auth, readAsset = assets::get, clock = { 0L })
+        val server = WebUiServer(
+            auth = auth,
+            readAsset = assets::get,
+            syncSession = syncSession,
+            clock = { 0L },
+        )
         testApplication {
             application { server.install(this) }
             block(auth)

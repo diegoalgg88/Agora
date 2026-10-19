@@ -19,6 +19,7 @@ class WebUiEngineStartTest {
         val routes = WebUiServer(
             auth = WebUiAuth(passwordHash = { null }, hasher = WebUiPasswordHasher()),
             readAsset = { null },
+            syncSession = { _, _ -> },
         )
         val engine = withTimeoutOrNull(5_000) {
             withContext(Dispatchers.IO) { startWebUiEngine(port = 0, routes = routes) }
