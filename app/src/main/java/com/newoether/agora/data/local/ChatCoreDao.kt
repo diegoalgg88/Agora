@@ -88,6 +88,10 @@ interface ChatCoreDao : ChatModelReferenceDao {
     @Upsert
     suspend fun upsertConversation(conversation: ChatEntity)
 
+    /** Cambio de modelo de una conversación existente; toca el watermark del backup v5. */
+    @Query("UPDATE conversations SET modelId = :modelId, dataChangedAt = MAX(dataChangedAt + 1, :at) WHERE id = :conversationId")
+    suspend fun updateConversationModel(conversationId: String, modelId: String?, at: Long): Int
+
     @Query("UPDATE conversations SET dataChangedAt = :at WHERE id = :conversationId")
     suspend fun touchConversationData(conversationId: String, at: Long): Int
 

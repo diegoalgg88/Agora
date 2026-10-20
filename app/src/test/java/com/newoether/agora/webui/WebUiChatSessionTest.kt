@@ -5,6 +5,9 @@ import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.ConversationSettingsTransferCoordinator
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.model.ChatConversation
+import com.newoether.agora.data.local.ChatDao
+import com.newoether.agora.viewmodel.QueuedSend
+import kotlinx.coroutines.sync.Mutex
 import com.newoether.agora.viewmodel.ChatClients
 import com.newoether.agora.viewmodel.ConversationComposerSnapshot
 import com.newoether.agora.viewmodel.ConversationGenerationSnapshot
@@ -58,6 +61,7 @@ class WebUiChatSessionTest {
         every { generationSnapshot } returns MutableStateFlow(ConversationGenerationSnapshot())
         every { generating } returns MutableStateFlow(false)
         every { stopping } returns MutableStateFlow(false)
+        every { queuedSends } returns MutableStateFlow(emptyList())
     }
     private val registry = mockk<ConversationStateRegistry> {
         every { getOrCreate(any()) } returns state
@@ -67,6 +71,9 @@ class WebUiChatSessionTest {
         every { enabledModels } returns MutableStateFlow(setOf("default-model", "conversation-model"))
         every { developerOptionsEnabled } returns MutableStateFlow(false)
         every { debugModelEnabled } returns MutableStateFlow(false)
+        every { modelAliases } returns MutableStateFlow(emptyMap())
+        every { modelProviderNames } returns MutableStateFlow(emptyMap())
+        every { customProviders } returns MutableStateFlow(emptyList())
         coEvery { awaitInitialLoad() } just Runs
     }
 
@@ -214,6 +221,58 @@ class WebUiChatSessionTest {
         session.stop(seq = 1L)
         assertTrue(captures.isEmpty())
         verify(exactly = 0) { generationStop.stop(any(), any()) }
+    }
+    @Test
+    fun modelSelectionSettlesBeforeTheNextTapAndNewChatDoesNotWritePhoneState() = runBlocking {
+        session.start()
+        withTimeout(TIMEOUT_MS) { session.composerState.first { it.modelValid } }
+        session.selectModel("conversation-model", seq = 0L, commandId = 1L)
+        session.send("new choice", seq = 0L)
+        withTimeout(TIMEOUT_MS) { while (captures.isEmpty()) kotlinx.coroutines.delay(10) }
+        assertEquals("conversation-model", captures.single().modelId)
+        coVerify(exactly = 0) { conversations.upsertNewChatPersist(any()) }
+        val canonical = MutableStateFlow<ChatConversation?>(ChatConversation("a", "Alpha", modelId = "conversation-model"))
+        val dao = mockk<ChatDao>()
+        every { conversations.chatDao } returns dao
+        every { conversations.observeConversation("a") } returns canonical
+        coEvery { dao.updateConversationModel("a", "default-model", any()) } answers {
+            canonical.value = canonical.value!!.copy(modelId = "default-model")
+            1
+        }
+        session.open("a", seq = 2L)
+        session.selectModel("default-model", seq = 2L, commandId = 2L)
+        captures.clear()
+        session.send("next tap", seq = 2L)
+        withTimeout(TIMEOUT_MS) { while (captures.isEmpty()) kotlinx.coroutines.delay(10) }
+        assertEquals("default-model", captures.single().modelId)
+        session.selectModel("invalid", seq = 2L, commandId = 3L)
+        session.selectModel("conversation-model", seq = 1L, commandId = 4L)
+        coVerify(exactly = 1) { dao.updateConversationModel(any(), any(), any()) }
+    }
+    @Test
+    fun queueCommandsUseTheCanonicalOwnerAndRejectStaleSelections() = runBlocking {
+        val queued = QueuedSend("q", "guidance", "default-model", emptyList(), "run")
+        val queue = MutableStateFlow(listOf(queued))
+        val generating = MutableStateFlow(true)
+        var drains = 0
+        every { state.queuedSends } returns queue
+        every { state.generating } returns generating
+        every { state.onQueueDrainRequested } returns { _: ConversationGenerationState -> drains++ }
+        every { state.queueMutationMutex } returns Mutex()
+        every { state.removeQueuedSend("q") } answers { queue.value = emptyList(); queued }
+        session.start()
+        session.open("a", seq = 1L)
+        withTimeout(TIMEOUT_MS) { session.composerState.first { it.modelValid && it.queue.size == 1 } }
+        session.sendQueued(seq = 0L, commandId = 1L)
+        session.removeQueued("q", seq = 0L)
+        session.sendQueued(seq = 1L, commandId = 2L)
+        assertEquals(0, drains)
+        generating.value = false
+        session.sendQueued(seq = 1L, commandId = 3L)
+        assertEquals(1, drains)
+        session.removeQueued("q", seq = 1L)
+        withTimeout(TIMEOUT_MS) { queue.first { it.isEmpty() } }
+        verify(exactly = 1) { state.removeQueuedSend("q") }
     }
     @Test
     fun canonicalAcceptanceClearsOnlyTheTapTextAndKeepsPostTapEdits() = runBlocking {

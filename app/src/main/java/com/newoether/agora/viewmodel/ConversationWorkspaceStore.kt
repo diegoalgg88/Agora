@@ -5,6 +5,7 @@ import com.newoether.agora.data.local.NewChatPersistEntity
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.ConversationSettingsTransferCoordinator
 import com.newoether.agora.data.repository.SettingsRepository
+import com.newoether.agora.data.repository.updateConversationModel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineDispatcher
@@ -171,7 +172,12 @@ internal class ConversationWorkspaceStore(
         if (ownerId == NEW_CHAT_WORKSPACE_ID) {
             enqueueNewChatUpdate { it.copy(modelId = modelId) }
         } else {
-            updateConversation(ownerId) { it.copy(modelId = modelId) }
+            // Mutación de campo único: jamás reescribe campos ajenos de la conversación.
+            scope.launch(ioDispatcher) {
+                conversationMutationMutex.withLock {
+                    conversations.updateConversationModel(ownerId, modelId)
+                }
+            }
         }
     }
 

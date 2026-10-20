@@ -19,6 +19,7 @@ android {
     namespace = "com.newoether.agora"
     // Robolectric instala Conscrypt como primer security provider de todo el test JVM;
     // en JDK 17+ su TLS server necesita acceso reflectivo a java.net (InetAddress.holder).
+    testOptions.unitTests.isIncludeAndroidResources = true
     testOptions.unitTests.all { it.jvmArgs("--add-opens=java.base/java.net=ALL-UNNAMED") }
     compileSdk {
         version = release(36)
@@ -210,6 +211,9 @@ dependencies {
     testImplementation("io.mockk:mockk:1.13.12")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test:1.9.0")
     testImplementation("androidx.arch.core:core-testing:2.2.0")
+    // Room in-memory DAO tests (ConversationModelWriteTest) corren sobre Robolectric.
+    testImplementation("androidx.test:core:1.7.0")
+    testImplementation("org.robolectric:robolectric:4.16")
 }
 
 tasks.whenTaskAdded {

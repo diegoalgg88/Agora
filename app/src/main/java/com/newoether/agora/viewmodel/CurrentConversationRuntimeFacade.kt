@@ -40,4 +40,16 @@ internal class CurrentConversationRuntimeFacade(
             }
         }
     }
+
+    /**
+     * Pide drenar la cola de guidance de la conversación actual sin generar nada nuevo. El
+     * callback del runtime reusa el mismo path del drain post-generación, así un batch huérfano
+     * (compact fallido, drain fallido) puede entregarse sin teclear un mensaje nuevo.
+     */
+    fun requestQueueDrain() {
+        val conversationId = currentConversationId.value ?: return
+        val state = registry.getOrCreate(conversationId)
+        if (state.generating.value || state.queuedSends.value.isEmpty()) return
+        state.onQueueDrainRequested?.invoke(state)
+    }
 }

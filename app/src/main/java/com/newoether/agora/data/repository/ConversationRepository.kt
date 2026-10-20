@@ -222,16 +222,6 @@ class ConversationRepository(
     suspend fun setConversationPinned(id: String, pinned: Boolean): Boolean =
         chatDao.setConversationPinned(id, pinned, System.currentTimeMillis()) == 1
 
-    suspend fun replaceConfiguredModelReferences(
-        oldModelId: String,
-        newModelId: String?,
-    ) = chatDao.replaceConfiguredModelReferences(oldModelId, newModelId)
-
-    suspend fun renameConfiguredProviderModelReferences(
-        oldProvider: String,
-        newProvider: String,
-    ) = chatDao.renameConfiguredProviderModelReferences(oldProvider, newProvider)
-
     suspend fun updateConversationTitleIfUnchanged(
         id: String,
         expectedTitle: String,

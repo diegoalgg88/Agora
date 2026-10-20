@@ -11,6 +11,7 @@ import com.newoether.agora.api.ollama.OllamaProvider
 import com.newoether.agora.api.openai.AiHordeProvider
 import com.newoether.agora.api.openai.CustomOpenAiProvider
 import com.newoether.agora.api.openai.DeepSeekProvider
+import com.newoether.agora.data.repository.renameConfiguredProviderModelReferences
 import com.newoether.agora.api.openai.GroqProvider
 import com.newoether.agora.api.openai.OpenAiProvider
 import com.newoether.agora.api.openai.OpenCodeGoProvider

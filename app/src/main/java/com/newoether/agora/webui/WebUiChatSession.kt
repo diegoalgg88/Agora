@@ -1,9 +1,14 @@
 ﻿package com.newoether.agora.webui
 
 import com.newoether.agora.automation.ConversationExecutionCoordinator
+import com.newoether.agora.data.modelDisplayName
+import com.newoether.agora.data.providerDisplayName
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.ConversationSettingsTransferCoordinator
 import com.newoether.agora.data.repository.SettingsRepository
+import com.newoether.agora.data.repository.updateConversationModel
+import com.newoether.agora.model.ModelId
+import com.newoether.agora.model.apiModelName
 import com.newoether.agora.viewmodel.AttachmentImportProcessor
 import com.newoether.agora.viewmodel.BranchReplacementTransitionCoordinator
 import com.newoether.agora.viewmodel.ChatClient
@@ -17,10 +22,12 @@ import com.newoether.agora.viewmodel.ConversationRenderStore
 import com.newoether.agora.viewmodel.ConversationStateRegistry
 import com.newoether.agora.viewmodel.ConversationUiStateAssembler
 import com.newoether.agora.viewmodel.ConversationWorkspaceDraft
+import com.newoether.agora.viewmodel.CurrentConversationRuntimeFacade
 import com.newoether.agora.viewmodel.GenerationStopAdapter
 import com.newoether.agora.viewmodel.MessageGenerationController
 import com.newoether.agora.viewmodel.NEW_CHAT_WORKSPACE_ID
 import com.newoether.agora.viewmodel.NewChatWorkspaceSnapshot
+import com.newoether.agora.viewmodel.QueuedSend
 import com.newoether.agora.viewmodel.resolveValidModel
 import com.newoether.agora.viewmodel.validChatModels
 import java.util.concurrent.ConcurrentHashMap
@@ -65,7 +72,7 @@ internal class WebUiChatSession(
     private val generation: MessageGenerationController,
     private val generationStop: GenerationStopAdapter,
     private val clients: ChatClients,
-    conversations: ConversationRepository,
+    private val conversations: ConversationRepository,
     private val registry: ConversationStateRegistry,
     executionCoordinator: ConversationExecutionCoordinator,
     settings: SettingsRepository,
@@ -92,6 +99,9 @@ internal class WebUiChatSession(
         val modelValid: Boolean = false,
         val generating: Boolean = false,
         val stopping: Boolean = false,
+        val modelId: String = "",
+        val models: Map<String, String> = emptyMap(),
+        val queue: List<QueuedSend> = emptyList(),
     )
 
     private val target = MutableStateFlow(OpenTarget(null, browserSeq = 0L, movedByServer = false))
@@ -126,11 +136,22 @@ internal class WebUiChatSession(
 
     /** Model chosen on this browser's New Chat page; null follows the default model. */
     private val newChatModelId = MutableStateFlow<String?>(null)
+    private val validModels = settings.validChatModels(scope)
+    private val runtimeFacade = CurrentConversationRuntimeFacade(openId, registry, scope)
+    /** Etiquetas de modelo ordenadas por provider+nombre; el composer del navegador las lista. */
+    private val modelLabels = combine(
+        validModels, settings.modelAliases, settings.customProviders, settings.modelProviderNames,
+    ) { valid, aliases, providers, showProvider ->
+        valid.orEmpty().sortedWith(compareBy(
+            { providerDisplayName(ModelId.parse(it).providerName, providers).lowercase() },
+            { ModelId.parse(it).apiModelName.lowercase() },
+        )).associateWith { modelDisplayName(it, aliases, providers, showProvider[it] != false) }
+    }.stateIn(scope, SharingStarted.Eagerly, emptyMap())
     private val activeModel: StateFlow<Pair<String?, String>?> = openId.flatMapLatest { id ->
         combine(
             if (id == null) newChatModelId else conversations.observeConversation(id).map { it?.modelId },
             settings.selectedModel,
-            settings.validChatModels(scope),
+            validModels,
         ) { referenced, fallback, valid ->
             id to if (valid == null) "" else resolveValidModel(referenced, fallback, valid)
         }
@@ -182,6 +203,8 @@ internal class WebUiChatSession(
         } ?: return@flatMapLatest flowOf()
         val runtime = owner.takeUnless { it == NEW_CHAT_WORKSPACE_ID }?.let(registry::getOrCreate)
         combine(draft, state, editRevision, actionId, activeModel) { _, _, _, _, _ -> Unit }
+            .combine(modelLabels) { _, _ -> Unit }
+            .combine(runtime?.queuedSends ?: flowOf(emptyList())) { _, _ -> Unit }
             .combine(runtime?.generating ?: flowOf(false)) { _, _ -> Unit }
             .combine(runtime?.stopping ?: flowOf(false)) { _, _ ->
                 ownerMutex.withLock {
@@ -194,6 +217,8 @@ internal class WebUiChatSession(
                             editRevision.value, actionId.value,
                             activeModel.value?.let { it.first == selected.conversationId && it.second.isNotBlank() } == true,
                             runtime?.generating?.value == true, runtime?.stopping?.value == true,
+                            activeModel.value?.takeIf { it.first == selected.conversationId }?.second.orEmpty(),
+                            modelLabels.value, runtime?.queuedSends?.value.orEmpty().sortedBy(QueuedSend::createdAt),
                         )
                     }
                 }
@@ -239,6 +264,35 @@ internal class WebUiChatSession(
     suspend fun cancelWaiting(seq: Long, commandId: Long) = ownerMutex.withLock {
         if (seq != target.value.browserSeq) return@withLock
         retainedOwner?.let(submission::cancelWaiting)
+        actionId.value = commandId
+    }
+
+    /** Selección de modelo del navegador: New Chat page o conversación abierta (write durable). */
+    suspend fun selectModel(modelId: String, seq: Long, commandId: Long) = ownerMutex.withLock {
+        if (seq != target.value.browserSeq) return@withLock
+        try {
+            if (modelId !in validModels.value.orEmpty()) return@withLock
+            val id = openId.value
+            if (id == null) newChatModelId.value = modelId
+            else if (!conversations.updateConversationModel(id, modelId)) return@withLock
+            activeModel.first { resolved ->
+                resolved != null && resolved.first == id &&
+                    (resolved.second == modelId || modelId !in validModels.value.orEmpty())
+            }
+        } finally {
+            actionId.value = commandId
+        }
+    }
+
+    suspend fun removeQueued(id: String, seq: Long) = ownerMutex.withLock {
+        if (seq == target.value.browserSeq) runtimeFacade.removeQueuedSend(id)
+    }
+
+    suspend fun sendQueued(seq: Long, commandId: Long) = ownerMutex.withLock {
+        if (seq != target.value.browserSeq) return@withLock
+        if (activeModel.value?.let { it.first == openId.value && it.second.isNotBlank() } == true) {
+            runtimeFacade.requestQueueDrain()
+        }
         actionId.value = commandId
     }
 

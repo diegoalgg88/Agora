@@ -1,4 +1,5 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
+import com.newoether.agora.data.local.ChatDao
 
 import com.newoether.agora.data.ConversationSettings
 import com.newoether.agora.data.local.ChatEntity
@@ -137,6 +138,12 @@ class ConversationWorkspaceStoreTest {
     fun ordinaryConversationMetadataMutationsUseTheSharedWorkspace() = runTest {
         val fixture = Fixture(backgroundScope, StandardTestDispatcher(testScheduler))
         var conversation = ChatEntity("conversation", "Title")
+        val dao = mockk<ChatDao>()
+        every { fixture.conversations.chatDao } returns dao
+        coEvery { dao.updateConversationModel("conversation", "provider:model", any()) } answers {
+            conversation = conversation.copy(modelId = "provider:model")
+            1
+        }
         coEvery { fixture.conversations.getConversation("conversation") } answers { conversation }
         coEvery { fixture.conversations.upsertConversation(any()) } coAnswers {
             conversation = firstArg()
@@ -149,7 +156,8 @@ class ConversationWorkspaceStoreTest {
 
         assertEquals("provider:model", conversation.modelId)
         assertEquals("prompt", conversation.systemPromptId)
-        coVerify(exactly = 2) { fixture.conversations.upsertConversation(any()) }
+        coVerify(exactly = 1) { dao.updateConversationModel("conversation", "provider:model", any()) }
+        coVerify(exactly = 1) { fixture.conversations.upsertConversation(any()) }
     }
 
     @Test
