@@ -208,9 +208,18 @@ export const sync = {
     if (!state.connected || !state.composer || state.pendingAction) return;
     const phase = state.composer.phase;
     if (phase !== "IDLE" && phase !== "WAITING") return;
-    const command = { type: phase === "WAITING" ? "cancel_waiting" : "send",
+    const drain = phase === "IDLE" && !state.text.trim() && !state.generating && state.composer.queue?.length;
+    const command = { type: phase === "WAITING" ? "cancel_waiting" : drain ? "send_queued" : "send",
       seq: openSeq, actionId: ++nextAction, text: state.text };
     if (send(command)) update({ pendingAction: command.actionId });
+  },
+  selectModel(modelId) {
+    if (!state.connected || !state.composer || state.pendingAction) return;
+    const command = { type: "model", modelId, seq: openSeq, actionId: ++nextAction };
+    if (send(command)) update({ pendingAction: command.actionId });
+  },
+  removeQueued(queuedId) {
+    if (state.connected && state.composer) send({ type: "remove_queued", queuedId, seq: openSeq });
   },
   stopGeneration() {
     if (state.connected && state.composer && !state.composer.stopping) send({ type: "stop", seq: openSeq });

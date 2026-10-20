@@ -4,6 +4,7 @@ import { t } from "./i18n.js";
 import {
   icon, ICON_ADD, ICON_ARROW_UPWARD, ICON_CALL_SPLIT, ICON_EXPAND_ALL, ICON_LOGOUT,
   ICON_MENU, ICON_MORE_VERT, ICON_PSYCHOLOGY, ICON_REPEAT, ICON_SEARCH, ICON_SHARE, ICON_STOP,
+  ICON_CHECK, ICON_CLOSE, ICON_ATTACH_FILE,
 } from "./icons.js";
 import { postJson } from "./api.js";
 import { sync, useSync } from "./sync.js";
@@ -72,15 +73,16 @@ function DrawerContent({ conversations, openId, onSelect, connected }) {
 }
 
 /** AgoraDropdownMenu: 24 dp corners, 48 dp items with an inset capsule highlight. */
-function MoreMenu({ expanded, reduceMotion, anchor, onSignOut, onClose, onExited }) {
+function MoreMenu({ expanded, reduceMotion, anchor, onSignOut, onClose, onExited, children, above = false }) {
   const menu = useRef(null);
   const motion = useRef({ scale: 0.8, alpha: 0, scaleVelocity: 0, alphaVelocity: 0 });
   useLayoutEffect(() => {
     const node = menu.current;
     const measure = () => {
       const bounds = anchor.current.getBoundingClientRect();
-      const left = bounds.right - node.offsetWidth;
-      const top = bounds.bottom + 4;
+      const left = Math.max(8, Math.min(innerWidth - node.offsetWidth - 8,
+        above ? bounds.left : bounds.right - node.offsetWidth));
+      const top = above ? Math.max(8, bounds.top - node.offsetHeight - 4) : bounds.bottom + 4;
       node.style.left = `${left}px`;
       node.style.top = `${top}px`;
       const pivotX = bounds.left >= left + node.offsetWidth ? 1 : bounds.right <= left ? 0
@@ -93,7 +95,7 @@ function MoreMenu({ expanded, reduceMotion, anchor, onSignOut, onClose, onExited
     [node, anchor.current].forEach((element) => geometry.observe(element, { box: "border-box" }));
     window.addEventListener("resize", measure);
     measure();
-    node.querySelector("[role=menuitem]:not([disabled])")?.focus();
+    node.querySelector("[role^=menuitem]:not([disabled])")?.focus();
     return () => { geometry.disconnect(); window.removeEventListener("resize", measure); };
   }, []);
   useLayoutEffect(() => {
@@ -188,7 +190,7 @@ function MoreMenu({ expanded, reduceMotion, anchor, onSignOut, onClose, onExited
       if (event.key === "Escape") { event.preventDefault(); event.stopPropagation(); onClose(); }
       if (["Tab", "ArrowUp", "ArrowDown", "Home", "End"].includes(event.key)) {
         event.preventDefault();
-        const controls = [...menu.current.querySelectorAll("[role=menuitem]:not([disabled])")];
+        const controls = [...menu.current.querySelectorAll("[role^=menuitem]:not([disabled])")];
         const current = controls.indexOf(document.activeElement);
         const next = event.key === "Home" ? 0 : event.key === "End" ? controls.length - 1
           : (current + (event.shiftKey || event.key === "ArrowUp" ? -1 : 1) + controls.length) % controls.length;
@@ -204,7 +206,8 @@ function MoreMenu({ expanded, reduceMotion, anchor, onSignOut, onClose, onExited
       event.stopPropagation();
     }} onWheel=${(event) => { if (!menu.current.contains(event.target)) event.preventDefault(); }}
       onContextMenu=${(event) => event.preventDefault()}>
-    <div class="dropdown" role="menu" ref=${menu}>
+    <div class=${`dropdown ${above ? "composer-menu" : ""}`} role="menu" ref=${menu}>
+      ${children || html`
       <button class="dropdown-item" role="menuitem" type="button" disabled>
         ${icon(ICON_SEARCH)}<span>${t.conversationSearch}</span>
       </button>
@@ -219,7 +222,7 @@ function MoreMenu({ expanded, reduceMotion, anchor, onSignOut, onClose, onExited
       </button>
       <button class="dropdown-item" role="menuitem" type="button" onClick=${onSignOut}>
         ${icon(ICON_LOGOUT)}<span>${t.signOut}</span>
-      </button>
+      </button>`}
     </div>
     </div>`;
 }
@@ -359,13 +362,22 @@ function TopBar({ title, conversationId, drawerOpen, onToggleDrawer, menuButton,
 /** ChatBottomBar: surface card with the text field, the expand button and the controls row. */
 function Composer({ state }) {
   const field = useRef(null);
+  const modelButton = useRef(null);
+  const [modelOpen, setModelOpen] = useState(false);
+  const [retainedModelMenu, setRetainedModelMenu] = useState(false);
+  const modelChoices = Object.entries(state.composer?.models ?? {});
+  const selectedModel = state.composer?.modelId;
+  const modelLabel = state.composer?.modelValid ? state.composer.models?.[selectedModel] ?? t.selectModel
+    : modelChoices.length ? t.selectModel : t.noModel;
+  useEffect(() => { setModelOpen(false); }, [state.openId, state.connected]);
   const phase = state.composer?.phase ?? "IDLE";
   const waiting = phase === "WAITING";
   const busy = state.pendingAction || phase !== "IDLE" || state.composer?.stopping;
   const stop = state.generating && !state.text.trim();
+  const canDrain = !state.generating && !state.text.trim() && state.composer?.queue?.length;
   const actionable = state.connected && state.composer && !state.pendingAction && !state.composer.stopping &&
     !["loading", "failed", "deleted"].includes(state.openStatus) &&
-    (waiting || (phase === "IDLE" && (stop || (state.text.trim() && state.composer.modelValid))));
+    (waiting || (phase === "IDLE" && (stop || ((state.text.trim() || canDrain) && state.composer.modelValid))));
   useLayoutEffect(() => {
     const node = field.current;
     const resize = () => {
@@ -389,6 +401,14 @@ function Composer({ state }) {
         event.preventDefault();
         if (actionable) { if (stop && !busy) sync.stopGeneration(); else sync.submit(); }
       }}>
+        ${(state.composer?.queue ?? []).map(queued => html`
+          <div class="queued-message" key=${queued.id}>
+            <span class="queued-text">${queued.text}</span>
+            ${queued.attachmentCount > 0 && html`<span class="queued-attachments" aria-label=${t.attachments}>
+              ${icon(ICON_ATTACH_FILE)}${queued.attachmentCount}</span>`}
+            <button type="button" aria-label=${t.remove} disabled=${!state.connected}
+              onClick=${() => sync.removeQueued(queued.id)}>${icon(ICON_CLOSE)}</button>
+          </div>`)}
         <div class="composer-field">
           <textarea ref=${field} rows="1" placeholder=${t.askAgora} aria-label=${t.askAgora}
             value=${state.text} onInput=${(event) => sync.edit(event.currentTarget.value)}></textarea>
@@ -401,7 +421,10 @@ function Composer({ state }) {
             <button class="control-icon" type="button" aria-label=${t.addAttachment} disabled>
               ${icon(ICON_ADD)}
             </button>
-            <button class="model-selector" type="button" disabled>${t.selectModel}</button>
+            <button ref=${modelButton} class="model-selector" type="button" aria-label=${t.selectModel}
+              aria-haspopup="menu" aria-expanded=${modelOpen} data-valid=${!!state.composer?.modelValid}
+              disabled=${!state.connected || !state.composer || !!state.pendingAction}
+              onClick=${() => { setRetainedModelMenu(true); setModelOpen(!modelOpen); }}>${modelLabel}</button>
             <button class="control-icon" type="button" aria-label=${t.tools} disabled>
               ${icon(ICON_MORE_VERT)}
             </button>
@@ -413,7 +436,16 @@ function Composer({ state }) {
           </button>
         </div>
       </form>
-    </div>`;
+    </div>
+      ${retainedModelMenu && html`<${MoreMenu} expanded=${modelOpen} reduceMotion=${state.display.reduceMotion}
+        anchor=${modelButton} above=${true} onClose=${() => setModelOpen(false)}
+        onExited=${(restoreFocus) => { setRetainedModelMenu(false); if (restoreFocus) modelButton.current?.focus(); }}>
+          ${modelChoices.length ? modelChoices.map(([id, label]) => html`
+            <button class="dropdown-item" type="button" role="menuitemradio" aria-checked=${id === selectedModel}
+              onClick=${() => { sync.selectModel(id); setModelOpen(false); }}>
+              <span class="model-check">${id === selectedModel && icon(ICON_CHECK)}</span><span>${label}</span>
+            </button>`) : html`<button class="dropdown-item" type="button" role="menuitem" disabled>${t.noModels}</button>`}
+      </${MoreMenu}>`}`;
 }
 
 /**

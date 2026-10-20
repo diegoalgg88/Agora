@@ -1223,6 +1223,8 @@ ul.md-list > li > .md-marker { padding-bottom: 4px; }
 /* ComposerControlGroup: 48 dp capsule at 8 dp tonal elevation, 8 dp side padding. */
 .control-group {
   display: flex;
+  min-width: 0;
+  max-width: calc(100% - 62px);
   align-items: center;
   height: 48px;
   padding: 0 8px;
@@ -1230,6 +1232,7 @@ ul.md-list > li > .md-marker { padding-bottom: 4px; }
   background: var(--tonal-8);
 }
 .control-icon {
+  flex: none;
   display: grid;
   place-items: center;
   width: 36px;
@@ -1244,6 +1247,9 @@ ul.md-list > li > .md-marker { padding-bottom: 4px; }
 .control-icon:disabled { color: color-mix(in srgb, var(--md-on-surface) 38%, transparent); }
 /* ComposerModelSelector: 38 dp, 8 dp padding, labelMedium at 13 sp; no model reads at 50%. */
 .model-selector {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
   height: 38px;
   padding: 0 8px;
   border: 0;
@@ -1274,7 +1280,7 @@ ul.md-list > li > .md-marker { padding-bottom: 4px; }
 .send-button .spinner { width: 24px; height: 24px; border-width: 3px; }
 .chat-snackbar {
   position: absolute;
-  z-index: 5;
+  z-index: 1;
   bottom: calc(var(--chat-bottom-inset) + 8px);
   left: 50%;
   transform: translateX(-50%);
@@ -1289,3 +1295,19 @@ ul.md-list > li > .md-marker { padding-bottom: 4px; }
   overflow-wrap: anywhere;
   pointer-events: none;
 }
+.model-selector[data-valid="true"] { color: var(--md-primary); }
+.composer-menu { max-width: calc(100vw - 16px); max-height: min(480px, 50dvh); overflow-y: auto; }
+.composer-menu .dropdown-item { height: auto; min-height: 48px; white-space: normal; overflow-wrap: anywhere; }
+.composer-menu .dropdown-item > span:last-child { min-width: 0; }
+.model-check { width: 24px; flex: none; }
+.queued-message {
+  display: flex; align-items: center; gap: 4px; height: 40px;
+  margin: 0 8px 4px; padding: 0 4px 0 16px; border-radius: 20px;
+  background: var(--md-secondary-container); color: var(--md-on-secondary-container);
+  font-size: 14px; font-weight: 500;
+}
+.queued-text { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.queued-attachments { display: flex; align-items: center; gap: 2px; font-size: 12px; }
+.queued-attachments svg { width: 14px; height: 14px; }
+.queued-message button { flex: none; display: grid; place-items: center; width: 36px; height: 36px; border: 0; border-radius: 50%; background: transparent; color: inherit; }
+.queued-message svg { width: 18px; height: 18px; fill: currentColor; }
