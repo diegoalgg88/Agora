@@ -1391,4 +1391,6 @@
     <string name="mcp_app_loading">Đang tải chế độ xem tương tác…</string>
     <string name="mcp_app_unavailable">Không thể tải chế độ xem tương tác.</string>
     <string name="mcp_app_open_link_title">Mở liên kết này?</string>
+    <string name="remote_resume_history">Tiếp tục cuộc trò chuyện</string>
+    <string name="remote_device">Thiết bị</string>
 </resources>

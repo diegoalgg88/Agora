@@ -1545,4 +1545,6 @@
     <string name="mcp_app_loading">正在加载交互视图…</string>
     <string name="mcp_app_unavailable">无法加载交互视图。</string>
     <string name="mcp_app_open_link_title">要打开此链接吗？</string>
+    <string name="remote_resume_history">继续此会话</string>
+    <string name="remote_device">设备</string>
 </resources>

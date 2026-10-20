@@ -288,34 +288,27 @@ fun MainNavigation(
     val motionPolicy = LocalAgoraMotionPolicy.current
     val shouldRequestNotificationPermission =
         Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
-        appContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) !=
-        PackageManager.PERMISSION_GRANTED
-    var initialComposerFocusReady by remember {
-        mutableStateOf(!shouldRequestNotificationPermission)
-    }
-    val notificationPermissionLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission(),
-    ) {
+        appContext.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+    var initialComposerFocusReady by remember { mutableStateOf(!shouldRequestNotificationPermission) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
         initialComposerFocusReady = true
     }
     LaunchedEffect(Unit) {
         AgoraForegroundService.createChannels(appContext)
-        if (shouldRequestNotificationPermission) {
-            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
-        }
+        if (shouldRequestNotificationPermission) notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     }
     var showSettings by rememberSaveable { mutableStateOf(false) }
     var showTasks by rememberSaveable { mutableStateOf(false) }
+    var showRemote by rememberSaveable { mutableStateOf(false) }
     val topLevelPresentation = remember {
         TopLevelPresentationState(
             initialOwner = when {
+                showRemote -> TopLevelPresentation.REMOTE
                 showTasks -> TopLevelPresentation.TASKS
                 showSettings -> TopLevelPresentation.SETTINGS
                 else -> TopLevelPresentation.CHAT
             },
-            onOwnerChanged = { owner ->
-                AppForegroundTracker.setChatPresented(owner == TopLevelPresentation.CHAT)
-            },
+            onOwnerChanged = { AppForegroundTracker.setChatPresented(it == TopLevelPresentation.CHAT) },
         )
     }
     val tasksListState = rememberLazyListState()
@@ -345,26 +338,29 @@ fun MainNavigation(
                     .getConversation(id) != null
             }
             if (exists) {
-                showSettings = false
-                showTasks = false
+                showSettings = false; showTasks = false; showRemote = false
                 taskToOpen = null
                 taskEditorSession.clear()
                 viewModel.selectConversation(id)
             }
         } finally {
-            // A newer notification may have replaced [id] while this effect was suspended.
-            // Only consume the event this effect actually handled.
+            // Una notificación más nueva pudo reemplazar [id]; solo consume la que manejó.
             onNotificationConversationConsumed(id)
         }
     }
     var mediaPreviewTarget by remember { mutableStateOf<MediaPreviewTarget?>(null) }
+    val focusManager = LocalFocusManager.current
+    // Helper compartido: abre el preview de media y presenta su overlay.
+    val openMediaPreview: (List<String>, Int) -> Unit = { urls, index ->
+        focusManager.clearFocus()
+        mediaPreviewTarget = MediaPreviewTarget(urls, index)
+        topLevelPresentation.present(TopLevelPresentation.MEDIA_PREVIEW)
+    }
     var pdfViewerSelection by remember { mutableStateOf(setOf<Int>()) }
     val onTogglePdfSelection: (Int) -> Unit = { page ->
         pdfViewerSelection = if (page in pdfViewerSelection) pdfViewerSelection - page else pdfViewerSelection + page
     }
-    val onInitPdfSelection: (Set<Int>) -> Unit = { selection ->
-        pdfViewerSelection = selection
-    }
+    val onInitPdfSelection: (Set<Int>) -> Unit = { selection -> pdfViewerSelection = selection }
     var pdfPreviewFromDialog by remember { mutableStateOf(false) }
     val hapticsEnabled by viewModel.settings.hapticsEnabled.collectAsState()
     val pdfPages by viewModel.previewPdfPages.collectAsState()
@@ -372,20 +368,16 @@ fun MainNavigation(
     var snackbarVersion by remember { mutableIntStateOf(0) }
     val accessibilityManager = LocalAccessibilityManager.current
     var chatSnackbarOffset by remember { mutableStateOf(0.dp) }
+    var remoteSnackbarOffset by remember { mutableStateOf(0.dp) }
     val navBarPadding = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    // Full-screen viewer/settings drop the snackbar to nav-bar inset; in chat it floats above the
-    // bottom bar; animateDpAsState turns the change into a rise/fall animation.
-    val targetSnackbarPadding = if (showSettings || mediaPreviewTarget != null) navBarPadding else chatSnackbarOffset
+    // Full-screen viewer/settings drop the snackbar to nav-bar inset; in chat it floats above the bottom bar.
+    val targetSnackbarPadding = if (showSettings || mediaPreviewTarget != null) navBarPadding
+    else if (showRemote) remoteSnackbarOffset else chatSnackbarOffset
     val snackbarBottomPadding by animateDpAsState(
         targetValue = targetSnackbarPadding,
-        animationSpec = if (motionPolicy.allowSpatialTransitions) {
-            spring(dampingRatio = 1.0f, stiffness = 1000f)
-        } else {
-            snap()
-        },
+        animationSpec = if (motionPolicy.allowSpatialTransitions) spring(dampingRatio = 1.0f, stiffness = 1000f) else snap(),
         label = "snackbarPadding"
     )
-    val focusManager = LocalFocusManager.current
     val ratingScope = rememberCoroutineScope()
 
     // Update dialog
@@ -763,11 +755,10 @@ fun MainNavigation(
                     topLevelPresentation.present(TopLevelPresentation.TASKS)
                     showTasks = true
                 },
-                onMediaClick = { urls, index ->
-                    focusManager.clearFocus()
-                    mediaPreviewTarget = MediaPreviewTarget(urls, index)
-                    topLevelPresentation.present(TopLevelPresentation.MEDIA_PREVIEW)
+                onOpenRemote = {
+                    topLevelPresentation.present(TopLevelPresentation.REMOTE); showRemote = true
                 },
+                onMediaClick = openMediaPreview,
                 onFileContentClick = { name, content ->
                     focusManager.clearFocus()
                     topLevelPresentation.present(TopLevelPresentation.TEXT_PREVIEW)
@@ -848,6 +839,16 @@ fun MainNavigation(
                     }
                 )
             }
+
+            // Remote: overlay de sesiones Filo/Codex (remote-sessions.md).
+            com.newoether.agora.ui.remote.RemoteOverlay(
+                visible = showRemote, settings = viewModel.settings,
+                hapticsActive = topLevelPresentation.owner == TopLevelPresentation.REMOTE,
+                onDismiss = { showRemote = false },
+                onExitFinished = { topLevelPresentation.release(TopLevelPresentation.REMOTE) },
+                onMessage = viewModel::emitSnackbar, onSnackbarOffsetChanged = { remoteSnackbarOffset = it },
+                onMediaClick = openMediaPreview,
+            )
 
             // A dedicated dialog gives the media viewer its own window above source sheets.
             FullScreenMediaPreviewDialog(

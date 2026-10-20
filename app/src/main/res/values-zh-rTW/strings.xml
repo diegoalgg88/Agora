@@ -1393,4 +1393,6 @@
     <string name="mcp_app_loading">正在載入互動檢視…</string>
     <string name="mcp_app_unavailable">無法載入互動檢視。</string>
     <string name="mcp_app_open_link_title">要開啟此連結嗎？</string>
+    <string name="remote_resume_history">繼續此會話</string>
+    <string name="remote_device">裝置</string>
 </resources>

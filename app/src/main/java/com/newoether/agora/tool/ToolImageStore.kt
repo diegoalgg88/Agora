@@ -16,12 +16,14 @@ import java.util.UUID
  * that Android can identify real raster dimensions, writes into app-private storage, fsyncs, and
  * atomically publishes the final file. Both MCP and built-in Conch tools use this exact path.
  */
-class ToolImageStore(context: Context) {
+class ToolImageStore(
+    context: Context,
+    // Directorio destino; default = el store histórico compartido por tools MCP/Conch.
+    private val directory: File = File(context.applicationContext.filesDir, "tool-media"),
+) {
     companion object {
         const val MAX_IMAGE_BYTES = 20L * 1024L * 1024L
     }
-
-    private val directory = File(context.applicationContext.filesDir, "tool-media")
 
     fun persistBase64(
         data: String,

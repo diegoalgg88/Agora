@@ -141,6 +141,7 @@ internal fun ChatDrawerContent(
     onSettingsButtonTop: (Float) -> Unit,
     onOpenSettings: () -> Unit,
     onOpenTasks: () -> Unit,
+    onOpenRemote: () -> Unit,
     onRequestRename: (String, String) -> Unit,
     onRequestDelete: (String) -> Unit,
 ) {
@@ -348,6 +349,26 @@ internal fun ChatDrawerContent(
                                                 modifier = Modifier.size(20.dp),
                                             )
                                         }
+                                    }
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+
+                                    // Remote: debajo de Tasks, mismo grupo del drawer (contrato remote-sessions.md).
+                                    FilledTonalButton(
+                                        onClick = {
+                                            focusManager.clearFocus()
+                                            onOpenRemote()
+                                            scope.launch { onRequestClose() }
+                                        },
+                                        modifier = Modifier.fillMaxWidth().height(46.dp),
+                                        shape = RoundedCornerShape(
+                                            topStart = 5.dp, topEnd = 5.dp,
+                                            bottomStart = 24.dp, bottomEnd = 24.dp,
+                                        ),
+                                    ) {
+                                        Icon(Icons.Default.Devices, null, modifier = Modifier.size(20.dp))
+                                        Spacer(modifier = Modifier.width(8.dp))
+                                        Text(stringResource(R.string.remote_title), style = ChatType.drawerButton)
                                     }
 
                                     Spacer(modifier = Modifier.height(10.dp))

@@ -42,6 +42,13 @@ data class ToolImageAttachment(
     val sha256: String,
 )
 
+/** Imagen markdown desechable; un attachment ausente queda pendiente salvo que la lectura falle. */
+@Immutable
+data class MarkdownImage(
+    val attachment: ToolImageAttachment? = null,
+    val failed: Boolean = false,
+)
+
 @Immutable
 data class StreamingTextDelta(
     val sequence: Long,
@@ -78,6 +85,9 @@ data class MessageSegment(
     val toolStructuredResult: String? = null,
     /** Private-file metadata for image content returned by a tool. */
     val toolImages: List<ToolImageAttachment> = emptyList(),
+    /** Revisión opaca para un preview de carga bajo demanda; jamás persistida ni enviada al Provider. */
+    @Transient
+    val toolImageRequestKey: String? = null,
     /**
      * Transcription description of a tool-result image (view_image). Persisted WITH the result
      * row so the API projection can inject it into the model context — the round-boundary path
@@ -190,6 +200,13 @@ data class ChatMessage(
     val runId: String? = null,
     val runSequence: Long? = null,
     val consumedAtPass: Int? = null,
+    /** Límite de página en memoria; las páginas viejas no pueden reparentar un ítem renderizado. */
+    val displayPageId: String? = null,
+    /** Archivos privados autenticados para imágenes markdown inline; nunca en historial nativo. */
+    val markdownImages: Map<String, MarkdownImage> = emptyMap(),
+    /** Preparación markdown desechable fuera del main thread; jamás persistida en Room. */
+    val preparedMarkdown: Map<String, com.mikepenz.markdown.model.State.Success> = emptyMap(),
+    val preparedMarkdownBytes: Long = 0,
 )
 
 @Immutable

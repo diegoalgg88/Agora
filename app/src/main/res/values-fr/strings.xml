@@ -1385,4 +1385,6 @@
     <string name="mcp_app_loading">Chargement de la vue interactive…</string>
     <string name="mcp_app_unavailable">Impossible de charger la vue interactive.</string>
     <string name="mcp_app_open_link_title">Ouvrir ce lien ?</string>
+    <string name="remote_resume_history">Continuer cette conversation</string>
+    <string name="remote_device">Appareil</string>
 </resources>

@@ -9,6 +9,7 @@ enum class TopLevelPresentation {
     CHAT,
     SETTINGS,
     TASKS,
+    REMOTE,
     MEDIA_PREVIEW,
     TEXT_PREVIEW,
 }

@@ -1385,4 +1385,6 @@
     <string name="mcp_app_loading">جارٍ تحميل العرض التفاعلي…</string>
     <string name="mcp_app_unavailable">تعذّر تحميل العرض التفاعلي.</string>
     <string name="mcp_app_open_link_title">هل تريد فتح هذا الرابط؟</string>
+    <string name="remote_resume_history">متابعة هذه المحادثة</string>
+    <string name="remote_device">جهاز</string>
 </resources>

@@ -1385,4 +1385,6 @@
     <string name="mcp_app_loading">Carregando visualização interativa…</string>
     <string name="mcp_app_unavailable">Não foi possível carregar a visualização interativa.</string>
     <string name="mcp_app_open_link_title">Abrir este link?</string>
+    <string name="remote_resume_history">Continuar esta conversa</string>
+    <string name="remote_device">Dispositivo</string>
 </resources>

@@ -1385,4 +1385,6 @@
     <string name="mcp_app_loading">대화형 보기를 불러오는 중…</string>
     <string name="mcp_app_unavailable">대화형 보기를 불러오지 못했습니다.</string>
     <string name="mcp_app_open_link_title">이 링크를 여시겠습니까?</string>
+    <string name="remote_resume_history">이 대화 계속하기</string>
+    <string name="remote_device">기기</string>
 </resources>

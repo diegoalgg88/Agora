@@ -1385,4 +1385,6 @@
     <string name="mcp_app_loading">インタラクティブビューを読み込み中…</string>
     <string name="mcp_app_unavailable">インタラクティブビューを読み込めませんでした。</string>
     <string name="mcp_app_open_link_title">このリンクを開きますか？</string>
+    <string name="remote_resume_history">この会話を続ける</string>
+    <string name="remote_device">デバイス</string>
 </resources>

@@ -79,7 +79,7 @@ fun ChatApp(
     onNavigateBack: (() -> Unit)? = null,
     drawerEnabled: Boolean = true,
     onOpenSettings: () -> Unit,
-    onOpenTasks: (String?) -> Unit = {},
+    onOpenTasks: (String?) -> Unit = {}, onOpenRemote: () -> Unit = {},
     onMediaClick: (List<String>, Int) -> Unit,
     onFileContentClick: ((String, String) -> Unit)? = null,
     onPdfPagesClick: ((List<String>, Int) -> Unit)? = null,
@@ -361,7 +361,7 @@ fun ChatApp(
                 onRequestClose = onRequestClose,
                 onSettingsButtonTop = { settingsButtonTopDp = it },
                 onOpenSettings = onOpenSettings,
-                onOpenTasks = { onOpenTasks(null) },
+                onOpenTasks = { onOpenTasks(null) }, onOpenRemote = onOpenRemote,
                 onRequestRename = dialogState::requestRename,
                 onRequestDelete = { conversationId ->
                     if (!viewModel.isConversationDeleteLocked(conversationId)) {
