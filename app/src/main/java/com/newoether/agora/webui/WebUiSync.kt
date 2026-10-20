@@ -327,6 +327,13 @@ private fun ChatMessage.toWeb(inlineDollarMath: Boolean) = WebMessage(
     thoughtTitle = thoughtTitle,
     thoughtTimeMs = thoughtTimeMs,
     segments = segments.orEmpty().map { it.toWeb(inlineDollarMath) },
+    // Shim: el frontend a18eb53e solo pinta el cuerpo del modelo desde presentation.answer
+    // (messages.js ModelMessage). Sin el presentation block completo, el fallback usaTimeline=false
+    // renderiza answer como Markdown directo.
+    presentation = if (participant == Participant.USER) null else WebPresentation(
+        useTimeline = false,
+        answer = text.toWebText(inlineDollarMath),
+    ),
 )
 
 private fun MessageSegment.toWeb(inlineDollarMath: Boolean) = WebSegment(
@@ -426,6 +433,23 @@ internal data class WebMessage(
     val thoughtTitle: String?,
     val thoughtTimeMs: Long?,
     val segments: List<WebSegment>,
+    /**
+     * Shim de presentación del bloque upstream c6b2c8ef (diferido): el frontend exige este
+     * campo para pintar el cuerpo del modelo. Con `useTimeline=false` consume solo [answer]
+     * como Markdown directo; timeline/blocks/compact llegarán con el presentation block.
+     */
+    val presentation: WebPresentation? = null,
+)
+
+/**
+ * Presentación mínima que satisface el contrato del frontend a18eb53e sin el modelo completo
+ * de bloques (upstream c6b2c8ef): `presentation?.useTimeline` falso toma el fallback que
+ * renderiza `answer` con el componente Markdown; `compact`/`blocks` ausentes se saltan.
+ */
+@Serializable
+internal data class WebPresentation(
+    val useTimeline: Boolean = false,
+    val answer: WebText? = null,
 )
 
 @Serializable
