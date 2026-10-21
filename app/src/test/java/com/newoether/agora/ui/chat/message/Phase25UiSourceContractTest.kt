@@ -62,7 +62,8 @@ class Phase25UiSourceContractTest {
 
     @Test
     fun `Timeline info entrances have one card owned unbounded appearance layer`() {
-        val timeline = source("MessageItemTimeline.kt")
+        val timeline = source("MessageItemTimeline.kt") +
+            source("TimelineSegmentsContent.kt")
 
         assertEquals(
             2,
@@ -103,7 +104,8 @@ class Phase25UiSourceContractTest {
 
     @Test
     fun `Thinking sheet uses twenty five percent neutral cards gray arrows and local back chrome`() {
-        val timeline = source("MessageItemTimeline.kt")
+        val timeline = source("MessageItemTimeline.kt") +
+            source("TimelineSegmentsContent.kt")
         val detail = source("SegmentDetailSheet.kt")
         val back = componentSource("CircularBackButton.kt")
 

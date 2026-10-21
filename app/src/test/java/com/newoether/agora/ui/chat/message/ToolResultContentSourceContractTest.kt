@@ -76,7 +76,8 @@ class ToolResultContentSourceContractTest {
     fun `Generated image thumbnail keeps ordered fixed lifecycle presentation`() {
         val root = locateMainSourceRoot()
         val source = source(root, "ToolResultContent.kt")
-        val timeline = source(root, "MessageItemTimeline.kt")
+        val timeline = source(root, "MessageItemTimeline.kt") +
+            source(root, "TimelineSegmentsContent.kt")
         val assistant = source(root, "AssistantMessageContent.kt")
         val detailSheet = source(root, "SegmentDetailSheet.kt")
         val thumbnail = source
@@ -213,7 +214,8 @@ class ToolResultContentSourceContractTest {
 
     @Test
     fun `Timeline tool blocks expose the MCP App entry without expanding the group`() {
-        val timeline = source(locateMainSourceRoot(), "MessageItemTimeline.kt")
+        val timeline = source(locateMainSourceRoot(), "MessageItemTimeline.kt") +
+            source(locateMainSourceRoot(), "TimelineSegmentsContent.kt")
         val assistant = source(locateMainSourceRoot(), "AssistantMessageContent.kt")
 
         // The expanded tool row must NOT host the entry directly (it lives under the block card

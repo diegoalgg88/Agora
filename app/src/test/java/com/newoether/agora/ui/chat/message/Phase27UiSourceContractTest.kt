@@ -42,7 +42,8 @@ class Phase27UiSourceContractTest {
 
     @Test
     fun `terminal background tool cannot keep Thinking header loading`() {
-        val timeline = source("MessageItemTimeline.kt")
+        val timeline = source("MessageItemTimeline.kt") +
+            source("TimelineSegmentsContent.kt")
         val presentation = source("ToolPresentation.kt")
 
         assertTrue(timeline.contains("generationActive: Boolean ="))
@@ -59,7 +60,8 @@ class Phase27UiSourceContractTest {
 
     @Test
     fun `sheet chrome uses twenty five percent neutral surfaces`() {
-        val timeline = source("MessageItemTimeline.kt")
+        val timeline = source("MessageItemTimeline.kt") +
+            source("TimelineSegmentsContent.kt")
         val detail = source("SegmentDetailSheet.kt")
 
         assertTrue(timeline.contains(

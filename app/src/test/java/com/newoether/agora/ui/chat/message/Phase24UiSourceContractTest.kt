@@ -10,7 +10,8 @@ class Phase24UiSourceContractTest {
     @Test
     fun `Timeline and sheet group corners use one monotonic clamped motion policy`() {
         val segments = source("message/MessageItemSegments.kt")
-        val timeline = source("message/MessageItemTimeline.kt")
+        val timeline = source("message/MessageItemTimeline.kt") +
+            source("message/TimelineSegmentsContent.kt")
 
         assertTrue(segments.contains("internal fun rememberAnimatedSegmentGroupShape("))
         assertTrue(segments.contains("FastOutSlowInEasing"))
@@ -30,7 +31,8 @@ class Phase24UiSourceContractTest {
     @Test
     fun `Thinking durations use one localized seconds minutes and hours breakdown`() {
         val presentation = source("message/ThinkingSegmentPresentation.kt")
-        val timeline = source("message/MessageItemTimeline.kt")
+        val timeline = source("message/MessageItemTimeline.kt") +
+            source("message/TimelineSegmentsContent.kt")
 
         listOf(
             "thinking_for_seconds_ellipsis",
@@ -91,7 +93,8 @@ class Phase24UiSourceContractTest {
 
     @Test
     fun `Thinking sheet uses approved inset height and translucent neutral palette`() {
-        val timeline = source("message/MessageItemTimeline.kt")
+        val timeline = source("message/MessageItemTimeline.kt") +
+            source("message/TimelineSegmentsContent.kt")
         val detail = source("message/SegmentDetailSheet.kt")
 
         assertTrue(detail.contains(".padding(horizontal = 20.dp, vertical = 8.dp)"))
