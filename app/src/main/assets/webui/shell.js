@@ -2,13 +2,13 @@ import { useEffect, useLayoutEffect, useRef, useState } from "./vendor/preact-ho
 import { html } from "./html.js";
 import { t } from "./i18n.js";
 import {
-  icon, ICON_ADD, ICON_ARROW_UPWARD, ICON_CALL_SPLIT, ICON_EXPAND_ALL, ICON_LOGOUT,
-  ICON_MENU, ICON_MORE_VERT, ICON_PSYCHOLOGY, ICON_REPEAT, ICON_SEARCH, ICON_SHARE, ICON_STOP,
-  ICON_CHECK, ICON_CLOSE, ICON_ATTACH_FILE,
+  icon, ICON_ADD, ICON_CALL_SPLIT, ICON_LOGOUT,
+  ICON_MENU, ICON_MORE_VERT, ICON_PSYCHOLOGY, ICON_REPEAT, ICON_SEARCH, ICON_SHARE,
 } from "./icons.js";
 import { postJson } from "./api.js";
 import { sync, useSync } from "./sync.js";
 import { MessageList } from "./messages.js";
+import { Composer } from "./composer.js";
 /*
  * Chat frame, mirroring the app's chat screen (ChatTopBar, ChatDrawerContent, ChatBottomBar).
  * Controls the browser cannot use yet are shown as in the app but disabled.
@@ -359,94 +359,6 @@ function TopBar({ title, conversationId, drawerOpen, onToggleDrawer, menuButton,
       onExited=${(ownedFocus) => { setRetainedMenu(false); if (ownedFocus) moreButton.current?.focus(); }} />`}`;
 }
 
-/** ChatBottomBar: surface card with the text field, the expand button and the controls row. */
-function Composer({ state }) {
-  const field = useRef(null);
-  const modelButton = useRef(null);
-  const [modelOpen, setModelOpen] = useState(false);
-  const [retainedModelMenu, setRetainedModelMenu] = useState(false);
-  const modelChoices = Object.entries(state.composer?.models ?? {});
-  const selectedModel = state.composer?.modelId;
-  const modelLabel = state.composer?.modelValid ? state.composer.models?.[selectedModel] ?? t.selectModel
-    : modelChoices.length ? t.selectModel : t.noModel;
-  useEffect(() => { setModelOpen(false); }, [state.openId, state.connected]);
-  const phase = state.composer?.phase ?? "IDLE";
-  const waiting = phase === "WAITING";
-  const busy = state.pendingAction || phase !== "IDLE" || state.composer?.stopping;
-  const stop = state.generating && !state.text.trim();
-  const canDrain = !state.generating && !state.text.trim() && state.composer?.queue?.length;
-  const actionable = state.connected && state.composer && !state.pendingAction && !state.composer.stopping &&
-    !["loading", "failed", "deleted"].includes(state.openStatus) &&
-    (waiting || (phase === "IDLE" && (stop || ((state.text.trim() || canDrain) && state.composer.modelValid))));
-  useLayoutEffect(() => {
-    const node = field.current;
-    const resize = () => {
-      node.style.height = "auto";
-      node.style.height = Math.min(node.scrollHeight, 6 * 23 + 24) + "px";
-    };
-    const geometry = new ResizeObserver(resize);
-    geometry.observe(node);
-    resize();
-    return () => geometry.disconnect();
-  }, [state.text]);
-  useEffect(() => {
-    if (!state.snackbar) return;
-    const id = state.snackbar.id;
-    const timer = setTimeout(() => sync.dismissSnackbar(id), 4_000);
-    return () => clearTimeout(timer);
-  }, [state.snackbar?.id]);
-  return html`
-    <div class="composer-host">
-      <form class="composer" onSubmit=${(event) => {
-        event.preventDefault();
-        if (actionable) { if (stop && !busy) sync.stopGeneration(); else sync.submit(); }
-      }}>
-        ${(state.composer?.queue ?? []).map(queued => html`
-          <div class="queued-message" key=${queued.id}>
-            <span class="queued-text">${queued.text}</span>
-            ${queued.attachmentCount > 0 && html`<span class="queued-attachments" aria-label=${t.attachments}>
-              ${icon(ICON_ATTACH_FILE)}${queued.attachmentCount}</span>`}
-            <button type="button" aria-label=${t.remove} disabled=${!state.connected}
-              onClick=${() => sync.removeQueued(queued.id)}>${icon(ICON_CLOSE)}</button>
-          </div>`)}
-        <div class="composer-field">
-          <textarea ref=${field} rows="1" placeholder=${t.askAgora} aria-label=${t.askAgora}
-            value=${state.text} onInput=${(event) => sync.edit(event.currentTarget.value)}></textarea>
-          <button class="expand-button" type="button" aria-label=${t.expand} disabled>
-            ${icon(ICON_EXPAND_ALL, "0 0 960 960")}
-          </button>
-        </div>
-        <div class="composer-controls">
-          <div class="control-group">
-            <button class="control-icon" type="button" aria-label=${t.addAttachment} disabled>
-              ${icon(ICON_ADD)}
-            </button>
-            <button ref=${modelButton} class="model-selector" type="button" aria-label=${t.selectModel}
-              aria-haspopup="menu" aria-expanded=${modelOpen} data-valid=${!!state.composer?.modelValid}
-              disabled=${!state.connected || !state.composer || !!state.pendingAction}
-              onClick=${() => { setRetainedModelMenu(true); setModelOpen(!modelOpen); }}>${modelLabel}</button>
-            <button class="control-icon" type="button" aria-label=${t.tools} disabled>
-              ${icon(ICON_MORE_VERT)}
-            </button>
-          </div>
-          <button class="send-button" type="submit" aria-label=${waiting ? t.cancel : stop ? t.stop : t.send}
-            onPointerDown=${(event) => event.preventDefault()}
-            disabled=${!actionable} aria-busy=${busy ? "true" : null}>
-            ${busy ? html`<span class="spinner" aria-hidden="true"></span>` : icon(stop ? ICON_STOP : ICON_ARROW_UPWARD)}
-          </button>
-        </div>
-      </form>
-    </div>
-      ${retainedModelMenu && html`<${MoreMenu} expanded=${modelOpen} reduceMotion=${state.display.reduceMotion}
-        anchor=${modelButton} above=${true} onClose=${() => setModelOpen(false)}
-        onExited=${(restoreFocus) => { setRetainedModelMenu(false); if (restoreFocus) modelButton.current?.focus(); }}>
-          ${modelChoices.length ? modelChoices.map(([id, label]) => html`
-            <button class="dropdown-item" type="button" role="menuitemradio" aria-checked=${id === selectedModel}
-              onClick=${() => { sync.selectModel(id); setModelOpen(false); }}>
-              <span class="model-check">${id === selectedModel && icon(ICON_CHECK)}</span><span>${label}</span>
-            </button>`) : html`<button class="dropdown-item" type="button" role="menuitem" disabled>${t.noModels}</button>`}
-      </${MoreMenu}>`}`;
-}
 
 /**
  * The drawer overlays the chat with a scrim up to 960 px; wider, it sits beside the chat and the
@@ -637,7 +549,7 @@ export function Shell({ onSignedOut }) {
         <${TopBar} title=${openTitle} conversationId=${state.openId} drawerOpen=${drawerOpen} menuButton=${menuButton} reduceMotion=${reduceMotion} onSignedOut=${onSignedOut} connected=${state.connected}
           onToggleDrawer=${() => settleDrawer(drawerTarget.current === 0)} />
         <${MessageList} state=${state} label=${openTitle || t.newChat} />
-        <${Composer} state=${state} />
+        <${Composer} state=${state} MoreMenu=${MoreMenu} />
         ${state.snackbar && html`<div class="chat-snackbar" role="status">${state.snackbar.message}</div>`}
       </main>
     </div>`;

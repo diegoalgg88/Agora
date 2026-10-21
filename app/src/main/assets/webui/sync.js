@@ -27,6 +27,7 @@ let state = {
   pendingAction: 0,
   snackbar: null,
   scrollRequest: null,
+  connectionId: null,
 };
 const bodySizes = new Map();
 let watched = new Set();
@@ -39,6 +40,7 @@ let openSeq = 0;
 let editRevision = 0;
 let nextAction = 0;
 let noticeId = 0;
+const uploads = new Set();
 
 function update(patch) {
   state = { ...state, ...patch };
@@ -77,6 +79,9 @@ function evict(bodies) {
 
 function receive(event, size) {
   switch (event.type) {
+    case "connection":
+      update({ connectionId: event.connectionId });
+      break;
     case "scroll_to_bottom":
       if (event.conversationId === state.openId && event.seq === openSeq) update({ scrollRequest: event });
       break;
@@ -150,7 +155,7 @@ function connect() {
   ws.onopen = () => {
     if (socket !== ws || !running) return;
     retryMs = 1_000;
-    update({ connected: true, composer: null, pendingAction: 0 });
+    update({ connected: true, composer: null, pendingAction: 0, connectionId: null });
     send({ type: "open", conversationId: state.openId, seq: openSeq });
     // Reconnection restores input only, never Send or Stop.
     editRevision = 0;
@@ -163,7 +168,8 @@ function connect() {
   ws.onclose = async (close) => {
     if (socket !== ws) return;
     socket = null;
-    update({ connected: false, composer: null, pendingAction: 0,
+    uploads.forEach(controller => controller.abort());
+    update({ connected: false, composer: null, pendingAction: 0, connectionId: null,
       snackbar: state.pendingAction ? { id: ++noticeId, message: t.sendUnconfirmed } : state.snackbar });
     // A refused upgrade also arrives here, so the session decides between retrying and signing out.
     const signedIn = close.code !== CLOSE_VIOLATED_POLICY && (await sessionSignedIn().catch(() => true));
@@ -189,9 +195,10 @@ export const sync = {
     const ws = socket;
     socket = null;
     ws?.close();
+    uploads.forEach(controller => controller.abort());
     editRevision = 0;
     openSeq = 0;
-    select(null, { connected: false, composer: null, text: "", pendingAction: 0, snackbar: null });
+    select(null, { connected: false, composer: null, text: "", pendingAction: 0, snackbar: null, connectionId: null });
   },
   open(conversationId) {
     if (!state.connected || conversationId === state.openId) return;
@@ -208,7 +215,7 @@ export const sync = {
     if (!state.connected || !state.composer || state.pendingAction) return;
     const phase = state.composer.phase;
     if (phase !== "IDLE" && phase !== "WAITING") return;
-    const drain = phase === "IDLE" && !state.text.trim() && !state.generating && state.composer.queue?.length;
+    const drain = phase === "IDLE" && !state.text.trim() && !state.composer.attachments?.length && !state.generating && state.composer.queue?.length;
     const command = { type: phase === "WAITING" ? "cancel_waiting" : drain ? "send_queued" : "send",
       seq: openSeq, actionId: ++nextAction, text: state.text };
     if (send(command)) update({ pendingAction: command.actionId });
@@ -220,6 +227,41 @@ export const sync = {
   },
   removeQueued(queuedId) {
     if (state.connected && state.composer) send({ type: "remove_queued", queuedId, seq: openSeq });
+  },
+  attachmentTarget() {
+    return state.connected && state.connectionId && state.composer ? { connectionId: state.connectionId, seq: openSeq } : null;
+  },
+  async uploadFiles(files, forcedType, target) {
+    if (!target || target.connectionId !== state.connectionId || !state.connected) return;
+    for (const file of files) {
+      if (target.connectionId !== state.connectionId || !state.connected) return;
+      const controller = new AbortController();
+      uploads.add(controller);
+      try {
+        const query = new URLSearchParams({ seq: String(target.seq), name: file.name, mime: file.type });
+        if (forcedType) query.set("type", forcedType);
+        const response = await fetch(`/api/attachments/${encodeURIComponent(target.connectionId)}?${query}`, {
+          method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/octet-stream" },
+          body: file, signal: controller.signal,
+        });
+        if (!response.ok) throw new Error(response.status === 413 ? t.fileTooLarge : t.fileLoadFailed);
+      } catch (error) {
+        if (error.name !== "AbortError" && target.connectionId === state.connectionId) {
+          update({ snackbar: { id: ++noticeId, message: error.message } });
+        }
+      } finally { uploads.delete(controller); }
+    }
+  },
+  attachmentCommand(type, attachmentId, config = {}) {
+    if (!state.connected || !state.composer || state.pendingAction) return false;
+    const command = { ...config, type, attachmentId, seq: openSeq, actionId: ++nextAction };
+    if (!send(command)) return false;
+    update({ pendingAction: command.actionId });
+    return true;
+  },
+  attachmentUrl(id, kind, index = 0) {
+    if (!state.connected || !state.connectionId || !state.composer) return null;
+    return `/api/attachments/${encodeURIComponent(state.connectionId)}/${encodeURIComponent(id)}/${kind}/${index}?seq=${openSeq}`;
   },
   stopGeneration() {
     if (state.connected && state.composer && !state.composer.stopping) send({ type: "stop", seq: openSeq });
