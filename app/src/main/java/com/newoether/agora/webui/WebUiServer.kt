@@ -14,8 +14,12 @@ import io.ktor.server.application.install
 import io.ktor.server.request.contentType
 import io.ktor.server.request.receiveChannel
 import io.ktor.server.request.receiveText
+import io.ktor.server.response.respondOutputStream
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
@@ -64,6 +68,11 @@ internal class WebUiServer(
         login: String, connectionId: String, seq: Long, name: String, mime: String?,
         forcedType: String?, size: Long?, io.ktor.utils.io.ByteReadChannel,
     ) -> HttpStatusCode = { _, _, _, _, _, _, _, _ -> HttpStatusCode.NotFound },
+    /** Un GET de preview con el token y connectionId de la conexión dueña; false cuando no aplica. */
+    private val previewAttachment: suspend (
+        login: String, connectionId: String, seq: Long, attachmentId: String, kind: String,
+        index: Int, consume: suspend (java.io.File, String) -> Unit,
+    ) -> Boolean = { _, _, _, _, _, _, _ -> false },
     /** CSS variables del tema actual de la app; vacío conserva los defaults de `style.css`. */
     private val themeCss: () -> String = { "" },
     /** El archivo de fuente de la app servido en [WebUiTheme.FONT_PATH], o null con fuente del sistema. */
@@ -93,6 +102,66 @@ internal class WebUiServer(
             route("/api/sync") {
                 install(syncGate)
                 webSocket { serveSync() }
+            }
+            // Preview de attachments: GET con kind (source/page/frame). El session pinea el
+            // artifact canónico bajo filesDir; el stream se revoca si el login muere a medias.
+            route("/api/attachments/{connectionId}/{attachmentId}/{kind}/{index}") {
+                install(syncGate)
+                get {
+                    call.response.header(HttpHeaders.CacheControl, "no-store")
+                    val token = call.request.cookies[SESSION_COOKIE] ?: return@get
+                    val seq = call.request.queryParameters["seq"]?.toLongOrNull()?.takeIf { it >= 0 }
+                    val index = call.parameters["index"]?.toIntOrNull()?.takeIf { it >= 0 }
+                    val kind = call.parameters["kind"]?.takeIf { it in setOf("source", "page", "frame") }
+                    if (seq == null || index == null || kind == null) return@get call.respond(HttpStatusCode.NotFound)
+                    coroutineScope {
+                        // Un logout durante el stream corta el request con el token revocado.
+                        val requestJob = currentCoroutineContext()[kotlinx.coroutines.Job]!!
+                        val revoke = launch { auth.awaitSessionEnd(token); requestJob.cancel() }
+                        try {
+                            val found = previewAttachment(
+                                token, call.parameters["connectionId"].orEmpty(), seq,
+                                call.parameters["attachmentId"].orEmpty(), kind, index,
+                            ) { file, mime ->
+                                if (!auth.isValidSession(token)) throw kotlinx.coroutines.CancellationException("Session revoked")
+                                withContext(Dispatchers.IO) {
+                                    val size = file.length()
+                                    val streamContext = currentCoroutineContext()
+                                    val finished = kotlinx.coroutines.CompletableDeferred<Unit>()
+                                    // Ktor puede invocar el writer tras retornar respond: el pin de
+                                    // sesión vive hasta que el stream termina de asentarse.
+                                    call.respondOutputStream(ContentType.parse(mime), contentLength = size) {
+                                        try {
+                                            withContext(streamContext) {
+                                                if (!auth.isValidSession(token)) throw kotlinx.coroutines.CancellationException("Session revoked")
+                                                java.io.FileInputStream(file).use { input ->
+                                                    if (input.channel.size() != size) throw java.io.IOException("Attachment size changed before response")
+                                                    val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
+                                                    var remaining = size
+                                                    while (remaining > 0) {
+                                                        currentCoroutineContext().ensureActive()
+                                                        val count = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
+                                                        if (count < 0) throw java.io.EOFException("Attachment ended before its recorded size")
+                                                        write(buffer, 0, count)
+                                                        remaining -= count
+                                                    }
+                                                }
+                                            }
+                                            finished.complete(Unit)
+                                        } catch (error: Throwable) {
+                                            finished.completeExceptionally(error)
+                                            throw error
+                                        }
+                                    }
+                                    finished.await()
+                                }
+                            }
+                            if (!found) call.respond(HttpStatusCode.NotFound)
+                        } finally {
+                            revoke.cancel()
+                        }
+                    }
+                }
             }
             // Upload de attachments: stream octet-stream acotado; la sesión dueña valida
             // seq/congelamiento y clasifica MIME. El login viaja con el connectionId para

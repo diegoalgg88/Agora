@@ -508,6 +508,9 @@ class AppContainer(
             upload = { login, id, seq, name, mime, type, size, input ->
                 webUiSync.upload(login, id, seq, name, mime, type, size, input)
             },
+            previewAttachment = { login, connection, seq, id, kind, index, consume ->
+                webUiSync.previewAttachment(login, connection, seq, id, kind, index, consume)
+            },
         )
     }
 
@@ -562,8 +565,8 @@ class AppContainer(
                     transfers = conversationSettingsTransfers,
                     attachmentProcessor = com.newoether.agora.viewmodel.AttachmentImportProcessor(application),
                     scope = scope,
-                    // Uploads del navegador: cacheDir (no-backup del sistema limpia solo lo no reclamado).
-                    uploadDirectory = java.io.File(application.cacheDir, "webui-uploads").apply { mkdirs() },
+                    // filesDir (no cacheDir): la preview valida que el artifact esté bajo este root.
+                    uploadDirectory = application.filesDir,
                 )
             },
         )

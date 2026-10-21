@@ -76,6 +76,8 @@ internal class WebUiController(
     syncSession: suspend (String, kotlinx.coroutines.channels.ReceiveChannel<String>, suspend (String) -> Unit) -> Unit,
     /** Un POST de upload; [WebUiSync.upload] en producción. */
     upload: suspend (String, String, Long, String, String?, String?, Long?, io.ktor.utils.io.ByteReadChannel) -> io.ktor.http.HttpStatusCode = { _, _, _, _, _, _, _, _ -> io.ktor.http.HttpStatusCode.NotFound },
+    /** Un GET de preview; [WebUiSync.previewAttachment] en producción. */
+    previewAttachment: suspend (String, String, Long, String, String, Int, suspend (java.io.File, String) -> Unit) -> Boolean = { _, _, _, _, _, _, _ -> false },
     private val hasher: WebUiPasswordHasher = WebUiPasswordHasher(),
 ) {
     @Volatile private var passwordHash: String? = null
@@ -89,6 +91,7 @@ internal class WebUiController(
         readAsset = ::readAsset,
         syncSession = syncSession,
         upload = upload,
+        previewAttachment = previewAttachment,
         themeCss = { theme?.toCss().orEmpty() },
         readAppFont = ::readAppFont,
         readMonoFont = ::readMonoFont,
