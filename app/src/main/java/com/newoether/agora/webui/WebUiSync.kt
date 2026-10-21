@@ -34,6 +34,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -66,6 +67,12 @@ internal class WebUiSync(
     private val hydration: ConversationMessagePayloadHydration,
     private val customProviders: StateFlow<List<CustomProviderConfig>>,
     private val parseInlineDollarMath: StateFlow<Boolean>,
+    /**
+     * Contexto de visualización del navegador (shim del presentation block c6b2c8ef). Vacío en
+     * tests; producción lo pasa desde AppContainer — sin este evento el Composer del frontend
+     * crashea leyendo display.reduceMotion (shell.js:440, sin optional chaining).
+     */
+    private val display: Flow<WebSyncEvent.Display> = emptyFlow(),
     /** Construye el [WebUiChatSession] de una conexión con el scope de esa conexión. */
     private val openChatSession: (CoroutineScope) -> WebUiChatSession,
     private val projectionDispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -80,6 +87,11 @@ internal class WebUiSync(
             // lento frena a los productores en vez de inflar una cola.
             val outbound = Channel<WebSyncEvent>()
             launch { for (event in outbound) send(json.encodeToString(WebSyncEvent.serializer(), event)) }
+            // El display va primero y con replay=1: el Composer del navegador lee
+            // display.reduceMotion sin optional chaining y crashea si aún no llegó.
+            val displayContext = display.distinctUntilChanged()
+                .shareIn(this, SharingStarted.Eagerly, replay = 1)
+            launch { displayContext.collect { outbound.send(it) } }
             val session = openChatSession(this)
             val list = combine(
                 conversations.getAllConversations(),
@@ -424,7 +436,31 @@ internal sealed interface WebSyncEvent {
 
     @Serializable @SerialName("scroll_to_bottom")
     data class ScrollToBottom(val conversationId: String, val messageId: String, val seq: Long) : WebSyncEvent
+
+    /**
+     * Shim del presentation block (c6b2c8ef, diferido): el frontend lee display.reduceMotion SIN
+     * optional chaining en el menú del selector (shell.js:440) y crashea si el evento no llega.
+     * Los modos de tools/thinking alimentan los títulos de cards cuando llegue el bloque real.
+     */
+    @Serializable @SerialName("display")
+    data class Display(
+        val toolCallDisplayMode: String,
+        val thinkingSegmentDisplayMode: String,
+        val autoExpandActiveGroup: Boolean,
+        val autoWrapCodeBlocks: Boolean,
+        val blurEffectsEnabled: Boolean,
+        val reduceMotion: Boolean,
+        val liveThinking: WebLiveTimerStrings,
+    ) : WebSyncEvent
 }
+
+/** Plantillas de los timers de thinking; el navegador formatea los segundos corriendo. */
+@Serializable
+internal data class WebLiveTimerStrings(
+    val seconds: String,
+    val minutes: String,
+    val hours: String,
+)
 
 @Serializable
 internal data class WebConversation(

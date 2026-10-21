@@ -515,6 +515,31 @@ class AppContainer(
             ),
             customProviders = settingsRepository.customProviders,
             parseInlineDollarMath = settingsRepository.parseInlineDollarMath,
+            // Shim del presentation block (c6b2c8ef, diferido): el Composer del navegador lee
+            // display.reduceMotion sin optional chaining y crashea sin este evento. El setting
+            // autoWrapCodeBlocks no existe en este fork (upstream 51e955ac) — true es el default
+            // que el frontend aplica cuando el campo falta.
+            display = kotlinx.coroutines.flow.combine(
+                settingsRepository.toolCallDisplayMode,
+                settingsRepository.thinkingSegmentDisplayMode,
+                settingsRepository.autoExpandActiveGroup,
+                settingsRepository.blurEffectsEnabled,
+                settingsRepository.reduceMotion,
+            ) { toolMode, thinkingMode, autoExpand, blur, reduceMotion ->
+                com.newoether.agora.webui.WebSyncEvent.Display(
+                    toolCallDisplayMode = toolMode,
+                    thinkingSegmentDisplayMode = thinkingMode,
+                    autoExpandActiveGroup = autoExpand,
+                    autoWrapCodeBlocks = true,
+                    blurEffectsEnabled = blur,
+                    reduceMotion = reduceMotion,
+                    liveThinking = com.newoether.agora.webui.WebLiveTimerStrings(
+                        seconds = appContext.getString(com.newoether.agora.R.string.thinking_for_seconds_ellipsis),
+                        minutes = appContext.getString(com.newoether.agora.R.string.thinking_for_minutes_ellipsis),
+                        hours = appContext.getString(com.newoether.agora.R.string.thinking_for_hours_ellipsis),
+                    ),
+                )
+            },
             // Una sesión de navegador por conexión, con el scope de esa conexión.
             openChatSession = { scope ->
                 com.newoether.agora.webui.WebUiChatSession(
