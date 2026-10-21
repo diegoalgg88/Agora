@@ -1,4 +1,4 @@
-package com.newoether.agora.webui
+﻿package com.newoether.agora.webui
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
@@ -19,7 +19,7 @@ class WebUiEngineStartTest {
         val routes = WebUiServer(
             auth = WebUiAuth(passwordHash = { null }, hasher = WebUiPasswordHasher()),
             readAsset = { null },
-            syncSession = { _, _ -> },
+            syncSession = { _, _, _ -> },
         )
         val engine = withTimeoutOrNull(5_000) {
             withContext(Dispatchers.IO) { startWebUiEngine(port = 0, routes = routes) }

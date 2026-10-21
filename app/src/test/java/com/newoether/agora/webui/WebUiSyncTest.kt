@@ -94,6 +94,9 @@ class WebUiSyncTest {
         every { composerState } returns this@WebUiSyncTest.composerState
         coEvery { start() } just Runs
         coEvery { close() } just Runs
+        // serve() del paso 2057da82 llama endUploads() en el finally; sin el stub mockk
+        // explota y contamina el test (misma lección que discardQueuedSend).
+        coEvery { endUploads() } just Runs
         coEvery { send(any(), any(), any()) } just Runs
         coEvery { edit(any(), any(), any()) } just Runs
         coEvery { cancelWaiting(any(), any()) } just Runs
@@ -170,7 +173,7 @@ class WebUiSyncTest {
     fun closingTheConnectionClosesItsSession() = runTest {
         val incoming = Channel<String>(Channel.UNLIMITED)
         incoming.close()
-        webUiSync(StandardTestDispatcher(testScheduler)).serve(incoming) { }
+        webUiSync(StandardTestDispatcher(testScheduler)).serve("login", incoming) { }
         coVerify(exactly = 1) { session.close() }
     }
     @Test
@@ -277,7 +280,7 @@ class WebUiSyncTest {
         val sync = webUiSync(StandardTestDispatcher(testScheduler))
         val incoming = Channel<String>(Channel.UNLIMITED)
         val sent = Channel<String>(Channel.UNLIMITED)
-        backgroundScope.launch { sync.serve(incoming) { sent.send(it) } }
+        backgroundScope.launch { sync.serve("login", incoming) { sent.send(it) } }
         runCurrent()
         block(
             { text -> incoming.send(text); runCurrent() },

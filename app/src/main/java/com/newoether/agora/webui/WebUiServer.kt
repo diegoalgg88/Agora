@@ -12,7 +12,10 @@ import io.ktor.server.application.createApplicationPlugin
 import io.ktor.server.application.createRouteScopedPlugin
 import io.ktor.server.application.install
 import io.ktor.server.request.contentType
+import io.ktor.server.request.receiveChannel
 import io.ktor.server.request.receiveText
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import io.ktor.server.response.header
 import io.ktor.server.response.respond
 import io.ktor.server.response.respondBytes
@@ -54,8 +57,13 @@ internal class WebUiServer(
     private val auth: WebUiAuth,
     /** Lee un archivo del frontend empaquetado por su path bajo el asset root, o null si falta. */
     private val readAsset: (String) -> ByteArray?,
-    /** Sirve una conexión `/api/sync` firmada: frames de texto entrantes y un sender de texto. */
-    private val syncSession: suspend (ReceiveChannel<String>, suspend (String) -> Unit) -> Unit,
+    /** Sirve una conexión `/api/sync` firmada: token de login, frames entrantes y un sender de texto. */
+    private val syncSession: suspend (String, ReceiveChannel<String>, suspend (String) -> Unit) -> Unit,
+    /** Un POST de upload con el token y connectionId de la conexión dueña; 404 cuando no aplica. */
+    private val upload: suspend (
+        login: String, connectionId: String, seq: Long, name: String, mime: String?,
+        forcedType: String?, size: Long?, io.ktor.utils.io.ByteReadChannel,
+    ) -> HttpStatusCode = { _, _, _, _, _, _, _, _ -> HttpStatusCode.NotFound },
     /** CSS variables del tema actual de la app; vacío conserva los defaults de `style.css`. */
     private val themeCss: () -> String = { "" },
     /** El archivo de fuente de la app servido en [WebUiTheme.FONT_PATH], o null con fuente del sistema. */
@@ -85,6 +93,47 @@ internal class WebUiServer(
             route("/api/sync") {
                 install(syncGate)
                 webSocket { serveSync() }
+            }
+            // Upload de attachments: stream octet-stream acotado; la sesión dueña valida
+            // seq/congelamiento y clasifica MIME. El login viaja con el connectionId para
+            // que una sesión no acepte uploads de otra.
+            route("/api/attachments/{connectionId}") {
+                install(syncGate)
+                post {
+                    val token = call.request.cookies[SESSION_COOKIE] ?: return@post
+                    if (!call.request.contentType().match(ContentType.Application.OctetStream)) {
+                        return@post call.respond(HttpStatusCode.UnsupportedMediaType)
+                    }
+                    val params = call.request.queryParameters
+                    val seq = params["seq"]?.toLongOrNull()?.takeIf { it >= 0 }
+                    val name = params["name"]?.takeIf { it.isNotBlank() && it.length <= 256 }
+                    val mime = params["mime"]?.takeIf { it.length <= 128 }
+                    val forced = params["type"]
+                    val rawSize = call.request.headers[HttpHeaders.ContentLength]
+                    val size = rawSize?.toLongOrNull()
+                    if (seq == null || name == null || (rawSize != null && (size == null || size < 0)) ||
+                        (forced != null && forced !in setOf("image", "video"))) {
+                        return@post call.respond(HttpStatusCode.BadRequest)
+                    }
+                    if (size != null && size > com.newoether.agora.util.AttachmentFiles.MAX_ATTACHMENT_BYTES) {
+                        return@post call.respond(HttpStatusCode.PayloadTooLarge)
+                    }
+                    coroutineScope {
+                        // Un logout durante el upload corta el request con el token revocado.
+                        val requestJob = currentCoroutineContext()[kotlinx.coroutines.Job]!!
+                        val revoke = launch { auth.awaitSessionEnd(token); requestJob.cancel() }
+                        try {
+                            val status = upload(
+                                token, call.parameters["connectionId"].orEmpty(), seq, name, mime,
+                                forced, size, call.receiveChannel(),
+                            )
+                            call.response.header(HttpHeaders.CacheControl, "no-store")
+                            call.respond(if (auth.isValidSession(token)) status else HttpStatusCode.Forbidden)
+                        } finally {
+                            revoke.cancel()
+                        }
+                    }
+                }
             }
             get("/") { call.respondAsset(INDEX) }
             get("/assets/{path...}") {
@@ -174,7 +223,7 @@ internal class WebUiServer(
             close(CloseReason(CloseReason.Codes.VIOLATED_POLICY, "signed_out"))
         }
         try {
-            syncSession(texts) { text -> outgoing.send(Frame.Text(text)) }
+            syncSession(token, texts) { text -> outgoing.send(Frame.Text(text)) }
         } finally {
             signOut.cancel()
         }

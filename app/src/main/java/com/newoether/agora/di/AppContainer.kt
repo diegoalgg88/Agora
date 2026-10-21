@@ -504,7 +504,10 @@ class AppContainer(
                 unseal = com.newoether.agora.util.SecretCrypto::decrypt,
                 addresses = com.newoether.agora.webui.WebUiController::interfaceAddresses,
             ),
-            syncSession = { incoming, send -> webUiSync.serve(incoming, send) },
+            syncSession = { login, incoming, send -> webUiSync.serve(login, incoming, send) },
+            upload = { login, id, seq, name, mime, type, size, input ->
+                webUiSync.upload(login, id, seq, name, mime, type, size, input)
+            },
         )
     }
 
@@ -559,6 +562,8 @@ class AppContainer(
                     transfers = conversationSettingsTransfers,
                     attachmentProcessor = com.newoether.agora.viewmodel.AttachmentImportProcessor(application),
                     scope = scope,
+                    // Uploads del navegador: cacheDir (no-backup del sistema limpia solo lo no reclamado).
+                    uploadDirectory = java.io.File(application.cacheDir, "webui-uploads").apply { mkdirs() },
                 )
             },
         )

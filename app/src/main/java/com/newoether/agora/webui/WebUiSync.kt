@@ -77,11 +77,24 @@ internal class WebUiSync(
     private val openChatSession: (CoroutineScope) -> WebUiChatSession,
     private val projectionDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
+    /** Sesiones vivas por connectionId; el token de login amarra cada una a su dueño. */
+    private val connections = java.util.concurrent.ConcurrentHashMap<String, Pair<String, WebUiChatSession>>()
+
+    /** Un POST de upload llega con su connectionId; solo su sesión lo acepta. */
+    suspend fun upload(
+        login: String, connectionId: String, seq: Long, name: String, mime: String?, forcedType: String?,
+        size: Long?, input: io.ktor.utils.io.ByteReadChannel,
+    ): io.ktor.http.HttpStatusCode {
+        val session = connections[connectionId]?.takeIf { it.first == login }?.second
+            ?: return io.ktor.http.HttpStatusCode.NotFound
+        return session.upload(seq, name, mime, forcedType, size, input)
+    }
+
     /**
      * Sirve una conexión hasta que [incoming] cierra. Los comandos llegan como texto JSON; cada
      * evento se entrega a [send] desde una sola coroutine, así [send] no necesita lock propio.
      */
-    suspend fun serve(incoming: ReceiveChannel<String>, send: suspend (String) -> Unit) =
+    suspend fun serve(login: String, incoming: ReceiveChannel<String>, send: suspend (String) -> Unit) =
         coroutineScope {
             // Rendezvous: un productor espera a que el sender tome su evento, así un navegador
             // lento frena a los productores en vez de inflar una cola.
@@ -108,8 +121,12 @@ internal class WebUiSync(
                     .collect { outbound.send(it) }
             }
             val watched = MutableStateFlow<Set<String>>(emptySet())
+            val connectionId = java.util.UUID.randomUUID().toString()
+            val connectionJob = coroutineContext[Job]!!
             try {
                 session.start()
+                connections[connectionId] = login to session
+                outbound.send(WebSyncEvent.Connection(connectionId))
                 launch { session.snackbars.collect { outbound.send(WebSyncEvent.Snackbar(it)) } }
                 launch { session.scrollRequests.collect { outbound.send(it) } }
                 // La sesión decide qué está abierto; un movimiento del runtime (send de New Chat,
@@ -164,7 +181,16 @@ internal class WebUiSync(
                     }
                 }
             } finally {
-                session.close()
+                connections.remove(connectionId)
+                withContext(kotlinx.coroutines.NonCancellable) {
+                    // Los hijos de la conexión (uploads en vuelo) se asientan ANTES del reclaim
+                    // del close: ningún importer ni Send sobrevive a la reclamación de archivos.
+                    session.endUploads()
+                    val children = connectionJob.children.toList()
+                    children.forEach { it.cancel() }
+                    children.forEach { it.join() }
+                    session.close()
+                }
             }
             coroutineContext.cancelChildren()
         }
@@ -390,6 +416,10 @@ internal data class WebSyncCommand(
 
 @Serializable
 internal sealed interface WebSyncEvent {
+    /** Identifica esta conexión para los POST de upload; viaja primero, tras el display. */
+    @Serializable @SerialName("connection")
+    data class Connection(val connectionId: String) : WebSyncEvent
+
     @Serializable @SerialName("conversations")
     data class Conversations(val items: List<WebConversation>) : WebSyncEvent
 

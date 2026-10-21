@@ -73,7 +73,9 @@ internal class WebUiController(
     scope: CoroutineScope,
     private val certificates: WebUiCertificateStore,
     /** Sirve una conexión `/api/sync`; [WebUiSync.serve] en producción. */
-    syncSession: suspend (kotlinx.coroutines.channels.ReceiveChannel<String>, suspend (String) -> Unit) -> Unit,
+    syncSession: suspend (String, kotlinx.coroutines.channels.ReceiveChannel<String>, suspend (String) -> Unit) -> Unit,
+    /** Un POST de upload; [WebUiSync.upload] en producción. */
+    upload: suspend (String, String, Long, String, String?, String?, Long?, io.ktor.utils.io.ByteReadChannel) -> io.ktor.http.HttpStatusCode = { _, _, _, _, _, _, _, _ -> io.ktor.http.HttpStatusCode.NotFound },
     private val hasher: WebUiPasswordHasher = WebUiPasswordHasher(),
 ) {
     @Volatile private var passwordHash: String? = null
@@ -86,6 +88,7 @@ internal class WebUiController(
         auth = auth,
         readAsset = ::readAsset,
         syncSession = syncSession,
+        upload = upload,
         themeCss = { theme?.toCss().orEmpty() },
         readAppFont = ::readAppFont,
         readMonoFont = ::readMonoFont,

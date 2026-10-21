@@ -50,6 +50,10 @@ import org.junit.Test
 class WebUiChatSessionTest {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
+    /** Sin TemporaryFolder: el fixture del session es field-initializer y corre antes que la Rule. */
+    private val uploadDirectory: java.io.File =
+        java.nio.file.Files.createTempDirectory("webui-uploads").toFile()
+
     private val conversations = mockk<ConversationRepository>(relaxed = true) {
         every { observeConversation("a") } returns
             flowOf(ChatConversation(id = "a", title = "Alpha", modelId = "conversation-model"))
@@ -118,6 +122,7 @@ class WebUiChatSessionTest {
         transfers = mockk<ConversationSettingsTransferCoordinator>(relaxed = true),
         attachmentProcessor = mockk(relaxed = true),
         scope = scope,
+        uploadDirectory = uploadDirectory,
     )
 
     @After

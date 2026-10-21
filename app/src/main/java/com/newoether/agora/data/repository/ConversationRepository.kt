@@ -1,4 +1,4 @@
-package com.newoether.agora.data.repository
+﻿package com.newoether.agora.data.repository
 
 import androidx.room.withTransaction
 import androidx.work.WorkManager
@@ -895,88 +895,8 @@ class ConversationRepository(
         return true
     }
 
-    private fun String?.decodeSelectedAttachments(): List<SelectedAttachment>? =
-        this?.let { raw ->
-            runCatching { Json.decodeFromString<List<SelectedAttachment>>(raw) }.getOrNull()
-        }
-
-    private fun List<SelectedAttachment>.removedReclaimablePaths(
-        replacement: List<SelectedAttachment>?,
-    ): Set<String> {
-        val retainedPaths = replacement.orEmpty().reclaimablePaths()
-        return reclaimablePaths() - retainedPaths
-    }
-
-    private fun List<SelectedAttachment>.appPrivatePaths(): Set<String> =
-        filter { it.storage == AttachmentStorage.APP_PRIVATE }.reclaimablePaths()
-
-    private fun List<SelectedAttachment>.reclaimablePaths(): Set<String> =
-        asSequence()
-            .filter { it.storage.reclaimWhenAbandoned }
-            .flatMap { attachment ->
-                sequence {
-                    attachment.localPath?.let { yield(normalizeAttachmentPath(it)) }
-                    attachment.processedFrames.orEmpty().forEach {
-                        yield(normalizeAttachmentPath(it))
-                    }
-                    attachment.preRenderedPaths.orEmpty().forEach {
-                        yield(normalizeAttachmentPath(it))
-                    }
-                }
-            }
-            .toSet()
-
-    private fun MessageEntity.toAttachmentReference() = MessageAttachmentReference(
-        id = id,
-        images = images,
-        attachmentMeta = attachmentMeta,
-    )
-
-    private fun List<MessageAttachmentReference>.messageReclaimablePaths(): Set<String> =
-        flatMapTo(linkedSetOf()) { reference ->
-            attachmentFilePaths(reference.images, reference.attachmentMeta.decodeAttachmentMeta())
-        }
-
-    private fun String?.decodeAttachmentMeta(): AttachmentMeta? =
-        this?.let { raw -> runCatching { Json.decodeFromString<AttachmentMeta>(raw) }.getOrNull() }
-
-    private fun attachmentFilePaths(
-        images: List<String>,
-        meta: AttachmentMeta?,
-    ): List<String> {
-        val retainedImageIndices = meta?.items.orEmpty()
-            .asSequence()
-            .filterNot { it.storage.reclaimWhenAbandoned }
-            .flatMap { item ->
-                val start = item.imageIndex ?: return@flatMap emptySequence()
-                val count = (item.pageCount ?: 1).coerceAtLeast(0)
-                (start until start + count).asSequence()
-            }
-            .toSet()
-        return buildList {
-            images.forEachIndexed { index, path ->
-                if (index !in retainedImageIndices) add(normalizeAttachmentPath(path))
-            }
-            meta?.items.orEmpty()
-                .asSequence()
-                .filter { it.storage.reclaimWhenAbandoned }
-                .mapNotNull { item ->
-                    item.originalUri
-                        ?.takeIf { it.startsWith("file://") }
-                        ?.let(::normalizeAttachmentPath)
-                }
-                .forEach(::add)
-        }
-    }
-
-    private fun normalizeAttachmentPath(path: String): String {
-        val raw = path.removePrefix("file://")
-        return runCatching { java.io.File(raw).canonicalPath }
-            .getOrElse { java.io.File(raw).absolutePath }
-    }
-
     private companion object {
-        const val ATTACHMENT_REFERENCE_PAGE_SIZE = 128
-        const val CONTEXT_MESSAGE_QUERY_PAGE_SIZE = 64
+        const val ATTACHMENT_REFERENCE_PAGE_SIZE = 400
+        const val CONTEXT_MESSAGE_QUERY_PAGE_SIZE = 400
     }
-}
+}

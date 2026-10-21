@@ -3,6 +3,8 @@ package com.newoether.agora.util
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import com.newoether.agora.model.AttachmentStorage
+import com.newoether.agora.model.SelectedAttachment
 
 object FileValidator {
     enum class AttachmentRoute {
@@ -16,6 +18,7 @@ object FileValidator {
     enum class Error {
         UNKNOWN_TYPE,
         UNSUPPORTED_TYPE,
+        TOO_LARGE,
     }
 
     private val MIME_WHITELIST = setOf(
@@ -47,6 +50,37 @@ object FileValidator {
             mimeType.startsWith(allowed)
         } -> AttachmentRoute.TEXT
         else -> AttachmentRoute.LOCAL_SANDBOX
+    }
+
+    /**
+     * Clasifica un upload del navegador a un [SelectedAttachment] sin tocar ContentResolver:
+     * el navegador ya resolvió MIME y tamaño. Null cuando la ruta requiere Sandbox y este
+     * build no lo permite. (Restaurado por el upload del WebUI: 2057da82.)
+     */
+    internal fun inspectAttachment(
+        source: String,
+        fileName: String?,
+        mimeType: String?,
+        fileSize: Long?,
+        forcedType: String?,
+        allowLocalSandbox: Boolean,
+    ): SelectedAttachment? {
+        val route = routeForMimeType(mimeType)
+        val sandbox = forcedType == null && route == AttachmentRoute.LOCAL_SANDBOX
+        if (sandbox && !allowLocalSandbox) return null
+        return SelectedAttachment(
+            uri = source,
+            type = forcedType ?: when (route) {
+                AttachmentRoute.IMAGE -> "image"
+                AttachmentRoute.VIDEO -> "video"
+                AttachmentRoute.PDF -> "pdf"
+                AttachmentRoute.TEXT, AttachmentRoute.LOCAL_SANDBOX -> "file"
+            },
+            fileName = fileName,
+            mimeType = mimeType,
+            fileSize = fileSize,
+            storage = if (sandbox) AttachmentStorage.LOCAL_SANDBOX_PENDING else AttachmentStorage.APP_PRIVATE,
+        )
     }
 
     fun resolveMimeType(context: Context, uriString: String): String? {
@@ -87,6 +121,7 @@ object FileValidator {
         return when (error) {
             Error.UNKNOWN_TYPE -> context.getString(com.newoether.agora.R.string.file_unknown_type)
             Error.UNSUPPORTED_TYPE -> context.getString(com.newoether.agora.R.string.file_unsupported_type, mimeType ?: "?")
+            Error.TOO_LARGE -> context.getString(com.newoether.agora.R.string.file_too_large)
         }
     }
 }

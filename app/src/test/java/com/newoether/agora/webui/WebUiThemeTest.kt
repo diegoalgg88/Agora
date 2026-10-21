@@ -39,7 +39,7 @@ class WebUiThemeTest {
             WebUiServer(
                 auth = auth,
                 readAsset = { null },
-                syncSession = { _, _ -> },
+                syncSession = { _, _, _ -> },
                 themeCss = { ":root{--md-primary:#112233}" },
                 readAppFont = { font },
             ).install(this)
@@ -64,7 +64,7 @@ class WebUiThemeTest {
             WebUiServer(
                 auth = auth,
                 readAsset = { null },
-                syncSession = { _, _ -> },
+                syncSession = { _, _, _ -> },
                 readMonoFont = { style -> if (style == "bold") byteArrayOf(0, 1, 0, 0) else null },
             ).install(this)
         }

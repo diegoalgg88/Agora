@@ -157,7 +157,7 @@ class WebUiServerTest {
     @Test
     fun syncRefusesTheUpgradeWithoutASessionOrFromAnotherOrigin() {
         var served = 0
-        webUi(syncSession = { _, _ -> served++ }) { _ ->
+        webUi(syncSession = { _, _, _ -> served++ }) { _ ->
             val sockets = createClient { install(ClientWebSockets) }
             val anonymous = runCatching { sockets.webSocket("/api/sync") {} }
             assertTrue(anonymous.isFailure)
@@ -183,7 +183,7 @@ class WebUiServerTest {
 
     @Test
     fun syncServesTextFramesAndClosesWhenTheSessionEnds() = webUi(
-        syncSession = { incoming, send -> for (text in incoming) send("echo:$text") },
+        syncSession = { login, incoming, send -> for (text in incoming) send("echo:$text") },
     ) { auth ->
         val token = sessionToken()
         val sockets = createClient { install(ClientWebSockets) }
@@ -203,7 +203,7 @@ class WebUiServerTest {
 
     private fun webUi(
         hash: String? = hasher.hash("pw"),
-        syncSession: suspend (ReceiveChannel<String>, suspend (String) -> Unit) -> Unit = { _, _ -> },
+        syncSession: suspend (String, ReceiveChannel<String>, suspend (String) -> Unit) -> Unit = { _, _, _ -> },
         block: suspend ApplicationTestBuilder.(WebUiAuth) -> Unit,
     ) {
         val auth = WebUiAuth(passwordHash = { hash }, hasher = hasher, clock = { 0L })
