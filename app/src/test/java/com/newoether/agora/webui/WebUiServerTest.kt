@@ -21,6 +21,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Rule
+import org.junit.rules.TemporaryFolder
 
 class WebUiServerTest {
     private val hasher = WebUiPasswordHasher(iterations = 1_000)
@@ -28,6 +30,8 @@ class WebUiServerTest {
         "index.html" to "<!doctype html><title>Agora</title>".toByteArray(),
         "app.js" to "export {}".toByteArray(),
     )
+
+    @get:Rule val temporary = TemporaryFolder()
 
     @Test
     fun servesPackagedAssetsWithHardeningHeadersAndRejectsTraversal() = webUi { _ ->
@@ -197,6 +201,51 @@ class WebUiServerTest {
         }
     }
 
+    @Test
+    fun attachmentPreviewStreamsBoundedOpenAndSuffixRangesThroughTheSameOwner() {
+        val file = temporary.newFile("range.mp4").apply { writeText("0123456789") }
+        var settled = 0
+        webUi(previewAttachment = { _, _, _, _, _, _, consume ->
+            try { consume(file, "video/mp4"); true } finally { settled++ }
+        }) { auth ->
+            val token = sessionToken()
+            suspend fun request(range: String, signedIn: Boolean = true, ifRange: String? = null) = client.get("/api/attachments/tab/pick/source/0?seq=7") {
+                if (signedIn) header(HttpHeaders.Cookie, "${WebUiServer.SESSION_COOKIE}=$token")
+                header(HttpHeaders.Range, range)
+                ifRange?.let { header(HttpHeaders.IfRange, it) }
+            }
+            assertEquals(HttpStatusCode.Forbidden, request("bytes=2-4", false).status)
+            assertEquals(0, settled)
+            for ((range, expected, header) in listOf(
+                Triple("bytes=2-4", "234", "bytes 2-4/10"),
+                Triple("bytes=7-", "789", "bytes 7-9/10"),
+                Triple("bytes=-2", "89", "bytes 8-9/10"),
+                Triple("bytes=8-99", "89", "bytes 8-9/10"),
+            )) {
+                val response = request(range)
+                assertEquals(HttpStatusCode.PartialContent, response.status)
+                assertEquals(expected, response.bodyAsText())
+                assertEquals(header, response.headers[HttpHeaders.ContentRange])
+                assertEquals(expected.length.toString(), response.headers[HttpHeaders.ContentLength])
+                assertEquals("bytes", response.headers[HttpHeaders.AcceptRanges])
+                assertEquals("no-store", response.headers[HttpHeaders.CacheControl])
+            }
+            val unsatisfiable = request("bytes=10-")
+            assertEquals(HttpStatusCode.RequestedRangeNotSatisfiable, unsatisfiable.status)
+            assertEquals("bytes */10", unsatisfiable.headers[HttpHeaders.ContentRange])
+            for (ignored in listOf("bytes=bad", "bytes=0-1,8-9", "items=0-1")) {
+                val response = request(ignored)
+                assertEquals(HttpStatusCode.OK, response.status)
+                assertEquals("0123456789", response.bodyAsText())
+            }
+            assertEquals("0123456789", request("bytes=2-4", ifRange = "unknown").bodyAsText())
+            assertEquals(9, settled)
+            auth.logout(token)
+            assertEquals(HttpStatusCode.Forbidden, request("bytes=2-4").status)
+            assertEquals(9, settled)
+        }
+    }
+
     private suspend fun ApplicationTestBuilder.sessionToken(): String =
         login("pw").headers.getAll(HttpHeaders.SetCookie)!!.single()
             .substringAfter('=').substringBefore(';')
@@ -204,6 +253,8 @@ class WebUiServerTest {
     private fun webUi(
         hash: String? = hasher.hash("pw"),
         syncSession: suspend (String, ReceiveChannel<String>, suspend (String) -> Unit) -> Unit = { _, _, _ -> },
+        previewAttachment: suspend (String, String, Long, String, String, Int, suspend (java.io.File, String) -> Unit) -> Boolean =
+            { _, _, _, _, _, _, _ -> false },
         block: suspend ApplicationTestBuilder.(WebUiAuth) -> Unit,
     ) {
         val auth = WebUiAuth(passwordHash = { hash }, hasher = hasher, clock = { 0L })
@@ -211,6 +262,7 @@ class WebUiServerTest {
             auth = auth,
             readAsset = assets::get,
             syncSession = syncSession,
+            previewAttachment = previewAttachment,
             clock = { 0L },
         )
         testApplication {

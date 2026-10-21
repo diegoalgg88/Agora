@@ -5,6 +5,7 @@ import io.ktor.http.Cookie
 import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.URLBuilder
+import io.ktor.http.parseRangesSpecifier
 import io.ktor.http.content.TextContent
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
@@ -126,18 +127,34 @@ internal class WebUiServer(
                                 if (!auth.isValidSession(token)) throw kotlinx.coroutines.CancellationException("Session revoked")
                                 withContext(Dispatchers.IO) {
                                     val size = file.length()
+                                    call.response.header(HttpHeaders.AcceptRanges, "bytes")
+                                    // Rango único exacto: malformed/multipart/If-Range se ignoran (200 completo).
+                                    val range = call.request.headers.getAll(HttpHeaders.Range)?.singleOrNull()
+                                        ?.takeIf { call.request.headers[HttpHeaders.IfRange] == null }
+                                        ?.let(::parseRangesSpecifier)?.takeIf { it.ranges.size == 1 }
+                                    val bytes = range?.merge(size)?.singleOrNull()
+                                    if (range != null && bytes == null) {
+                                        call.response.header(HttpHeaders.ContentRange, "bytes */$size")
+                                        call.respond(HttpStatusCode.RequestedRangeNotSatisfiable)
+                                        return@withContext
+                                    }
+                                    val length = bytes?.let { it.last - it.first + 1 } ?: size
+                                    if (bytes != null) call.response.header(HttpHeaders.ContentRange, "bytes ${bytes.first}-${bytes.last}/$size")
                                     val streamContext = currentCoroutineContext()
                                     val finished = kotlinx.coroutines.CompletableDeferred<Unit>()
                                     // Ktor puede invocar el writer tras retornar respond: el pin de
                                     // sesión vive hasta que el stream termina de asentarse.
-                                    call.respondOutputStream(ContentType.parse(mime), contentLength = size) {
+                                    call.respondOutputStream(ContentType.parse(mime),
+                                        status = if (bytes == null) HttpStatusCode.OK else HttpStatusCode.PartialContent,
+                                        contentLength = length) {
                                         try {
                                             withContext(streamContext) {
                                                 if (!auth.isValidSession(token)) throw kotlinx.coroutines.CancellationException("Session revoked")
                                                 java.io.FileInputStream(file).use { input ->
                                                     if (input.channel.size() != size) throw java.io.IOException("Attachment size changed before response")
+                                                    input.channel.position(bytes?.first ?: 0)
                                                     val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-                                                    var remaining = size
+                                                    var remaining = length
                                                     while (remaining > 0) {
                                                         currentCoroutineContext().ensureActive()
                                                         val count = input.read(buffer, 0, minOf(buffer.size.toLong(), remaining).toInt())
