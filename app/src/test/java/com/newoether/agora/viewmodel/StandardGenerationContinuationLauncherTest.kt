@@ -1,4 +1,4 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
 import com.newoether.agora.automation.ConversationExecutionCoordinator
 import com.newoether.agora.data.local.MessageEntity
@@ -27,7 +27,7 @@ class StandardGenerationContinuationLauncherTest {
         val conversations = mockk<ConversationRepository>()
         val terminalSettlement = mockk<GenerationTerminalSettlementController>()
         val boundLauncher = mockk<BoundRunGenerationLauncher>()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val parent = MessageEntity(
             id = "compact-boundary",
             conversationId = "conversation",
@@ -114,7 +114,7 @@ class StandardGenerationContinuationLauncherTest {
     fun cancellationAfterRoomCommitReconcilesTheDurableRunBeforeRelease() = runBlocking {
         val conversations = mockk<ConversationRepository>()
         val terminalSettlement = mockk<GenerationTerminalSettlementController>()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val parent = MessageEntity(
             id = "parent",
             conversationId = "conversation",
@@ -182,7 +182,7 @@ class StandardGenerationContinuationLauncherTest {
     fun selectedChildSupersedesAutomaticContinuation() = runBlocking {
         val conversations = mockk<ConversationRepository>()
         val boundLauncher = mockk<BoundRunGenerationLauncher>()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val parent = MessageEntity(
             id = "tool-result",
             conversationId = "conversation",
@@ -238,7 +238,7 @@ class StandardGenerationContinuationLauncherTest {
         val conversations = mockk<ConversationRepository>()
         val terminalSettlement = mockk<GenerationTerminalSettlementController>()
         val boundLauncher = mockk<BoundRunGenerationLauncher>()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val parent = MessageEntity(
             id = "parent",
             conversationId = "conversation",
@@ -367,7 +367,7 @@ class StandardGenerationContinuationLauncherTest {
 
     @Test
     fun queuedGuidanceAtomicallyWinsBeforeNoInputLoopContinuation() = runBlocking {
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val revision = state.guidanceClaimRevision()
         state.enqueueSend(
             QueuedSend(
@@ -393,7 +393,7 @@ class StandardGenerationContinuationLauncherTest {
 
     @Test
     fun claimedGuidanceStillWinsBeforeNoInputLoopContinuation() = runBlocking {
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val revision = state.guidanceClaimRevision()
         state.enqueueSend(
             QueuedSend(
@@ -421,7 +421,7 @@ class StandardGenerationContinuationLauncherTest {
 
     @Test
     fun noGuidanceAdmitsTheLoopWhileHoldingTheQueueFence() = runBlocking {
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val revision = state.guidanceClaimRevision()
         var launches = 0
 
@@ -438,7 +438,7 @@ class StandardGenerationContinuationLauncherTest {
     private suspend fun queueDrainPermissionAfterTerminal(status: MessageStatus): Boolean {
         val conversations = mockk<ConversationRepository>()
         val boundLauncher = mockk<BoundRunGenerationLauncher>()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val parent = MessageEntity(
             id = "parent",
             conversationId = "conversation",

@@ -1,4 +1,4 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageSegment
@@ -23,8 +23,8 @@ class ConversationGenerationMirrorTest {
             visibleConversationId = conversationId
             visibleSnapshot = snapshot
         }
-        val staleState = ConversationGenerationState("conversation-a")
-        val currentState = ConversationGenerationState("conversation-b")
+        val staleState = ConversationGenerationState("conversation-a", reclaimQueuedAttachments = {})
+        val currentState = ConversationGenerationState("conversation-b", reclaimQueuedAttachments = {})
         val staleToken = staleState.acquireForSend()!!
         val currentToken = currentState.acquireForSend()!!
         val staleCollector = launch {

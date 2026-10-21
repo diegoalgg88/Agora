@@ -61,12 +61,13 @@ class ConversationGenerationState(
     val conversationId: String,
     private val onRegistryActive: (String) -> Unit = {},
     private val onRegistryIdle: (String) -> Unit = {},
+    reclaimQueuedAttachments: (List<com.newoether.agora.model.SelectedAttachment>) -> Unit,
 ) {
 
     val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private val resources = ConversationRuntimeResources()
-    private val guidanceLeases = GuidanceLeaseStore()
+    private val guidanceLeases = GuidanceLeaseStore(reclaimQueuedAttachments)
 
     /** Read-only process-resource projection observed by the UI and effect runners. */
     val streamScope = resources.streamScope
@@ -539,6 +540,7 @@ class ConversationGenerationState(
      * enqueue, so the QueuedSend holds the only handle to those copied files.
      */
     internal fun removeQueuedSend(id: String): QueuedSend? = guidanceLeases.remove(id)
+    internal fun discardQueuedSend(send: QueuedSend) = guidanceLeases.discard(send)
 
     /** Transfer the pending batch to one explicit in-flight owner before leaving memory-only state. */
     internal fun claimQueuedSends(): GuidanceBatchLease? = guidanceLeases.claim()

@@ -17,6 +17,52 @@ import java.io.InputStream
  * Never touches the original content:// [SelectedAttachment.uri] — that isn't ours to delete.
  */
 object AttachmentFiles {
+    private val ownershipLock = Any()
+    // Live owners son process-local; la ownership durable vive en Room.
+    private val livePaths = java.util.IdentityHashMap<Any, Set<String>>()
+
+    /** Registra los paths vivos de [owner]; un attachment en uso jamás se borra por debajo. */
+    internal fun setLivePaths(owner: Any, paths: Collection<String>) = synchronized(ownershipLock) {
+        val normalized = paths.mapTo(linkedSetOf()) { File(it.removePrefix("file://")).canonicalPath }
+        if (normalized.isEmpty()) livePaths.remove(owner) else livePaths[owner] = normalized
+        Unit
+    }
+
+    internal fun retainLivePath(owner: Any, path: String) = synchronized(ownershipLock) {
+        livePaths[owner] = livePaths[owner].orEmpty() + File(path.removePrefix("file://")).canonicalPath
+    }
+
+    internal fun releaseLivePath(owner: Any, path: String) = synchronized(ownershipLock) {
+        val remaining = livePaths[owner].orEmpty() - File(path.removePrefix("file://")).canonicalPath
+        if (remaining.isEmpty()) livePaths.remove(owner) else livePaths[owner] = remaining
+        Unit
+    }
+
+    internal fun releaseLivePaths(owner: Any): Set<String> = synchronized(ownershipLock) {
+        livePaths.remove(owner).orEmpty()
+    }
+
+    internal fun deleteUnownedPaths(paths: Collection<String>) {
+        paths.distinct().forEach { path ->
+            runCatching {
+                val file = File(path)
+                deleteIfUnowned(file)
+                file.parentFile?.takeIf { it.isDirectory && it.list().isNullOrEmpty() }?.delete()
+            }
+        }
+    }
+
+    /** Se llama en el boundary final de unlink, tras el chequeo durable del caller. */
+    internal fun deleteIfUnowned(file: File): Boolean = synchronized(ownershipLock) {
+        if (livePaths.values.any { file.canonicalPath in it }) return false
+        check(!file.exists() || file.delete()) { "Unable to delete attachment file" }
+        true
+    }
+
+    internal fun ownedPaths(attachments: List<SelectedAttachment>): Set<String> = attachments
+        .flatMapTo(linkedSetOf()) { attachment ->
+            listOfNotNull(attachment.localPath) + attachment.processedFrames.orEmpty() + attachment.preRenderedPaths.orEmpty()
+        }
 
     const val MAX_ATTACHMENT_BYTES: Long = 100L * 1024L * 1024L
 
@@ -126,7 +172,7 @@ object AttachmentFiles {
     }
 
     private fun deleteQuietly(path: String) {
-        deleteQuietly(File(path))
+        runCatching { deleteIfUnowned(File(path.removePrefix("file://"))) }
     }
 
     private fun deleteQuietly(file: File) {

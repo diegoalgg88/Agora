@@ -1,4 +1,4 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
 import com.newoether.agora.automation.ConversationExecutionCoordinator
 import com.newoether.agora.data.local.MessageEntity
@@ -28,7 +28,7 @@ class QueuedGuidanceDrainExecutorTest {
     @Test
     fun claimUsesFreshRunIdentityAndFailedLeaseReturnsToFifoFront() = runBlocking {
         val fixture = Fixture()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         QUEUED.forEach(state::enqueueSend)
         val lease = checkNotNull(state.claimQueuedSends())
 
@@ -47,7 +47,7 @@ class QueuedGuidanceDrainExecutorTest {
     @Test
     fun launchCommitsWholeFifoAsOneBubbleBeforeCompactAndBoundGeneration() = runBlocking {
         val fixture = Fixture()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val frozenSnapshot = fixture.snapshot.copy(runId = "old-run")
         val queued = QUEUED.mapIndexed { index, send ->
             if (index == QUEUED.lastIndex) send.copy(generationSnapshot = frozenSnapshot) else send

@@ -222,7 +222,13 @@ class AppContainer(
 
     /** Foreground generation slots survive Activity/ViewModel recreation within this process. */
     val conversationStateRegistry: ConversationStateRegistry by lazy {
-        ConversationStateRegistry()
+        // Reclaim reference-aware: el repo decide qué archivos ya no tienen fila en Room;
+        // el borrado directo de deleteOwnedFiles quedaba fuera del chequeo transaccional.
+        ConversationStateRegistry { attachments ->
+            appScope.launch(kotlinx.coroutines.Dispatchers.IO) {
+                conversationRepository.deleteUnreferencedDraftAttachmentFiles(attachments)
+            }
+        }
     }
 
     val mcpRegistry: McpRegistry by lazy {

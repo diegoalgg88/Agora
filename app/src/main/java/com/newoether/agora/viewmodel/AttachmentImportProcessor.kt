@@ -20,23 +20,25 @@ import kotlinx.coroutines.withContext
 /** Stateless, one-attempt attachment staging and preparation boundary. */
 internal class AttachmentImportProcessor(
     private val app: Application,
-    private val normalizeImage: suspend (source: String) -> String? = { source ->
-        ImageProcessor(app).normalizeImage(source)
+    private val normalizeImage: suspend (source: String, outputOwner: Any?) -> String? = { source, owner ->
+        ImageProcessor(app).normalizeImage(source, owner)
     },
     private val extractVideoFrames: suspend (
         source: String,
         config: VideoSliceConfig,
-    ) -> List<String> = { source, config ->
-        ImageProcessor(app).extractVideoFrames(source, config)
+        outputOwner: Any?,
+    ) -> List<String> = { source, config, owner ->
+        ImageProcessor(app).extractVideoFrames(source, config, owner)
     },
-    private val renderPdf: suspend (source: String, pages: Set<Int>?) -> List<String> =
-        { source, pages -> PdfPageRenderer.renderAsImages(app, source, pages) },
+    private val renderPdf: suspend (source: String, pages: Set<Int>?, outputOwner: Any?) -> List<String> =
+        { source, pages, owner -> PdfPageRenderer.renderAsImages(app, source, pages, owner) },
     private val renderAllPdfPages: suspend (
         source: String,
         maxPages: Int,
         onProgress: (suspend (current: Int, total: Int) -> Unit)?,
-    ) -> List<String> = { source, maxPages, onProgress ->
-        PdfPageRenderer.renderAllPages(app, source, maxPages, onProgress)
+        outputOwner: Any?,
+    ) -> List<String> = { source, maxPages, onProgress, owner ->
+        PdfPageRenderer.renderAllPages(app, source, maxPages, onProgress, owner)
     },
     private val readText: (source: String, maxChars: Int) -> String? =
         { source, maxChars -> AttachmentSourceReader.readText(app, source, maxChars) },
@@ -81,7 +83,7 @@ internal class AttachmentImportProcessor(
         data class Failure(val cause: Throwable? = null) : ProcessResult
     }
 
-    suspend fun stage(attachment: SelectedAttachment): StageResult = withContext(Dispatchers.IO) {
+    suspend fun stage(attachment: SelectedAttachment, outputOwner: Any? = null): StageResult = withContext(Dispatchers.IO) {
         val source = attachment.localPath ?: attachment.uri
         val directory = File(File(app.filesDir, "attachments/staged"), attachment.localId)
         val extension = sourceExtension(attachment)
@@ -92,6 +94,12 @@ internal class AttachmentImportProcessor(
             canonicalTarget
         }
         val partial = File(directory, "${target.name}.part")
+        // El owner vivo retiene target y partial: un preview del navegador no debe dejar
+        // que el sweeper borre archivos bajo sus pies.
+        outputOwner?.let {
+            AttachmentFiles.retainLivePath(it, target.absolutePath)
+            AttachmentFiles.retainLivePath(it, partial.absolutePath)
+        }
         try {
             val input = openSource(source)
                 ?: return@withContext StageResult.Failure(
@@ -170,6 +178,7 @@ internal class AttachmentImportProcessor(
 
     suspend fun preparePdfPreview(
         attachment: SelectedAttachment,
+        outputOwner: Any? = null,
         onProgress: (suspend (current: Int, total: Int) -> Unit)? = null,
     ): ProcessResult = withContext(Dispatchers.IO) {
         if (
@@ -197,7 +206,7 @@ internal class AttachmentImportProcessor(
         }
 
         try {
-            val pages = renderAllPdfPages(stagedPath, pageCount, onProgress)
+            val pages = renderAllPdfPages(stagedPath, pageCount, onProgress, outputOwner)
             if (pages.size != pageCount) {
                 pages.forEach { File(it).delete() }
                 ProcessResult.Failure(IllegalStateException("PDF preview rendering failed"))
@@ -220,6 +229,7 @@ internal class AttachmentImportProcessor(
     suspend fun process(
         attachment: SelectedAttachment,
         sandboxHomeDir: File? = null,
+        outputOwner: Any? = null,
     ): ProcessResult = withContext(Dispatchers.IO) {
         val stagedPath = attachment.localPath
             ?: return@withContext ProcessResult.Failure(
@@ -235,10 +245,10 @@ internal class AttachmentImportProcessor(
         try {
             when {
                 attachment.storage == AttachmentStorage.LOCAL_SANDBOX_PENDING ->
-                    processSandbox(attachment, stagedFile, sandboxHomeDir)
-                attachment.type == "image" -> processImage(attachment, stagedPath)
-                attachment.type == "video" -> processVideo(attachment, stagedPath)
-                attachment.type == "pdf" -> processPdf(attachment, stagedPath)
+                    processSandbox(attachment, stagedFile, sandboxHomeDir, outputOwner)
+                attachment.type == "image" -> processImage(attachment, stagedPath, outputOwner)
+                attachment.type == "video" -> processVideo(attachment, stagedPath, outputOwner)
+                attachment.type == "pdf" -> processPdf(attachment, stagedPath, outputOwner)
                 attachment.type == "file" -> processFile(attachment, stagedPath)
                 else -> ProcessResult.Failure(
                     IllegalArgumentException("Unsupported attachment type: ${attachment.type}"),
@@ -254,8 +264,9 @@ internal class AttachmentImportProcessor(
     private suspend fun processImage(
         attachment: SelectedAttachment,
         stagedPath: String,
+        outputOwner: Any?,
     ): ProcessResult {
-        val normalizedPath = normalizeImage(stagedPath)
+        val normalizedPath = normalizeImage(stagedPath, outputOwner)
             ?: return ProcessResult.Failure(IllegalStateException("Image normalization failed"))
         return ProcessResult.Ready(
             attachment = attachment.copy(
@@ -271,6 +282,7 @@ internal class AttachmentImportProcessor(
     private suspend fun processVideo(
         attachment: SelectedAttachment,
         stagedPath: String,
+        outputOwner: Any?,
     ): ProcessResult {
         val frameCount = attachment.frameCount
             ?: return ProcessResult.Failure(IllegalStateException("Video slice is not selected"))
@@ -279,6 +291,7 @@ internal class AttachmentImportProcessor(
         val frames = extractVideoFrames(
             stagedPath,
             VideoSliceConfig(intervalMicros = intervalMs * 1_000L, frameCount = frameCount),
+            outputOwner,
         )
         if (frames.isEmpty()) {
             return ProcessResult.Failure(IllegalStateException("Video frame extraction failed"))
@@ -295,8 +308,9 @@ internal class AttachmentImportProcessor(
     private suspend fun processPdf(
         attachment: SelectedAttachment,
         stagedPath: String,
+        outputOwner: Any?,
     ): ProcessResult {
-        val pages = renderPdf(stagedPath, attachment.selectedPages)
+        val pages = renderPdf(stagedPath, attachment.selectedPages, outputOwner)
         if (pages.isEmpty()) {
             return ProcessResult.Failure(IllegalStateException("PDF rendering failed"))
         }
@@ -343,12 +357,15 @@ internal class AttachmentImportProcessor(
         attachment: SelectedAttachment,
         stagedFile: File,
         sandboxHomeDir: File?,
+        outputOwner: Any?,
     ): ProcessResult {
         val home = sandboxHomeDir
             ?: return ProcessResult.Failure(IllegalStateException("Local Sandbox is unavailable"))
         val fileName = AttachmentFiles.sanitizeFileName(attachment.fileName)
         val relativePath = "attachments/${attachment.localId}/$fileName"
         val target = File(home, relativePath)
+        // El copy vive tras el retain para que el sweeper no recupere el destino a medias.
+        outputOwner?.let { AttachmentFiles.retainLivePath(it, target.absolutePath) }
         return when (
             val copy = AttachmentFiles.copyBounded(
                 input = stagedFile.inputStream(),

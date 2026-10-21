@@ -1,4 +1,4 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
 import android.app.Application
 import com.newoether.agora.model.AttachmentImportState
@@ -173,7 +173,7 @@ class AttachmentImportProcessorTest {
     fun missingStagedSourceFailsWithoutCallingTypeProcessor() = runTest {
         var imageCalled = false
         val processor = processor(
-            normalizeImage = {
+            normalizeImage = { _, _ ->
                 imageCalled = true
                 null
             },
@@ -195,7 +195,7 @@ class AttachmentImportProcessorTest {
         }
         var normalizedSource: String? = null
         val processor = processor(
-            normalizeImage = { source ->
+            normalizeImage = { source, _ ->
                 normalizedSource = source
                 normalized.absolutePath
             },
@@ -245,12 +245,12 @@ class AttachmentImportProcessorTest {
         var videoConfig: VideoSliceConfig? = null
         var selectedPages: Set<Int>? = null
         val processor = processor(
-            extractVideoFrames = { source, config ->
+            extractVideoFrames = { source, config, _ ->
                 assertEquals(stagedVideo.absolutePath, source)
                 videoConfig = config
                 frames
             },
-            renderPdf = { source, selection ->
+            renderPdf = { source, selection, _ ->
                 assertEquals(stagedPdf.absolutePath, source)
                 selectedPages = selection
                 pages
@@ -291,7 +291,7 @@ class AttachmentImportProcessorTest {
         var renderedSource: String? = null
         var renderedLimit = 0
         val processor = processor(
-            renderAllPdfPages = { source, maxPages, onProgress ->
+            renderAllPdfPages = { source, maxPages, onProgress, _ ->
                 renderedSource = source
                 renderedLimit = maxPages
                 pages.indices.forEach { index -> onProgress?.invoke(index + 1, pages.size) }
@@ -324,7 +324,7 @@ class AttachmentImportProcessorTest {
         val stagedPdf = temporaryFolder.newFile("preview-ready.pdf")
         var renderCalls = 0
         val processor = processor(
-            renderAllPdfPages = { _, _, _ ->
+            renderAllPdfPages = { _, _, _, _ ->
                 renderCalls += 1
                 emptyList()
             },
@@ -349,7 +349,7 @@ class AttachmentImportProcessorTest {
         val stagedPdf = temporaryFolder.newFile("preview-partial.pdf")
         val partialPage = temporaryFolder.newFile("preview-0.jpg")
         val processor = processor(
-            renderAllPdfPages = { _, _, _ -> listOf(partialPage.absolutePath) },
+            renderAllPdfPages = { _, _, _, _ -> listOf(partialPage.absolutePath) },
         )
 
         val result = processor.preparePdfPreview(
@@ -392,14 +392,15 @@ class AttachmentImportProcessorTest {
     }
 
     private fun processor(
-        normalizeImage: suspend (String) -> String? = { null },
-        extractVideoFrames: suspend (String, VideoSliceConfig) -> List<String> = { _, _ -> emptyList() },
-        renderPdf: suspend (String, Set<Int>?) -> List<String> = { _, _ -> emptyList() },
+        normalizeImage: suspend (String, Any?) -> String? = { _, _ -> null },
+        extractVideoFrames: suspend (String, VideoSliceConfig, Any?) -> List<String> = { _, _, _ -> emptyList() },
+        renderPdf: suspend (String, Set<Int>?, Any?) -> List<String> = { _, _, _ -> emptyList() },
         renderAllPdfPages: suspend (
             String,
             Int,
             (suspend (current: Int, total: Int) -> Unit)?,
-        ) -> List<String> = { _, _, _ -> emptyList() },
+            Any?,
+        ) -> List<String> = { _, _, _, _ -> emptyList() },
         readText: (String, Int) -> String? = { _, _ -> null },
         openSource: (String) -> InputStream? = { source -> File(source).inputStream() },
         readPdfPageCount: (String) -> Int = { 0 },

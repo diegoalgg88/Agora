@@ -1,4 +1,4 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
 import com.newoether.agora.api.ToolDefinition
 import com.newoether.agora.model.ConversationCommand
@@ -166,7 +166,7 @@ class GenerationToolExecutorTest {
             override fun handles(name: String): Boolean = name == "blocking_tool"
         }
         val executor = GenerationToolExecutor.forTest(listOf(provider))
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val token = state.acquireForSend()!!
         state.bindRun(token, "run")
         val unwind = CompletableDeferred<Unit>()

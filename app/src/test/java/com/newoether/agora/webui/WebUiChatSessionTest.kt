@@ -260,6 +260,9 @@ class WebUiChatSessionTest {
         every { state.onQueueDrainRequested } returns { _: ConversationGenerationState -> drains++ }
         every { state.queueMutationMutex } returns Mutex()
         every { state.removeQueuedSend("q") } answers { queue.value = emptyList(); queued }
+        // El facade portado (d8a0e1b3) llama discardQueuedSend tras remove; sin el stub,
+        // mockk revienta asincrónicamente en IO y contamina al siguiente test de la JVM.
+        every { state.discardQueuedSend(any()) } just Runs
         session.start()
         session.open("a", seq = 1L)
         withTimeout(TIMEOUT_MS) { session.composerState.first { it.modelValid && it.queue.size == 1 } }

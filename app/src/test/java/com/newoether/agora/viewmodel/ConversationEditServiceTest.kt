@@ -32,7 +32,7 @@ class ConversationEditServiceTest {
     @Test
     fun rejectsAssistantBeforeClaimingRuntimeOrReadingRoom() = runBlocking {
         val fixture = Fixture()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val result = fixture.service.edit(
             fixture.request.copy(
                 messageId = "assistant",
@@ -62,7 +62,7 @@ class ConversationEditServiceTest {
     @Test
     fun commitsEditedGraphBeforeProjectionSettlementAndBoundLaunch() = runBlocking {
         val fixture = Fixture()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         coEvery { fixture.conversations.getMessage("source-input") } returns SOURCE_ENTITY
         coEvery { fixture.conversations.getMessage("previous") } returns null
         coEvery { fixture.conversations.getRun("source-run") } returns SOURCE_RUN
@@ -139,7 +139,7 @@ class ConversationEditServiceTest {
     @Test
     fun fadeTimeoutAbortsTransitionWithoutPersisting() = runBlocking {
         val fixture = Fixture(fadeTimeoutMs = 0L)
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
 
         val result = withTimeout(5_000L) {
             fixture.service.edit(fixture.request, state)
@@ -155,7 +155,7 @@ class ConversationEditServiceTest {
     @Test
     fun abortWhileWaitingForConversationLockDoesNotPersist() = runBlocking {
         val fixture = Fixture()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val lockHeld = CompletableDeferred<Unit>()
         val releaseLock = CompletableDeferred<Unit>()
         val lockHolder = async(start = CoroutineStart.UNDISPATCHED) {

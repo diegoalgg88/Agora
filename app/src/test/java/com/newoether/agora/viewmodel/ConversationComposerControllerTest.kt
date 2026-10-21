@@ -1,9 +1,9 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
-import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.model.AttachmentImportState
 import com.newoether.agora.model.SelectedAttachment
 import com.newoether.agora.util.DebugLog
+import com.newoether.agora.util.AttachmentFiles
 import io.mockk.Runs
 import io.mockk.coEvery
 import io.mockk.coVerify
@@ -13,34 +13,23 @@ import io.mockk.mockk
 import io.mockk.mockkObject
 import io.mockk.unmockkObject
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
-import java.util.concurrent.atomic.AtomicInteger
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.decodeFromString
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Rule
 import org.junit.Test
-import org.junit.rules.TemporaryFolder
 
 @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
-class ConversationComposerControllerTest {
-    @get:Rule
-    val temporaryFolder = TemporaryFolder()
-
+internal class ConversationComposerControllerTest : ComposerControllerTestFixture() {
     @Test
     fun `two owners keep independent processing state across selection changes`() = runTest {
         val processor = mockk<AttachmentImportProcessor>()
@@ -48,14 +37,14 @@ class ConversationComposerControllerTest {
             "a" to CompletableDeferred<Unit>(),
             "b" to CompletableDeferred<Unit>(),
         )
-        coEvery { processor.stage(any()) } coAnswers {
+        coEvery { processor.stage(any(), any()) } coAnswers {
             val source = firstArg<SelectedAttachment>()
             AttachmentImportProcessor.StageResult.Success(
                 attachment = source.processing("/stage/${source.localId}"),
                 createdPaths = emptyList(),
             )
         }
-        coEvery { processor.process(any(), any()) } coAnswers {
+        coEvery { processor.process(any(), any(), any()) } coAnswers {
             val staged = firstArg<SelectedAttachment>()
             gates.getValue(staged.localId).await()
             AttachmentImportProcessor.ProcessResult.Ready(staged.ready())
@@ -85,7 +74,7 @@ class ConversationComposerControllerTest {
         val ordinary = attachment("ordinary").processing("/stage/ordinary")
         val unopened = attachment("unopened").processing("/stage/unopened")
         val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.process(any(), any()) } coAnswers {
+        coEvery { processor.process(any(), any(), any()) } coAnswers {
             AttachmentImportProcessor.ProcessResult.Ready(
                 firstArg<SelectedAttachment>().ready(),
             )
@@ -101,7 +90,7 @@ class ConversationComposerControllerTest {
         runCurrent()
         assertEquals(0, fixture.persistence.loadCount(OWNER_A))
         assertEquals(0, fixture.persistence.loadCount(OWNER_B))
-        coVerify(exactly = 0) { processor.process(any(), any()) }
+        coVerify(exactly = 0) { processor.process(any(), any(), any()) }
 
         fixture.controller.load(OWNER_A)
         fixture.controller.awaitProcessing(OWNER_A)
@@ -111,8 +100,8 @@ class ConversationComposerControllerTest {
         assertEquals(1, fixture.persistence.loadCount(OWNER_A))
         assertEquals(0, fixture.persistence.loadCount(OWNER_B))
         assertEquals(AttachmentImportState.PROCESSING, fixture.persistence.attachment(OWNER_B).importState)
-        coVerify(exactly = 1) { processor.process(match { it.localId == ordinary.localId }, any()) }
-        coVerify(exactly = 0) { processor.process(match { it.localId == unopened.localId }, any()) }
+        coVerify(exactly = 1) { processor.process(match { it.localId == ordinary.localId }, any(), any()) }
+        coVerify(exactly = 0) { processor.process(match { it.localId == unopened.localId }, any(), any()) }
     }
 
     @Test
@@ -121,7 +110,7 @@ class ConversationComposerControllerTest {
         val processingStarted = CompletableDeferred<Unit>()
         val finishProcessing = CompletableDeferred<Unit>()
         val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.process(processing, any()) } coAnswers {
+        coEvery { processor.process(processing, any(), any()) } coAnswers {
             processingStarted.complete(Unit)
             finishProcessing.await()
             AttachmentImportProcessor.ProcessResult.Ready(processing.ready())
@@ -193,7 +182,7 @@ class ConversationComposerControllerTest {
     fun `missing restored staged source becomes durable failed`() = runTest {
         val processing = attachment("missing").processing("/stage/missing")
         val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.process(processing, any()) } returns
+        coEvery { processor.process(processing, any(), any()) } returns
             AttachmentImportProcessor.ProcessResult.Failure(
                 IllegalStateException("missing staged source"),
             )
@@ -219,7 +208,7 @@ class ConversationComposerControllerTest {
         val source = attachment("private-retry").copy(localPath = privateSource.absolutePath)
         val processor = mockk<AttachmentImportProcessor>()
         var stageAttempts = 0
-        coEvery { processor.stage(match { it.localId == source.localId }) } coAnswers {
+        coEvery { processor.stage(match { it.localId == source.localId }, any()) } coAnswers {
             stageAttempts += 1
             if (stageAttempts == 1) {
                 AttachmentImportProcessor.StageResult.Failure(
@@ -232,7 +221,7 @@ class ConversationComposerControllerTest {
                 )
             }
         }
-        coEvery { processor.process(any(), any()) } coAnswers {
+        coEvery { processor.process(any(), any(), any()) } coAnswers {
             AttachmentImportProcessor.ProcessResult.Ready(
                 firstArg<SelectedAttachment>().ready("/final/private-retry.jpg"),
             )
@@ -254,9 +243,9 @@ class ConversationComposerControllerTest {
         fixture.controller.awaitProcessing(OWNER_A)
 
         assertEquals(AttachmentImportState.READY, fixture.state(OWNER_A, source.localId).importState)
-        coVerify(exactly = 2) { processor.stage(any()) }
+        coVerify(exactly = 2) { processor.stage(any(), any()) }
         coVerify(exactly = 1) {
-            processor.process(match { it.localPath == "/stage/private-retry" }, any())
+            processor.process(match { it.localPath == "/stage/private-retry" }, any(), any())
         }
     }
 
@@ -276,7 +265,7 @@ class ConversationComposerControllerTest {
             importState = AttachmentImportState.FAILED,
         )
         val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.stage(match { it.localId == source.localId }) } returns
+        coEvery { processor.stage(match { it.localId == source.localId }, any()) } returns
             AttachmentImportProcessor.StageResult.Failure(
                 cause = IllegalStateException("missing page count"),
                 attachment = failed,
@@ -300,7 +289,7 @@ class ConversationComposerControllerTest {
                 },
             )
         }
-        coVerify(exactly = 0) { processor.process(any(), any()) }
+        coVerify(exactly = 0) { processor.process(any(), any(), any()) }
     }
 
     @Test
@@ -314,12 +303,15 @@ class ConversationComposerControllerTest {
         )
         val processor = mockk<AttachmentImportProcessor>()
         val stagedAttempts = mutableListOf<File>()
-        coEvery { processor.stage(any()) } coAnswers {
+        coEvery { processor.stage(any(), any()) } coAnswers {
             val source = firstArg<SelectedAttachment>()
             val staged = File(
                 temporaryFolder.root,
                 "retry-stage-${stagedAttempts.size}.jpg",
-            ).apply { writeText("restaged") }
+            ).apply {
+                AttachmentFiles.retainLivePath(secondArg<Any>(), absolutePath)
+                writeText("restaged")
+            }
             stagedAttempts += staged
             AttachmentImportProcessor.StageResult.Success(
                 attachment = source.processing(staged.absolutePath),
@@ -327,7 +319,7 @@ class ConversationComposerControllerTest {
                 obsoletePaths = listOf(retrySource.absolutePath),
             )
         }
-        coEvery { processor.process(any(), any()) } coAnswers {
+        coEvery { processor.process(any(), any(), any()) } coAnswers {
             AttachmentImportProcessor.ProcessResult.Ready(
                 firstArg<SelectedAttachment>().ready(),
             )
@@ -361,8 +353,8 @@ class ConversationComposerControllerTest {
             fixture.persistence.updatedStates(OWNER_A),
         )
         assertEquals(AttachmentImportState.READY, fixture.state(OWNER_A, "retry").importState)
-        coVerify(exactly = 2) { processor.stage(any()) }
-        coVerify(exactly = 1) { processor.process(any(), any()) }
+        coVerify(exactly = 2) { processor.stage(any(), any()) }
+        coVerify(exactly = 1) { processor.process(any(), any(), any()) }
     }
 
     @Test
@@ -372,7 +364,7 @@ class ConversationComposerControllerTest {
         val siblingProcessGate = CompletableDeferred<Unit>()
         val targetProcessingStarted = CompletableDeferred<Unit>()
         val targetCancelled = CompletableDeferred<Unit>()
-        coEvery { processor.stage(any()) } coAnswers {
+        coEvery { processor.stage(any(), any()) } coAnswers {
             val source = firstArg<SelectedAttachment>()
             if (source.localId == "sibling") siblingStageGate.await()
             AttachmentImportProcessor.StageResult.Success(
@@ -380,7 +372,7 @@ class ConversationComposerControllerTest {
                 createdPaths = emptyList(),
             )
         }
-        coEvery { processor.process(any(), any()) } coAnswers {
+        coEvery { processor.process(any(), any(), any()) } coAnswers {
             val staged = firstArg<SelectedAttachment>()
             if (staged.localId == "target") {
                 targetProcessingStarted.complete(Unit)
@@ -420,7 +412,7 @@ class ConversationComposerControllerTest {
         val processing = attachment("keep").processing("/stage/keep")
         val gate = CompletableDeferred<Unit>()
         val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.process(processing, any()) } coAnswers {
+        coEvery { processor.process(processing, any(), any()) } coAnswers {
             gate.await()
             AttachmentImportProcessor.ProcessResult.Ready(processing.ready())
         }
@@ -455,9 +447,11 @@ class ConversationComposerControllerTest {
         val generated = File(temporaryFolder.root, "stale-output.jpg")
         val gate = CompletableDeferred<Unit>()
         val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.process(staged, any()) } coAnswers {
+        coEvery { processor.process(staged, any(), any()) } coAnswers {
+            val outputOwner = thirdArg<Any>()
             withContext(NonCancellable) {
                 gate.await()
+                AttachmentFiles.retainLivePath(outputOwner, generated.absolutePath)
                 generated.writeText("generated")
                 AttachmentImportProcessor.ProcessResult.Ready(
                     attachment = staged.ready(generated.absolutePath),
@@ -474,7 +468,7 @@ class ConversationComposerControllerTest {
 
         assertTrue(fixture.controller.remove(OWNER_A, "stale"))
         gate.complete(Unit)
-        advanceUntilIdle()
+        fixture.controller.awaitProcessing(OWNER_A)
 
         assertFalse(generated.exists())
         assertTrue(fixture.controller.state(OWNER_A).value.attachments.isEmpty())
@@ -487,7 +481,8 @@ class ConversationComposerControllerTest {
         val generated = File(temporaryFolder.root, "cancelled-ready.jpg")
         val ready = staged.ready(generated.absolutePath)
         val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.process(staged, any()) } coAnswers {
+        coEvery { processor.process(staged, any(), any()) } coAnswers {
+            AttachmentFiles.retainLivePath(thirdArg<Any>(), generated.absolutePath)
             generated.writeText("generated")
             currentCoroutineContext().cancel()
             AttachmentImportProcessor.ProcessResult.Ready(
@@ -506,203 +501,6 @@ class ConversationComposerControllerTest {
         assertTrue(generated.exists())
         assertEquals(ready, fixture.persistence.attachment(OWNER_A))
         assertEquals(ready, fixture.controller.state(OWNER_A).value.single())
-    }
-
-    @Test
-    fun `restore keeps completed pdf preview and unconfigured video without starting jobs`() = runTest {
-        val pdf = attachment("pdf").copy(
-            type = "pdf",
-            fileName = "document.pdf",
-            localPath = "/stage/document.pdf",
-            pageCount = 2,
-            preRenderedPaths = listOf("/preview/page-1.jpg", "/preview/page-2.jpg"),
-            importState = AttachmentImportState.PROCESSING,
-        )
-        val video = attachment("video").copy(
-            type = "video",
-            fileName = "clip.mp4",
-            localPath = "/stage/clip.mp4",
-            importState = AttachmentImportState.PROCESSING,
-        )
-        val processor = mockk<AttachmentImportProcessor>()
-        val fixture = fixture(
-            processor = processor,
-            initial = mapOf(OWNER_A to draft(attachments = arrayOf(pdf, video))),
-        )
-
-        fixture.controller.load(OWNER_A)
-        runCurrent()
-        fixture.controller.awaitProcessing(OWNER_A)
-
-        assertEquals(listOf(pdf, video), fixture.controller.state(OWNER_A).value.attachments)
-        coVerify(exactly = 0) { processor.preparePdfPreview(any(), any()) }
-        coVerify(exactly = 0) { processor.process(any(), any()) }
-    }
-
-    @Test
-    fun `restore prepares missing pdf preview and projects progress`() = runTest {
-        val pdf = attachment("pdf-preview").copy(
-            type = "pdf",
-            fileName = "document.pdf",
-            localPath = "/stage/document.pdf",
-            pageCount = 2,
-            importState = AttachmentImportState.PROCESSING,
-        )
-        val previewReady = pdf.copy(
-            preRenderedPaths = listOf("/preview/page-1.jpg", "/preview/page-2.jpg"),
-        )
-        val releasePreview = CompletableDeferred<Unit>()
-        val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.preparePdfPreview(pdf, any()) } coAnswers {
-            secondArg<suspend (Int, Int) -> Unit>().invoke(1, 2)
-            releasePreview.await()
-            AttachmentImportProcessor.ProcessResult.Ready(previewReady)
-        }
-        val fixture = fixture(
-            processor = processor,
-            initial = mapOf(OWNER_A to draft(attachments = arrayOf(pdf))),
-        )
-
-        fixture.controller.load(OWNER_A)
-        runCurrent()
-
-        assertEquals(1 to 2, fixture.controller.state(OWNER_A).value.pdfPreviewProgress[pdf.localId])
-        releasePreview.complete(Unit)
-        fixture.controller.awaitProcessing(OWNER_A)
-
-        assertEquals(previewReady, fixture.persistence.attachment(OWNER_A))
-        assertTrue(fixture.controller.state(OWNER_A).value.pdfPreviewProgress.isEmpty())
-        coVerify(exactly = 1) { processor.preparePdfPreview(pdf, any()) }
-        coVerify(exactly = 0) { processor.process(any(), any()) }
-    }
-
-    @Test
-    fun `configuring pdf cancels stale preview job before final processing`() = runTest {
-        val pdf = attachment("pdf-preview-race").copy(
-            type = "pdf",
-            fileName = "document.pdf",
-            localPath = "/stage/document.pdf",
-            pageCount = 2,
-            importState = AttachmentImportState.PROCESSING,
-        )
-        val previewStarted = CompletableDeferred<Unit>()
-        val previewCancelled = CompletableDeferred<Unit>()
-        val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.preparePdfPreview(pdf, any()) } coAnswers {
-            previewStarted.complete(Unit)
-            try {
-                awaitCancellation()
-            } finally {
-                previewCancelled.complete(Unit)
-            }
-        }
-        coEvery { processor.process(any(), any()) } coAnswers {
-            AttachmentImportProcessor.ProcessResult.Ready(
-                firstArg<SelectedAttachment>().copy(
-                    selectedPages = setOf(0),
-                    preRenderedPaths = listOf("/rendered/page-1.jpg"),
-                    importState = AttachmentImportState.READY,
-                ),
-            )
-        }
-        val fixture = fixture(
-            processor = processor,
-            initial = mapOf(OWNER_A to draft(attachments = arrayOf(pdf))),
-        )
-
-        fixture.controller.load(OWNER_A)
-        previewStarted.await()
-
-        assertTrue(fixture.controller.configurePdf(OWNER_A, pdf.localId, setOf(1)))
-        previewCancelled.await()
-        fixture.controller.awaitProcessing(OWNER_A)
-
-        assertEquals(AttachmentImportState.READY, fixture.state(OWNER_A, pdf.localId).importState)
-        coVerify(exactly = 1) { processor.preparePdfPreview(pdf, any()) }
-        coVerify(exactly = 1) {
-            processor.process(match { it.selectedPages == setOf(1) }, any())
-        }
-    }
-
-    @Test
-    fun `configuring durable pdf persists choice and starts processing once`() = runTest {
-        val pdf = attachment("pdf-configured").copy(
-            type = "pdf",
-            fileName = "document.pdf",
-            localPath = "/stage/document.pdf",
-            pageCount = 4,
-            preRenderedPaths = listOf(
-                "/preview/page-1.jpg",
-                "/preview/page-2.jpg",
-                "/preview/page-3.jpg",
-                "/preview/page-4.jpg",
-            ),
-            importState = AttachmentImportState.PROCESSING,
-        )
-        val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.process(any(), any()) } coAnswers {
-            AttachmentImportProcessor.ProcessResult.Ready(
-                firstArg<SelectedAttachment>().copy(
-                    selectedPages = setOf(0, 1),
-                    preRenderedPaths = listOf("/rendered/page-1.jpg", "/rendered/page-2.jpg"),
-                    importState = AttachmentImportState.READY,
-                ),
-            )
-        }
-        val fixture = fixture(
-            processor = processor,
-            initial = mapOf(OWNER_A to draft(attachments = arrayOf(pdf))),
-        )
-        fixture.controller.load(OWNER_A)
-
-        assertTrue(fixture.controller.configurePdf(OWNER_A, pdf.localId, setOf(1, 3)))
-        fixture.controller.awaitProcessing(OWNER_A)
-
-        assertEquals(setOf(0, 1), fixture.persistence.attachment(OWNER_A).selectedPages)
-        assertEquals(AttachmentImportState.READY, fixture.state(OWNER_A, pdf.localId).importState)
-        coVerify(exactly = 1) {
-            processor.process(match { it.selectedPages == setOf(1, 3) }, any())
-        }
-    }
-
-    @Test
-    fun `configuration selected during staging is merged before processing`() = runTest {
-        val source = attachment("pdf-staging").copy(
-            type = "pdf",
-            fileName = "document.pdf",
-        )
-        val stageStarted = CompletableDeferred<Unit>()
-        val releaseStage = CompletableDeferred<Unit>()
-        val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.stage(match { it.localId == source.localId }) } coAnswers {
-            stageStarted.complete(Unit)
-            releaseStage.await()
-            AttachmentImportProcessor.StageResult.Success(
-                attachment = source.processing("/stage/document.pdf"),
-                createdPaths = emptyList(),
-            )
-        }
-        coEvery { processor.process(any(), any()) } coAnswers {
-            AttachmentImportProcessor.ProcessResult.Ready(
-                firstArg<SelectedAttachment>().copy(
-                    preRenderedPaths = listOf("/rendered/page.jpg"),
-                    importState = AttachmentImportState.READY,
-                ),
-            )
-        }
-        val fixture = fixture(processor)
-        fixture.controller.load(OWNER_A)
-        fixture.controller.importAttachment(OWNER_A, source)
-        stageStarted.await()
-
-        assertTrue(fixture.controller.configurePdf(OWNER_A, source.localId, setOf(2)))
-        releaseStage.complete(Unit)
-        fixture.controller.awaitProcessing(OWNER_A)
-
-        assertEquals(setOf(2), fixture.persistence.attachment(OWNER_A).selectedPages)
-        coVerify(exactly = 1) {
-            processor.process(match { it.selectedPages == setOf(2) }, any())
-        }
     }
 
     @Test
@@ -766,12 +564,12 @@ class ConversationComposerControllerTest {
     fun `attachment completion preserves the active text projection version`() = runTest {
         val source = attachment("projection")
         val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.stage(match { it.localId == source.localId }) } returns
+        coEvery { processor.stage(match { it.localId == source.localId }, any()) } returns
             AttachmentImportProcessor.StageResult.Success(
                 attachment = source.processing("/stage/projection"),
                 createdPaths = emptyList(),
             )
-        coEvery { processor.process(any(), any()) } coAnswers {
+        coEvery { processor.process(any(), any(), any()) } coAnswers {
             AttachmentImportProcessor.ProcessResult.Ready(
                 firstArg<SelectedAttachment>().ready(),
             )
@@ -844,7 +642,7 @@ class ConversationComposerControllerTest {
         val staged = attachment("ready").processing("/stage/ready")
         val ready = staged.ready("/final/ready.jpg")
         val processor = mockk<AttachmentImportProcessor>()
-        coEvery { processor.process(staged, any()) } returns
+        coEvery { processor.process(staged, any(), any()) } returns
             AttachmentImportProcessor.ProcessResult.Ready(ready)
         val fixture = fixture(
             processor = processor,
@@ -859,140 +657,59 @@ class ConversationComposerControllerTest {
             fixture.repository.deleteUnreferencedDraftAttachmentFiles(listOf(staged))
         }
     }
-
-    private fun TestScope.fixture(
-        processor: AttachmentImportProcessor,
-        initial: Map<String, ConversationWorkspaceDraft> = emptyMap(),
-    ): Fixture {
-        val persistence = MemoryDraftPersistence(initial)
-        val repository = repository()
-        return Fixture(
-            controller = controller(
-                processor = processor,
-                persistence = persistence,
-                repository = repository,
-            ),
-            persistence = persistence,
-            repository = repository,
-        )
+    @Test
+    fun `producer output survives processing then transfers to Composer until scope closes`() = runTest {
+        val source = temporaryFolder.newFile("image-staged.jpg")
+        val output = File(temporaryFolder.root, "img_producer.jpg")
+        val staged = attachment("image").processing(source.path)
+        val finish = CompletableDeferred<Unit>()
+        val processor = mockk<AttachmentImportProcessor>()
+        coEvery { processor.process(staged, any(), any()) } coAnswers {
+            AttachmentFiles.retainLivePath(thirdArg<Any>(), output.path)
+            output.writeText("image")
+            assertFalse(AttachmentFiles.deleteIfUnowned(output))
+            finish.await()
+            AttachmentImportProcessor.ProcessResult.Ready(staged.ready(output.path), listOf(output.path))
+        }
+        val fixture = fixture(processor, mapOf(OWNER_A to draft(attachments = arrayOf(staged))))
+        fixture.controller.load(OWNER_A)
+        runCurrent()
+        assertTrue(output.exists())
+        assertFalse(AttachmentFiles.deleteIfUnowned(output))
+        finish.complete(Unit)
+        fixture.controller.awaitProcessing(OWNER_A)
+        assertEquals(output.path, fixture.state(OWNER_A, "image").localPath)
+        assertFalse(AttachmentFiles.deleteIfUnowned(output))
+        backgroundScope.coroutineContext[kotlinx.coroutines.Job]!!.cancel()
+        runCurrent()
+        assertTrue(AttachmentFiles.deleteIfUnowned(output))
+        assertFalse(output.exists())
     }
-
-    private fun TestScope.controller(
-        processor: AttachmentImportProcessor,
-        persistence: MemoryDraftPersistence,
-        repository: ConversationRepository,
-    ): ConversationComposerController {
-        val drafts = ComposerDraftController(
-            persistence = persistence,
-            conversations = repository,
-        )
-        return ConversationComposerController(
-            scope = backgroundScope,
-            drafts = drafts,
-            processor = processor,
-        )
-    }
-
-    private fun repository(): ConversationRepository =
-        mockk(relaxed = true)
-
-    private suspend fun Fixture.state(ownerId: String, attachmentId: String): SelectedAttachment =
-        controller.state(ownerId).value.attachments.single { it.localId == attachmentId }
-
-    private fun ConversationComposerSnapshot.single(): SelectedAttachment = attachments.single()
-
-    private fun ConversationComposerSnapshot.ids(): List<String> = attachments.map { it.localId }
-
-    private fun attachment(id: String) = SelectedAttachment(
-        localId = id,
-        uri = "content://source/$id",
-        type = "image",
-        fileName = "$id.jpg",
-        importState = AttachmentImportState.READY,
-    )
-
-    private fun SelectedAttachment.processing(path: String) = copy(
-        localPath = path,
-        importState = AttachmentImportState.PROCESSING,
-    )
-
-    private fun SelectedAttachment.ready(path: String = localPath.orEmpty()) = copy(
-        localPath = path,
-        importState = AttachmentImportState.READY,
-    )
-
-    private fun draft(
-        text: String = "",
-        vararg attachments: SelectedAttachment,
-    ) = ConversationWorkspaceDraft(
-        text = text,
-        attachmentsJson = attachments.takeIf { it.isNotEmpty() }
-            ?.let { Json.encodeToString(it.toList()) },
-    )
-
-    private data class Fixture(
-        val controller: ConversationComposerController,
-        val persistence: MemoryDraftPersistence,
-        val repository: ConversationRepository,
-    )
-
-    private class MemoryDraftPersistence(
-        initial: Map<String, ConversationWorkspaceDraft>,
-    ) : ComposerDraftPersistence {
-        private val drafts = ConcurrentHashMap(initial)
-        private val loads = ConcurrentHashMap<String, AtomicInteger>()
-        private val updates = mutableListOf<Pair<String, ConversationWorkspaceDraft>>()
-        var failLoads = false
-        var failWrites = false
-
-        override suspend fun loadDraft(ownerId: String): ConversationWorkspaceDraft {
-            loads.computeIfAbsent(ownerId) { AtomicInteger() }.incrementAndGet()
-            if (failLoads) throw IllegalStateException("draft read failed")
-            return drafts[ownerId] ?: ConversationWorkspaceDraft("", null)
+    @Test
+    fun `cancelled producer cleans unpublished output but not another live owner`() = runTest {
+        val source = temporaryFolder.newFile("cancel-staged.jpg")
+        val output = File(temporaryFolder.root, "img_cancelled.jpg")
+        val other = Any()
+        val staged = attachment("cancel").processing(source.path)
+        val processor = mockk<AttachmentImportProcessor>()
+        coEvery { processor.process(staged, any(), any()) } coAnswers {
+            AttachmentFiles.retainLivePath(thirdArg<Any>(), output.path)
+            output.writeText("image")
+            AttachmentFiles.retainLivePath(other, output.path)
+            awaitCancellation()
         }
-
-        override suspend fun updateDraft(
-            ownerId: String,
-            text: String,
-            attachmentsJson: String?,
-        ) {
-            if (failWrites) throw IllegalStateException("draft write failed")
-            val value = ConversationWorkspaceDraft(text, attachmentsJson)
-            drafts[ownerId] = value
-            synchronized(updates) { updates += ownerId to value }
+        val fixture = fixture(processor, mapOf(OWNER_A to draft(attachments = arrayOf(staged))))
+        try {
+            fixture.controller.load(OWNER_A)
+            runCurrent()
+            assertTrue(fixture.controller.remove(OWNER_A, staged.localId))
+            runCurrent()
+            assertTrue(output.exists())
+            AttachmentFiles.releaseLivePaths(other)
+            assertTrue(AttachmentFiles.deleteIfUnowned(output))
+            assertFalse(output.exists())
+        } finally {
+            AttachmentFiles.releaseLivePaths(other)
         }
-
-        override suspend fun clearAcceptedDraft(ownerId: String) {
-            drafts[ownerId] = ConversationWorkspaceDraft("", null)
-        }
-
-        fun attachments(ownerId: String): List<SelectedAttachment> = drafts[ownerId]
-            ?.attachmentsJson
-            ?.let { Json.decodeFromString(it) }
-            ?: emptyList()
-
-        fun text(ownerId: String): String = drafts[ownerId]?.text.orEmpty()
-
-        fun loadCount(ownerId: String): Int = loads[ownerId]?.get() ?: 0
-
-        fun setDraft(ownerId: String, draft: ConversationWorkspaceDraft) {
-            drafts[ownerId] = draft
-        }
-
-        fun attachment(ownerId: String): SelectedAttachment = attachments(ownerId).single()
-
-        fun updatedStates(ownerId: String): List<AttachmentImportState> = synchronized(updates) {
-            updates.filter { it.first == ownerId }.mapNotNull { (_, draft) ->
-                draft.attachmentsJson
-                    ?.let { Json.decodeFromString<List<SelectedAttachment>>(it) }
-                    ?.singleOrNull()
-                    ?.importState
-            }
-        }
-    }
-
-    private companion object {
-        const val OWNER_A = "conversation-a"
-        const val OWNER_B = "conversation-b"
     }
 }

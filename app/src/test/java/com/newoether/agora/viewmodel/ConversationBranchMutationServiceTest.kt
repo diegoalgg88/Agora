@@ -33,7 +33,7 @@ class ConversationBranchMutationServiceTest {
         val owner = SupervisorJob()
         val events = mutableListOf<String>()
         val results = mutableListOf<Boolean>()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val service = service(
             conversations = mockk(),
             events = events,
@@ -61,7 +61,7 @@ class ConversationBranchMutationServiceTest {
         val coordinator = ConversationExecutionCoordinator()
         val events = mutableListOf<String>()
         val results = mutableListOf<Boolean>()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         backgroundScope.launch {
             coordinator.withAutomationConversationLock("conversation") {
                 CompletableDeferred<Unit>().await()
@@ -112,7 +112,7 @@ class ConversationBranchMutationServiceTest {
             events = events,
             onFailed = failed::add,
         )
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
 
         val previewCount = service.delete(
             conversationId = "conversation",
@@ -171,7 +171,7 @@ class ConversationBranchMutationServiceTest {
             true
         }
         val service = service(conversations, events)
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
 
         val previewCount = service.delete(
             conversationId = "conversation",
@@ -195,7 +195,7 @@ class ConversationBranchMutationServiceTest {
     @Test
     fun activeRunRejectsDeletionBeforeLaunchingMutation() = runTest {
         val conversations = mockk<ConversationRepository>()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         requireNotNull(state.acquireForSend())
 
         val results = mutableListOf<Boolean>()

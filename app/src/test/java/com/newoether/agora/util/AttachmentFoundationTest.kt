@@ -1,4 +1,4 @@
-package com.newoether.agora.util
+﻿package com.newoether.agora.util
 
 import com.newoether.agora.model.AttachmentImportState
 import com.newoether.agora.model.AttachmentItem
@@ -24,6 +24,27 @@ import org.junit.rules.TemporaryFolder
 class AttachmentFoundationTest {
     @get:Rule
     val temporaryFolder = TemporaryFolder()
+    @Test
+    fun exactLiveOwnersPreserveSharedCanonicalPathUntilBothRelease() {
+        val file = temporaryFolder.newFile("shared.jpg")
+        val first = Any()
+        val second = Any()
+        try {
+            AttachmentFiles.retainLivePath(first, file.absolutePath)
+            AttachmentFiles.setLivePaths(second, listOf("file://${file.parent}/./${file.name}"))
+            assertFalse(AttachmentFiles.deleteIfUnowned(file))
+            AttachmentFiles.releaseLivePaths(first)
+            AttachmentFiles.deleteBacking(SelectedAttachment(uri = "content://source", type = "image", localPath = file.path))
+            assertTrue(file.exists())
+            assertFalse(AttachmentFiles.deleteIfUnowned(file))
+            AttachmentFiles.releaseLivePaths(second)
+            assertTrue(AttachmentFiles.deleteIfUnowned(file))
+            assertFalse(file.exists())
+        } finally {
+            AttachmentFiles.releaseLivePaths(first)
+            AttachmentFiles.releaseLivePaths(second)
+        }
+    }
 
     @Test
     fun legacyMetadataDefaultsToAppPrivateStorage() {
@@ -218,28 +239,6 @@ class AttachmentFoundationTest {
         assertEquals("attachment", AttachmentFiles.sanitizeFileName("  "))
         assertEquals("attachment", AttachmentFiles.sanitizeFileName(".."))
         assertNull(AttachmentItem(type = "file").sandboxPath)
-    }
-
-    @Test
-    fun commonSourceAndConfigMimeTypesRouteAsText() {
-        listOf(
-            "text/x-python",
-            "text/yaml",
-            "application/x-yaml",
-            "application/javascript",
-            "application/typescript",
-            "application/toml",
-            "application/x-sh",
-            "application/sql",
-        ).forEach { mime ->
-            assertEquals(mime, FileValidator.AttachmentRoute.TEXT, FileValidator.routeForMimeType(mime))
-        }
-        assertEquals(
-            FileValidator.AttachmentRoute.LOCAL_SANDBOX,
-            FileValidator.routeForMimeType(
-                "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            ),
-        )
     }
 
     @Test

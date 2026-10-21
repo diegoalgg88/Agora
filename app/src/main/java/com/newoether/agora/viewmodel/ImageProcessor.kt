@@ -3,6 +3,7 @@ package com.newoether.agora.viewmodel
 import android.app.Application
 import android.media.MediaMetadataRetriever
 import android.net.Uri
+import com.newoether.agora.util.AttachmentFiles
 import com.newoether.agora.util.AttachmentSourceReader
 import java.io.File
 import java.net.URI
@@ -21,7 +22,7 @@ data class VideoSliceConfig(
 class ImageProcessor(
     private val app: Application,
 ) {
-    suspend fun normalizeImage(source: String): String? = withContext(Dispatchers.IO) {
+    suspend fun normalizeImage(source: String, outputOwner: Any? = null): String? = withContext(Dispatchers.IO) {
         var output: File? = null
         try {
             coroutineContext.ensureActive()
@@ -52,6 +53,7 @@ class ImageProcessor(
             try {
                 coroutineContext.ensureActive()
                 val target = File(app.filesDir, "img_${UUID.randomUUID()}.jpg")
+                outputOwner?.let { AttachmentFiles.retainLivePath(it, target.absolutePath) }
                 output = target
                 val encoded = target.outputStream().use { stream ->
                     bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, stream)
@@ -74,6 +76,7 @@ class ImageProcessor(
     suspend fun extractVideoFrames(
         source: String,
         config: VideoSliceConfig,
+        outputOwner: Any? = null,
     ): List<String> = withContext(Dispatchers.IO) {
         val paths = mutableListOf<String>()
         val retriever = MediaMetadataRetriever()
@@ -89,6 +92,7 @@ class ImageProcessor(
                 )
                 if (bitmap != null) {
                     val output = File(app.filesDir, "vid_${UUID.randomUUID()}_$index.jpg")
+                    outputOwner?.let { AttachmentFiles.retainLivePath(it, output.absolutePath) }
                     try {
                         val encoded = output.outputStream().use { stream ->
                             bitmap.compress(android.graphics.Bitmap.CompressFormat.JPEG, 80, stream)

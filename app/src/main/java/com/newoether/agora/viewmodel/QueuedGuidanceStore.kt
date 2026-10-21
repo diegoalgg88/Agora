@@ -80,6 +80,8 @@ internal fun mergeQueuedGuidance(batch: List<QueuedSend>): QueuedSend {
  * durable claims transfer attachment ownership to Room; disposal owns only still-pending cleanup.
  */
 internal class GuidanceLeaseStore(
+    /** Reclaim reference-aware de attachments: el sweeper decide, no el borrado directo. */
+    private val reclaimAttachments: (List<SelectedAttachment>) -> Unit,
     private val newLeaseId: () -> String = { UUID.randomUUID().toString() },
 ) {
     private val lock = Any()
@@ -100,6 +102,9 @@ internal class GuidanceLeaseStore(
     fun enqueue(send: QueuedSend) {
         synchronized(lock) {
             check(!disposed) { "Conversation guidance store was disposed" }
+            // El send en cola retiene sus archivos como live paths: un preview del navegador
+            // no puede dejar que el sweeper reclame attachments aún no durables.
+            AttachmentFiles.setLivePaths(send, AttachmentFiles.ownedPaths(send.attachments) + send.preparedImages)
             _queuedSends.value = _queuedSends.value + send
         }
     }
@@ -126,13 +131,20 @@ internal class GuidanceLeaseStore(
         synchronized(lock) {
             val batch = claimedGuidance.remove(leaseId) ?: return false
             when {
-                durable -> Unit
+                // Durable: Room posee los archivos; los live paths del batch se liberan.
+                durable -> batch.forEach(AttachmentFiles::releaseLivePaths)
                 disposed -> orphaned = batch
                 else -> _queuedSends.value = batch + _queuedSends.value
             }
         }
-        orphaned.forEach(QueuedSend::deleteOwnedFiles)
+        orphaned.forEach(::discard)
         return true
+    }
+
+    /** Libera los live paths y agenda el reclaim reference-aware de los attachments. */
+    fun discard(send: QueuedSend) {
+        AttachmentFiles.releaseLivePaths(send)
+        if (send.attachments.isNotEmpty()) reclaimAttachments(send.attachments)
     }
 
     /** Mark the owner closed and transfer its still-pending batch to the disposal caller. */
@@ -140,8 +152,4 @@ internal class GuidanceLeaseStore(
         disposed = true
         _queuedSends.value.also { _queuedSends.value = emptyList() }
     }
-}
-
-internal fun QueuedSend.deleteOwnedFiles() {
-    AttachmentFiles.deleteBacking(attachments)
 }

@@ -1,4 +1,4 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
 import com.newoether.agora.data.local.MessageEntity
 import com.newoether.agora.data.repository.ConversationRepository
@@ -213,7 +213,7 @@ class BoundRunGenerationLauncherTest {
         val terminalSettlement = mockk<GenerationTerminalSettlementController>()
         val continuationRequests = mutableListOf<AutomaticCompactContinuationRequest>()
         val continuationStates = mutableListOf<ConversationGenerationState>()
-        val state = ConversationGenerationState("conversation")
+        val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val uiToken = requireNotNull(state.acquireForSend())
         val snapshot = testGenerationAdmissionSnapshot(
             conversationId = "conversation",

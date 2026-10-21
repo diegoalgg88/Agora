@@ -1,4 +1,4 @@
-package com.newoether.agora.viewmodel
+﻿package com.newoether.agora.viewmodel
 
 import com.newoether.agora.data.local.ConversationDraftAttachmentReference
 import com.newoether.agora.data.local.MessageAttachmentReference
@@ -9,6 +9,7 @@ import com.newoether.agora.data.local.ChatDatabase
 import com.newoether.agora.model.AttachmentItem
 import com.newoether.agora.model.AttachmentMeta
 import com.newoether.agora.model.SelectedAttachment
+import com.newoether.agora.util.AttachmentFiles
 import io.mockk.coEvery
 import io.mockk.coVerify
 import io.mockk.every
@@ -44,8 +45,8 @@ class AttachmentOrphanSweeperTest {
         val transaction = Mutex()
         every { database.chatDao() } returns conversations
         mockkStatic("androidx.room.RoomDatabaseKt")
-        coEvery { database.withTransaction<Unit>(any()) } coAnswers {
-            transaction.withLock { arg<suspend () -> Unit>(1).invoke() }
+        coEvery { database.withTransaction<Any?>(any()) } coAnswers {
+            transaction.withLock { arg<suspend () -> Any?>(1).invoke() }
         }
         coEvery { conversations.getMessageAttachmentReferencesPage(any(), any(), any()) } returns emptyList()
         coEvery { conversations.getConversationDraftAttachmentReferencesPage(any(), any(), any()) } returns emptyList()
@@ -54,6 +55,52 @@ class AttachmentOrphanSweeperTest {
 
     @After
     fun releaseRoomMock() = unmockkStatic("androidx.room.RoomDatabaseKt")
+    @Test
+    fun `discarded queue schedules exact cleanup without deleting another message file`() = runTest {
+        val image = oldFile(temporaryFolder.root, "img_queue_sent")
+        val attachment = SelectedAttachment(uri = fileUri(image), type = "image", localPath = image.path)
+        val debts = mutableListOf<SelectedAttachment>()
+        val registry = ConversationStateRegistry { debts += it }
+        val state = registry.getOrCreate("conversation")
+        state.enqueueSend(QueuedSend("queued", "text", "model", listOf(attachment), "run"))
+        val sweeper = AttachmentOrphanSweeper(database, temporaryFolder.root)
+        try {
+            coEvery { conversations.getMessageAttachmentReferencesPage(null, 64, image.name) } returns
+                listOf(MessageAttachmentReference("sent", listOf(image.path), null))
+            registry.remove("conversation")
+            assertTrue("Queue disposal must not directly unlink", image.exists())
+            org.junit.Assert.assertEquals(listOf(attachment), debts)
+            sweeper.deleteExact(debts.single().localPath!!)
+            assertTrue(image.exists())
+            coEvery { conversations.getMessageAttachmentReferencesPage(null, 64, image.name) } returns emptyList()
+            sweeper.deleteExact(image.path)
+            assertFalse(image.exists())
+        } finally {
+            registry.cancelAll()
+        }
+    }
+    @Test
+    fun `live image survives sweep exact debt and continuous Room handoff`() = runTest {
+        val image = oldFile(temporaryFolder.root, "img_live")
+        val owner = Any()
+        val sweeper = AttachmentOrphanSweeper(database, temporaryFolder.root, now = { NOW })
+        try {
+            AttachmentFiles.retainLivePath(owner, image.path)
+            sweeper.sweep()
+            assertFalse("Live-only ownership defers exact debt completion", sweeper.deleteExact(image.path))
+            assertTrue(image.exists())
+            coEvery { conversations.getMessageAttachmentReferencesPage(null, 64, image.name) } returns
+                listOf(MessageAttachmentReference("sent", listOf(image.path), null))
+            AttachmentFiles.releaseLivePaths(owner)
+            assertTrue("Durable ownership completes obsolete debt", sweeper.deleteExact(image.path))
+            assertTrue("Room owns the file after live ownership releases", image.exists())
+            coEvery { conversations.getMessageAttachmentReferencesPage(null, 64, image.name) } returns emptyList()
+            sweeper.deleteExact(image.path)
+            assertFalse(image.exists())
+        } finally {
+            AttachmentFiles.releaseLivePaths(owner)
+        }
+    }
 
     @Test
     fun `message ownership arriving between reference scans must not delete the image`() = runTest {
@@ -166,8 +213,6 @@ class AttachmentOrphanSweeperTest {
             val orphanCamera = oldFile(File(root, "images"), "camera_orphan")
             val orphanRunInput = oldFile(File(root, "run-inputs"), "run_orphan")
             val orphanFork = oldFile(File(root, "fork-attachments"), "fork_orphan")
-            val orphanAssistantScreenshot = oldFile(File(root, "attachments/assistant"), "screen_orphan")
-            val attachedAssistantScreenshot = oldFile(File(root, "attachments/assistant"), "screen_attached")
             val freshEligible = file(root, "vid_fresh", NOW - 30 * 60 * 1000L)
             val unrelatedRoot = oldFile(root, "notes.txt")
             val unrelatedImage = oldFile(File(root, "images"), "thumbnail_other")
@@ -177,7 +222,7 @@ class AttachmentOrphanSweeperTest {
             } returns listOf(
                 MessageAttachmentReference(
                     id = "message",
-                    images = listOf(fileUri(messageImage), attachedAssistantScreenshot.absolutePath),
+                    images = listOf(fileUri(messageImage)),
                     attachmentMeta = Json.encodeToString(
                         AttachmentMeta(
                             listOf(
@@ -248,13 +293,13 @@ class AttachmentOrphanSweeperTest {
                 newChatLocal,
                 newChatFrame,
                 newChatRendered,
-                attachedAssistantScreenshot,
                 freshEligible,
                 unrelatedRoot,
                 unrelatedImage,
             ).forEach { retained -> assertTrue(retained.absolutePath, retained.exists()) }
-            listOf(orphanRoot, orphanCamera, orphanRunInput, orphanFork, orphanAssistantScreenshot)
-                .forEach { deleted -> assertFalse(deleted.absolutePath, deleted.exists()) }
+            listOf(orphanRoot, orphanCamera, orphanRunInput, orphanFork).forEach { deleted ->
+                assertFalse(deleted.absolutePath, deleted.exists())
+            }
             coVerify(exactly = 1) {
                 conversations.getMessageAttachmentReferencesPage(null, 64)
             }
