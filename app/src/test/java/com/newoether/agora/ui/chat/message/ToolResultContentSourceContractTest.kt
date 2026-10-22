@@ -203,7 +203,7 @@ class ToolResultContentSourceContractTest {
     fun `Completed wait for job uses the shell exit summary`() {
         val source = source(locateMainSourceRoot(), "MessageItemToolLabels.kt")
         val completedSummary = source
-            .substringAfter("private fun completedSummary(")
+            .substringAfter("private fun Resources.completedSummary(")
 
         assertTrue(
             completedSummary.contains(

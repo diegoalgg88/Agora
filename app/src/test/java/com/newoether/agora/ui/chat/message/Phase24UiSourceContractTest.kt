@@ -49,14 +49,14 @@ class Phase24UiSourceContractTest {
         assertTrue(presentation.contains("(seconds % 3_600) / 60"))
         assertTrue(presentation.contains("seconds % 60"))
         val terminalTitle = presentation
-            .substringAfter("internal fun compactSegmentTitle(")
+            .substringAfter("internal fun Resources.compactSegmentTitle(")
             .substringBefore("internal fun compactSegmentDisplayTitle(")
         assertTrue(terminalTitle.contains("val hasThought = segs.any { it.type == \"thought\" }"))
         assertTrue(terminalTitle.contains(
             "hasThought -> thoughtDurationTitle(thoughtMs?.coerceAtLeast(0L) ?: 0L, toolCount)"
         ))
         assertTrue(terminalTitle.contains(
-            "toolCount > 0 -> stringResource(R.string.called_n_tools, toolCount)"
+            "toolCount > 0 -> getString(R.string.called_n_tools, toolCount)"
         ))
         val compactBlock = timeline
             .substringAfter("internal fun CompactSegmentBlock(")
@@ -70,7 +70,7 @@ class Phase24UiSourceContractTest {
             "message.thoughtTitle != null -> message.thoughtTitle"
         ))
         assertFalse(terminalTitle.contains(
-            "else -> stringResource(R.string.thinking_complete)"
+            "else -> getString(R.string.thinking_complete)"
         ))
 
         val expectedPlaceholders = mapOf(

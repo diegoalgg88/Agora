@@ -1,10 +1,10 @@
 package com.newoether.agora.ui.chat.message
 
+import android.content.res.Resources
 import android.os.SystemClock
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
-import androidx.compose.ui.res.stringResource
 import com.newoether.agora.R
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageSegment
@@ -15,19 +15,25 @@ import kotlinx.coroutines.isActive
 internal const val THINKING_COLLAPSED_WIDTH_ALLOWANCE_DP = 6
 internal const val AUXILIARY_CARD_START_EXTENSION_DP = 4
 
-@Composable
-internal fun segmentDetailTitle(
+internal fun Resources.segmentDetailTitle(
     seg: MessageSegment,
     detailSegments: List<MessageSegment>,
     detailIndex: Int,
 ): String = when (seg.type) {
     "tool" -> toolDisplayName(seg)
     "transcription" -> transcriptionLabel(detailSegments, detailIndex)
-    else -> stringResource(R.string.tool_thinking)
+    else -> getString(R.string.tool_thinking)
 }
 
 @Composable
-private fun thinkingDurationBreakdownTitle(
+internal fun segmentDetailTitle(
+    seg: MessageSegment,
+    detailSegments: List<MessageSegment>,
+    detailIndex: Int,
+): String = currentResources().segmentDetailTitle(seg, detailSegments, detailIndex)
+
+/** Live ("Thinking for …") or finished ("Thought for …") duration title. */
+internal fun Resources.thinkingDurationBreakdownTitle(
     seconds: Int,
     live: Boolean,
     toolCount: Int? = null,
@@ -36,68 +42,66 @@ private fun thinkingDurationBreakdownTitle(
     val minutes = (seconds % 3_600) / 60
     val remainingSeconds = seconds % 60
     return when {
-        live && hours > 0 -> stringResource(
+        live && hours > 0 -> getString(
             R.string.thinking_for_hours_ellipsis,
             hours,
             minutes,
             remainingSeconds,
         )
-        live && seconds >= 60 -> stringResource(
+        live && seconds >= 60 -> getString(
             R.string.thinking_for_minutes_ellipsis,
             minutes,
             remainingSeconds,
         )
-        live -> stringResource(R.string.thinking_for_seconds_ellipsis, seconds)
-        toolCount != null && hours > 0 -> stringResource(
+        live -> getString(R.string.thinking_for_seconds_ellipsis, seconds)
+        toolCount != null && hours > 0 -> getString(
             R.string.thought_for_hours_called_tools,
             hours,
             minutes,
             remainingSeconds,
             toolCount,
         )
-        toolCount != null && seconds >= 60 -> stringResource(
+        toolCount != null && seconds >= 60 -> getString(
             R.string.thought_for_minutes_called_tools,
             minutes,
             remainingSeconds,
             toolCount,
         )
-        toolCount != null -> stringResource(
+        toolCount != null -> getString(
             R.string.thought_for_seconds_called_tools,
             seconds,
             toolCount,
         )
-        hours > 0 -> stringResource(
+        hours > 0 -> getString(
             R.string.thought_for_hours,
             hours,
             minutes,
             remainingSeconds,
         )
-        seconds >= 60 -> stringResource(
+        seconds >= 60 -> getString(
             R.string.thought_for_minutes,
             minutes,
             remainingSeconds,
         )
-        else -> stringResource(R.string.thought_for_seconds, seconds)
+        else -> getString(R.string.thought_for_seconds, seconds)
     }
 }
 
-@Composable
-internal fun thoughtDurationTitle(thoughtMs: Long, toolCount: Int): String =
+internal fun Resources.thoughtDurationTitle(thoughtMs: Long, toolCount: Int): String =
     thinkingDurationBreakdownTitle(
         seconds = (thoughtMs / 1_000L).toInt(),
         live = false,
         toolCount = toolCount.takeIf { it > 0 },
     )
 
-@Composable
-internal fun compactSegmentTitle(
+internal fun Resources.compactSegmentTitle(
     segs: List<MessageSegment>,
     message: ChatMessage,
     useLiveStatus: Boolean,
 ): String {
     val lastSeg = segs.lastOrNull() ?: return ""
     val isLastTool = lastSeg.type == "tool"
-    val isToolInProgress = isLastTool && ToolPresentationResolver.resolve(lastSeg).isActive
+    val isToolInProgress = useLiveStatus && isLastTool && ToolPresentationResolver.resolve(lastSeg).isActive
     val isThinking = useLiveStatus && message.status == MessageStatus.THINKING
     val isToolCalling = useLiveStatus && message.status == MessageStatus.TOOL_CALLING
     val isTranscribing = useLiveStatus && message.status == MessageStatus.TRANSCRIBING
@@ -105,8 +109,8 @@ internal fun compactSegmentTitle(
     val thoughtMs = thoughtDurationMs(segs, fallbackMs = message.thoughtTimeMs)
     val hasThought = segs.any { it.type == "thought" }
     return when {
-        isThinking -> message.thoughtTitle ?: stringResource(R.string.thinking_ellipsis)
-        isTranscribing -> message.thoughtTitle ?: stringResource(R.string.transcription_ellipsis)
+        isThinking -> message.thoughtTitle ?: getString(R.string.thinking_ellipsis)
+        isTranscribing -> message.thoughtTitle ?: getString(R.string.transcription_ellipsis)
         isToolCalling || isToolInProgress ->
             if (segs.any { it.type == "transcription" }) {
                 // Tool-result image transcription streams while the message is TOOL_CALLING;
@@ -120,7 +124,7 @@ internal fun compactSegmentTitle(
                 toolDisplayName(lastSeg)
             }
         hasThought -> thoughtDurationTitle(thoughtMs?.coerceAtLeast(0L) ?: 0L, toolCount)
-        toolCount > 0 -> stringResource(R.string.called_n_tools, toolCount)
+        toolCount > 0 -> getString(R.string.called_n_tools, toolCount)
         segs.any { it.type == "transcription" } -> transcriptionLabel(
             segs,
             segs.indexOfLast { it.type == "transcription" },
@@ -130,24 +134,43 @@ internal fun compactSegmentTitle(
 }
 
 @Composable
+internal fun compactSegmentTitle(
+    segs: List<MessageSegment>,
+    message: ChatMessage,
+    useLiveStatus: Boolean,
+): String = currentResources().compactSegmentTitle(segs, message, useLiveStatus)
+
+/** True while this group's thought is still streaming; only then may a live timer run. */
+internal fun isLiveThinkingGroup(
+    segs: List<MessageSegment>,
+    message: ChatMessage,
+    useLiveStatus: Boolean,
+): Boolean = useLiveStatus &&
+    message.status == MessageStatus.THINKING &&
+    segs.any { it.type == "thought" }
+
+/** A provider-supplied thought title replaces the live timer; the placeholder does not. */
+internal fun Resources.usesDefaultThinkingTitle(message: ChatMessage): Boolean =
+    message.thoughtTitle.isNullOrBlank() ||
+        message.thoughtTitle == getString(R.string.thinking_ellipsis)
+
+@Composable
 internal fun compactSegmentDisplayTitle(
     segs: List<MessageSegment>,
     message: ChatMessage,
     useLiveStatus: Boolean,
 ): String {
-    val isThinking = useLiveStatus &&
-        message.status == MessageStatus.THINKING &&
-        segs.any { it.type == "thought" }
+    val resources = currentResources()
+    val isThinking = isLiveThinkingGroup(segs, message, useLiveStatus)
     val thoughtMs = thoughtDurationMs(segs, fallbackMs = message.thoughtTimeMs)
-    val thinkingPlaceholder = stringResource(R.string.thinking_ellipsis)
-    val usesDefaultThinkingTitle =
-        message.thoughtTitle.isNullOrBlank() || message.thoughtTitle == thinkingPlaceholder
+    // Unknown native duration is not zero and does not authorize a local elapsed-time claim.
+    if (thoughtMs == null) return resources.compactSegmentTitle(segs, message, useLiveStatus)
     val liveThoughtMs by produceState(
-        initialValue = thoughtMs ?: 0L,
+        initialValue = thoughtMs,
         isThinking,
         thoughtMs,
     ) {
-        val baselineMs = thoughtMs ?: 0L
+        val baselineMs = thoughtMs
         value = baselineMs
         if (isThinking) {
             val baselineRealtimeMs = SystemClock.elapsedRealtime()
@@ -157,12 +180,12 @@ internal fun compactSegmentDisplayTitle(
             }
         }
     }
-    return if (isThinking && usesDefaultThinkingTitle) {
-        thinkingDurationBreakdownTitle(
+    return if (isThinking && resources.usesDefaultThinkingTitle(message)) {
+        resources.thinkingDurationBreakdownTitle(
             seconds = (liveThoughtMs / 1_000L).toInt(),
             live = true,
         )
     } else {
-        compactSegmentTitle(segs, message, useLiveStatus)
+        resources.compactSegmentTitle(segs, message, useLiveStatus)
     }
 }
