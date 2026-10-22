@@ -52,6 +52,7 @@ import com.newoether.agora.viewmodel.ChatViewModelFactory
 import com.newoether.agora.viewmodel.ConversationStateRegistry
 import com.newoether.agora.viewmodel.ProviderRegistry
 import com.newoether.agora.viewmodel.ShellConfirmationController
+import com.newoether.agora.util.appLanguageResources
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -526,30 +527,30 @@ class AppContainer(
                 appContext = appContext,
             ),
             customProviders = settingsRepository.customProviders,
-            parseInlineDollarMath = settingsRepository.parseInlineDollarMath,
-            // Shim del presentation block (c6b2c8ef, diferido): el Composer del navegador lee
-            // display.reduceMotion sin optional chaining y crashea sin este evento. El setting
-            // autoWrapCodeBlocks no existe en este fork (upstream 51e955ac) — true es el default
-            // que el frontend aplica cuando el campo falta.
+            // Presentation block real (c6b2c8ef): settings de apariencia + idioma de la app para
+            // que las cards del navegador se titulen como el teléfono. El evento Display que
+            // produce viaja primero (replay=1) porque el frontend lee display.reduceMotion sin
+            // optional chaining. combine admite a lo más cinco flows tipados, así que el math
+            // inline y los switches de apariencia viajan como un Triple anidado.
             display = kotlinx.coroutines.flow.combine(
+                settingsRepository.appLanguage,
                 settingsRepository.toolCallDisplayMode,
                 settingsRepository.thinkingSegmentDisplayMode,
                 settingsRepository.autoExpandActiveGroup,
-                settingsRepository.blurEffectsEnabled,
-                settingsRepository.reduceMotion,
-            ) { toolMode, thinkingMode, autoExpand, blur, reduceMotion ->
-                com.newoether.agora.webui.WebSyncEvent.Display(
+                kotlinx.coroutines.flow.combine(
+                    settingsRepository.parseInlineDollarMath,
+                    settingsRepository.blurEffectsEnabled,
+                    settingsRepository.reduceMotion,
+                ) { inlineMath, blur, reduceMotion -> Triple(inlineMath, blur, reduceMotion) },
+            ) { language, toolMode, thinkingMode, autoExpand, (inlineMath, blur, reduceMotion) ->
+                com.newoether.agora.webui.WebDisplayContext(
+                    resources = appContext.appLanguageResources(language),
                     toolCallDisplayMode = toolMode,
                     thinkingSegmentDisplayMode = thinkingMode,
                     autoExpandActiveGroup = autoExpand,
-                    autoWrapCodeBlocks = true,
+                    parseInlineDollarMath = inlineMath,
                     blurEffectsEnabled = blur,
                     reduceMotion = reduceMotion,
-                    liveThinking = com.newoether.agora.webui.WebLiveTimerStrings(
-                        seconds = appContext.getString(com.newoether.agora.R.string.thinking_for_seconds_ellipsis),
-                        minutes = appContext.getString(com.newoether.agora.R.string.thinking_for_minutes_ellipsis),
-                        hours = appContext.getString(com.newoether.agora.R.string.thinking_for_hours_ellipsis),
-                    ),
                 )
             },
             // Una sesión de navegador por conexión, con el scope de esa conexión.

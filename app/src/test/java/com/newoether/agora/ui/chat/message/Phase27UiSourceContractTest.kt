@@ -48,6 +48,9 @@ class Phase27UiSourceContractTest {
 
         assertTrue(timeline.contains("generationActive: Boolean ="))
         assertTrue(timeline.contains("if (!generationActive) return false"))
+        assertTrue(timeline.contains("): Boolean = generationActive && isCurrentCard"))
+        assertTrue(timeline.contains("): Boolean = generationActive && isCurrentCard && useLiveStatus"))
+        assertTrue(timeline.contains("val cardUsesLiveStatus = compactSegmentUsesLiveStatus("))
         assertTrue(timeline.contains("generationActive = generationActive"))
         // isActive drives the loading indicator and must exclude detached background jobs.
         assertFalse(presentation.contains(

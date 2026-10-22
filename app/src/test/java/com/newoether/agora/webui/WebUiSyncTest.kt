@@ -188,9 +188,11 @@ class WebUiSyncTest {
 
     @Test
     fun listThenOpenSendsTheSavedBranchAfterRecovery() = sync { send, received ->
-        // Adaptación del fork: el event "display" va con el bloque presentation (c6b2c8ef,
-        // diferido); este fork no lo emite, así que el primer batch es solo el list.
         val first = received()
+        // Divergencia del fork: el evento connection (write block) viaja inline antes del display,
+        // que llega en el mismo primer batch con replay=1 — el frontend lo dereferencea sin
+        // optional chaining en cuanto abre el composer.
+        assertTrue(first.any { it.string("type") == "display" })
         val listed = first.single { it.type == "conversations" }
         val items = listed["items"]!!.jsonArray.map { it.jsonObject }
         assertEquals(listOf("a", "b"), items.map { it.string("id") })
@@ -271,8 +273,8 @@ class WebUiSyncTest {
         }
     }
 
-    // Adaptación del fork: el test de appearance va con el bloque presentation (c6b2c8ef,
-    // diferido); sin el event Display no hay nada que observar aquí.
+    // El test dedicado de appearance vive en WebUiMessagePresentationTest: aquí el display es un
+    // mockk relaxed, así que el evento Display solo se verifica por presencia y orden.
 
     private fun sync(
         block: suspend TestScope.(send: suspend (String) -> Unit, received: () -> List<JsonObject>) -> Unit,
@@ -299,7 +301,15 @@ class WebUiSyncTest {
         executionCoordinator = ConversationExecutionCoordinator(),
         hydration = hydration,
         customProviders = MutableStateFlow(emptyList()),
-        parseInlineDollarMath = MutableStateFlow(false),
+        display = flowOf(
+            WebDisplayContext(
+                resources = mockk(relaxed = true),
+                toolCallDisplayMode = ToolCallDisplayModes.DEFAULT,
+                thinkingSegmentDisplayMode = ThinkingSegmentDisplayModes.DEFAULT,
+                autoExpandActiveGroup = true,
+                parseInlineDollarMath = false,
+            ),
+        ),
         openChatSession = { session },
         projectionDispatcher = dispatcher,
     )

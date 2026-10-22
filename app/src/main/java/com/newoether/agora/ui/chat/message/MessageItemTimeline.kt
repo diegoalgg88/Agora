@@ -61,7 +61,7 @@ private fun StartAnchoredHorizontalOverflowHost(
     content = content,
 )
 
-private enum class CompactSegmentIcon {
+internal enum class CompactSegmentIcon {
     LOADING,
     THINKING,
     TOOL,
@@ -95,6 +95,43 @@ internal fun compactSegmentShowsLoading(
     generationActive: Boolean,
     isCurrentCard: Boolean,
 ): Boolean = hasActiveContent || (generationActive && isCurrentCard)
+
+/** Only the current card of an active generation shows live titles. */
+internal fun compactSegmentUsesLiveStatus(
+    generationActive: Boolean,
+    isCurrentCard: Boolean,
+    useLiveStatus: Boolean,
+): Boolean = generationActive && isCurrentCard && useLiveStatus
+
+/**
+ * El ícono del header colapsado; [collapsedTitle] es el título que el header muestra.
+ * [hasActiveContent] viene de [compactSegmentHasActiveContent]: este fork distingue contenido
+ * activo real de la mera tarjeta en curso a la hora de decidir el spinner.
+ */
+internal fun compactSegmentIcon(
+    segs: List<MessageSegment>,
+    message: ChatMessage,
+    generationActive: Boolean,
+    isCurrentCard: Boolean,
+    hasActiveContent: Boolean,
+    cardUsesLiveStatus: Boolean,
+    collapsedTitle: String,
+): CompactSegmentIcon {
+    val isThinking = cardUsesLiveStatus &&
+        message.status == MessageStatus.THINKING &&
+        segs.any { it.type == "thought" }
+    val isTranscribing = cardUsesLiveStatus && message.status == MessageStatus.TRANSCRIBING
+    val toolCount = segs.count { it.type == "tool" }
+    val thoughtMs = thoughtDurationMs(segs, fallbackMs = message.thoughtTimeMs)
+    val hasThought = thoughtMs != null && thoughtMs > 0
+    return when {
+        compactSegmentShowsLoading(hasActiveContent, generationActive, isCurrentCard) ->
+            CompactSegmentIcon.LOADING
+        !isThinking && !hasThought && toolCount > 0 -> CompactSegmentIcon.TOOL
+        isTranscribing || collapsedTitle == "Image Transcription" -> CompactSegmentIcon.IMAGE
+        else -> CompactSegmentIcon.THINKING
+    }
+}
 
 @Composable
 internal fun CompactSegmentBlock(
@@ -196,10 +233,10 @@ internal fun CompactSegmentBlock(
             expandedStates[expansionKey] = targetExpanded
         }
     }
-    val isThinking = useLiveStatus &&
+    val cardUsesLiveStatus = compactSegmentUsesLiveStatus(generationActive, isCurrentCard, useLiveStatus)
+    val isThinking = cardUsesLiveStatus &&
         message.status == MessageStatus.THINKING &&
         segs.any { it.type == "thought" }
-    val isTranscribing = useLiveStatus && message.status == MessageStatus.TRANSCRIBING
     val toolCount = segs.count { it.type == "tool" }
     val thoughtMs = thoughtDurationMs(segs, fallbackMs = message.thoughtTimeMs)
     val hasThought = thoughtMs != null && thoughtMs > 0
@@ -209,23 +246,25 @@ internal fun CompactSegmentBlock(
         useLiveStatus = useLiveStatus,
         generationActive = generationActive,
     )
-    val showLoading = compactSegmentShowsLoading(cardHasActiveContent, generationActive, isCurrentCard)
     val baseCollapsedTitle = compactSegmentDisplayTitle(
         segs = segs,
         message = message,
-        useLiveStatus = useLiveStatus,
+        useLiveStatus = cardUsesLiveStatus,
     )
     val collapsedTitle = if (!isThinking && !hasThought && toolCount > 1) {
         "$toolCount Tools Ã‚Â· $baseCollapsedTitle"
     } else {
         baseCollapsedTitle
     }
-    val collapsedIcon = when {
-        showLoading -> CompactSegmentIcon.LOADING
-        !isThinking && !hasThought && toolCount > 0 -> CompactSegmentIcon.TOOL
-        isTranscribing || collapsedTitle == "Image Transcription" -> CompactSegmentIcon.IMAGE
-        else -> CompactSegmentIcon.THINKING
-    }
+    val collapsedIcon = compactSegmentIcon(
+        segs = segs,
+        message = message,
+        generationActive = generationActive,
+        isCurrentCard = isCurrentCard,
+        hasActiveContent = cardHasActiveContent,
+        cardUsesLiveStatus = cardUsesLiveStatus,
+        collapsedTitle = collapsedTitle,
+    )
     val expansionTransition = updateTransition(
         targetState = isExpanded,
         label = "compactSegmentExpansion",

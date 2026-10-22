@@ -59,7 +59,7 @@ class Phase24UiSourceContractTest {
             "toolCount > 0 -> getString(R.string.called_n_tools, toolCount)"
         ))
         val compactBlock = timeline
-            .substringAfter("internal fun CompactSegmentBlock(")
+            .substringAfter("internal fun compactSegmentIcon(")
             .substringBefore("internal fun retainExpandedLayoutDuringFade(")
         val allToolSegmentCount = "val toolCount = segs.count { it.type == \"tool\" }"
         assertTrue(terminalTitle.contains(allToolSegmentCount))

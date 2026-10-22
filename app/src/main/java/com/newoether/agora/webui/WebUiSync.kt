@@ -68,13 +68,12 @@ internal class WebUiSync(
     private val executionCoordinator: ConversationExecutionCoordinator,
     private val hydration: ConversationMessagePayloadHydration,
     private val customProviders: StateFlow<List<CustomProviderConfig>>,
-    private val parseInlineDollarMath: StateFlow<Boolean>,
     /**
-     * Contexto de visualización del navegador (shim del presentation block c6b2c8ef). Vacío en
-     * tests; producción lo pasa desde AppContainer — sin este evento el Composer del frontend
-     * crashea leyendo display.reduceMotion (shell.js:440, sin optional chaining).
+     * Contexto de visualización del navegador: settings de apariencia + idioma de la app. El
+     * evento Display viaja primero y con replay=1: el Composer del frontend lee
+     * display.reduceMotion sin optional chaining (shell.js:440) y crashea si aún no llegó.
      */
-    private val display: Flow<WebSyncEvent.Display> = emptyFlow(),
+    private val display: Flow<WebDisplayContext> = emptyFlow(),
     /** Construye el [WebUiChatSession] de una conexión con el scope de esa conexión. */
     private val openChatSession: (CoroutineScope) -> WebUiChatSession,
     private val projectionDispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -111,11 +110,9 @@ internal class WebUiSync(
             // lento frena a los productores en vez de inflar una cola.
             val outbound = Channel<WebSyncEvent>()
             launch { for (event in outbound) send(json.encodeToString(WebSyncEvent.serializer(), event)) }
-            // El display va primero y con replay=1: el Composer del navegador lee
-            // display.reduceMotion sin optional chaining y crashea si aún no llegó.
             val displayContext = display.distinctUntilChanged()
                 .shareIn(this, SharingStarted.Eagerly, replay = 1)
-            launch { displayContext.collect { outbound.send(it) } }
+            launch { displayContext.collect { outbound.send(it.toEvent()) } }
             val session = openChatSession(this)
             val list = combine(
                 conversations.getAllConversations(),
@@ -198,7 +195,7 @@ internal class WebUiSync(
                                     }.distinctUntilChanged().collect { outbound.send(it) }
                             }
                             target.conversationId?.let { id ->
-                                openConversation(id, list.map { it.first }, watched, outbound)
+                                openConversation(id, list.map { it.first }, watched, displayContext, outbound)
                             }
                         }
                     }
@@ -243,6 +240,7 @@ internal class WebUiSync(
         id: String,
         list: Flow<List<ChatConversation>>,
         watched: StateFlow<Set<String>>,
+        display: Flow<WebDisplayContext>,
         outbound: SendChannel<WebSyncEvent>,
     ) {
         // La web solo puede abrir lo que su lista mostró; una fila que ya no existe fue borrada.
@@ -252,7 +250,7 @@ internal class WebUiSync(
         }
         // Un fallo en cualquier collector termina solo esta conversación, jamás la conexión.
         try {
-            coroutineScope { observeConversation(id, list, watched, outbound) }
+            coroutineScope { observeConversation(id, list, watched, display, outbound) }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -265,6 +263,7 @@ internal class WebUiSync(
         id: String,
         list: Flow<List<ChatConversation>>,
         watched: StateFlow<Set<String>>,
+        display: Flow<WebDisplayContext>,
         outbound: SendChannel<WebSyncEvent>,
     ) {
         executionCoordinator.tryWithConversationLock(id) {
@@ -304,10 +303,13 @@ internal class WebUiSync(
             state.generationSnapshot
                 .map { it.streamingMessage }
                 .distinctUntilChanged()
-                .mapLatest { message -> message?.let { project(it) } }
+                .combine(display) { message, context -> message to context }
+                .mapLatest { (message, context) ->
+                    message?.let { project(it, isStreaming = true, context) }
+                }
                 .collect { outbound.send(WebSyncEvent.Streaming(id, it)) }
         }
-        launch { servePayloads(id, watched, pathIds, outbound) }
+        launch { servePayloads(id, watched, pathIds, display, outbound) }
     }
 
     /** Una suscripción de payload por fila observada; solo filas del path actual se sirven. */
@@ -315,6 +317,7 @@ internal class WebUiSync(
         conversationId: String,
         watched: StateFlow<Set<String>>,
         pathIds: StateFlow<Set<String>>,
+        display: Flow<WebDisplayContext>,
         outbound: SendChannel<WebSyncEvent>,
     ) = coroutineScope {
         val jobs = mutableMapOf<String, Job>()
@@ -326,9 +329,15 @@ internal class WebUiSync(
                     jobs[messageId] = launch {
                         hydration.observeMessage(messageId) { it.forDisplay(customProviders.value) }
                             .distinctUntilChanged()
-                            .collect { message ->
+                            .combine(display) { message, context -> message to context }
+                            .collect { (message, context) ->
                                 if (message != null) {
-                                    outbound.send(WebSyncEvent.Payload(conversationId, project(message)))
+                                    outbound.send(
+                                        WebSyncEvent.Payload(
+                                            conversationId,
+                                            project(message, isStreaming = false, context),
+                                        ),
+                                    )
                                 }
                             }
                     }
@@ -336,10 +345,14 @@ internal class WebUiSync(
             }
     }
 
-    private suspend fun project(message: ChatMessage): WebMessage =
-        withContext(projectionDispatcher) {
-            message.forDisplay(customProviders.value).toWeb(parseInlineDollarMath.value)
-        }
+    private suspend fun project(
+        message: ChatMessage,
+        isStreaming: Boolean,
+        display: WebDisplayContext,
+    ): WebMessage = withContext(projectionDispatcher) {
+        val shown = message.forDisplay(customProviders.value)
+        shown.toWeb(display.parseInlineDollarMath, webPresentation(shown, isStreaming, display))
+    }
 
     companion object {
         private const val TAG = "WebUiSync"
@@ -412,7 +425,7 @@ private fun ChatMessage.toWebPathEntry() = WebPathEntry(
     status = status.name,
 )
 
-private fun ChatMessage.toWeb(inlineDollarMath: Boolean) = WebMessage(
+private fun ChatMessage.toWeb(inlineDollarMath: Boolean, presentation: WebPresentation?) = WebMessage(
     id = id,
     parentId = parentId,
     participant = participant.name,
@@ -425,13 +438,7 @@ private fun ChatMessage.toWeb(inlineDollarMath: Boolean) = WebMessage(
     thoughtTitle = thoughtTitle,
     thoughtTimeMs = thoughtTimeMs,
     segments = segments.orEmpty().map { it.toWeb(inlineDollarMath) },
-    // Shim: el frontend a18eb53e solo pinta el cuerpo del modelo desde presentation.answer
-    // (messages.js ModelMessage). Sin el presentation block completo, el fallback usaTimeline=false
-    // renderiza answer como Markdown directo.
-    presentation = if (participant == Participant.USER) null else WebPresentation(
-        useTimeline = false,
-        answer = text.toWebText(inlineDollarMath),
-    ),
+    presentation = presentation,
 )
 
 private fun MessageSegment.toWeb(inlineDollarMath: Boolean) = WebSegment(
@@ -535,14 +542,6 @@ internal sealed interface WebSyncEvent {
     ) : WebSyncEvent
 }
 
-/** Plantillas de los timers de thinking; el navegador formatea los segundos corriendo. */
-@Serializable
-internal data class WebLiveTimerStrings(
-    val seconds: String,
-    val minutes: String,
-    val hours: String,
-)
-
 @Serializable
 internal data class WebConversation(
     val id: String,
@@ -572,23 +571,8 @@ internal data class WebMessage(
     val thoughtTitle: String?,
     val thoughtTimeMs: Long?,
     val segments: List<WebSegment>,
-    /**
-     * Shim de presentación del bloque upstream c6b2c8ef (diferido): el frontend exige este
-     * campo para pintar el cuerpo del modelo. Con `useTimeline=false` consume solo [answer]
-     * como Markdown directo; timeline/blocks/compact llegarán con el presentation block.
-     */
+    /** Cómo la app acomoda un mensaje del modelo; null para mensajes del usuario. */
     val presentation: WebPresentation? = null,
-)
-
-/**
- * Presentación mínima que satisface el contrato del frontend a18eb53e sin el modelo completo
- * de bloques (upstream c6b2c8ef): `presentation?.useTimeline` falso toma el fallback que
- * renderiza `answer` con el componente Markdown; `compact`/`blocks` ausentes se saltan.
- */
-@Serializable
-internal data class WebPresentation(
-    val useTimeline: Boolean = false,
-    val answer: WebText? = null,
 )
 
 @Serializable
