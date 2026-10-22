@@ -350,10 +350,23 @@ internal fun AssistantMessageContent(
                 Offset(available.x, 0f)
         }
     }
-    val segmentsOrNull = message.segments
-    val mergedSegments = remember(segmentsOrNull) {
-        mergeAdjacentSegments(segmentsOrNull.orEmpty())
+    val failedToGenerateText = stringResource(R.string.failed_to_generate)
+    val presentation = remember(
+        message,
+        isStreaming,
+        toolCallDisplayMode,
+        thinkingSegmentDisplayMode,
+        failedToGenerateText,
+    ) {
+        assistantContentPresentation(
+            message = message,
+            isStreaming = isStreaming,
+            toolCallDisplayMode = toolCallDisplayMode,
+            thinkingSegmentDisplayMode = thinkingSegmentDisplayMode,
+            failedToGenerateText = failedToGenerateText,
+        )
     }
+    val mergedSegments = presentation.mergedSegments
     val answerTextDeltas = remember(mergedSegments) {
         mergedSegments
             .filter { it.isVisibleAnswerSegment() }
@@ -361,16 +374,8 @@ internal fun AssistantMessageContent(
     }
     val answerFadeTracker =
         segmentAppearanceRegistry.streamingFadeTracker("${message.id}:answer")
-    val generationActive = message.participant == Participant.MODEL &&
-        (
-            isStreaming ||
-                message.status == MessageStatus.SENDING ||
-                message.status == MessageStatus.THINKING ||
-                message.status == MessageStatus.TOOL_CALLING ||
-                message.status == MessageStatus.TRANSCRIBING
-        )
-    val hasAnswerContent =
-        message.text.isNotBlank() || mergedSegments.any { it.isVisibleAnswerSegment() }
+    val generationActive = presentation.generationActive
+    val hasAnswerContent = presentation.hasAnswerContent
     val inlineActivityPresentation = assistantInlineActivityPresentation(
         generationActive = generationActive,
         isStopping = isStopping,
@@ -407,73 +412,21 @@ internal fun AssistantMessageContent(
             val renderedText = message.text
 
             Column {
-                val isError = message.status == MessageStatus.ERROR || message.participant == Participant.ERROR
 
                 // Only zero out thought height when legacy thought block is not shown
                 if (message.segments != null || message.thoughts.isNullOrBlank()) {
                     setThoughtBlockHeight(0)
                 }
 
-                val failedToGenerateText = stringResource(R.string.failed_to_generate)
-                val errorContent = remember(
-                    message.text,
-                    message.status,
-                    message.participant,
-                    message.modelName,
-                    mergedSegments,
-                    failedToGenerateText,
-                ) {
-                    assistantErrorContent(message, mergedSegments, failedToGenerateText)
-                }
-                val hasImageGenerationBoundary =
-                    mergedSegments.any { it.isImageGenerationSegment() }
-                val orderedFallbackAnswerText =
-                    if (
-                        hasImageGenerationBoundary &&
-                        mergedSegments.none { it.isVisibleAnswerSegment() }
-                    ) {
-                        errorContent?.answerText ?: renderedText.takeIf { !isError }
-                    } else {
-                        null
-                    }
-                val orderedSegments = remember(mergedSegments, orderedFallbackAnswerText) {
-                    orderedFallbackAnswerText
-                        ?.takeIf { it.isNotBlank() }
-                        ?.let { fallback ->
-                            mergedSegments + MessageSegment(type = "answer", content = fallback)
-                        }
-                        ?: mergedSegments
-                }
-                val normalizedToolCallDisplayMode = ToolCallDisplayModes.normalize(toolCallDisplayMode)
-                val useThinkingSheet =
-                    ThinkingSegmentDisplayModes.effectiveMode(
-                        thinkingSegmentDisplayMode,
-                        normalizedToolCallDisplayMode,
-                    ) == ThinkingSegmentDisplayModes.BOTTOM_SHEET
-                val groupAdjacentTimelineTools = normalizedToolCallDisplayMode == ToolCallDisplayModes.GROUPED_TIMELINE
-                val groupOrderedInfoBlocks =
-                    groupAdjacentTimelineTools ||
-                        (
-                            hasImageGenerationBoundary &&
-                                normalizedToolCallDisplayMode != ToolCallDisplayModes.TIMELINE
-                            )
-                val useTimelineSegments =
-                    hasImageGenerationBoundary ||
-                        (
-                            !useThinkingSheet &&
-                                normalizedToolCallDisplayMode != ToolCallDisplayModes.COMPACT &&
-                                (
-                                    mergedSegments.any { it.type == "answer" } ||
-                                        (
-                                            groupAdjacentTimelineTools &&
-                                                mergedSegments.any { it.isInfoSegment() }
-                                            )
-                                    )
-                            )
-                val detailSegments = remember(mergedSegments) {
-                    mergedSegments.filter { it.type != "answer" && it.type != "error" }
-                }
-                val compactVisible = !useTimelineSegments && detailSegments.isNotEmpty()
+                val errorContent = presentation.errorContent
+                val orderedSegments = presentation.orderedSegments
+                val normalizedToolCallDisplayMode = presentation.normalizedToolCallDisplayMode
+                val useThinkingSheet = presentation.useThinkingSheet
+                val groupAdjacentTimelineTools = presentation.groupAdjacentTimelineTools
+                val groupOrderedInfoBlocks = presentation.groupOrderedInfoBlocks
+                val useTimelineSegments = presentation.useTimelineSegments
+                val detailSegments = presentation.detailSegments
+                val compactVisible = presentation.compactVisible
                 val sheetCollapsedStates = remember(message.id) {
                     mutableStateMapOf<String, Boolean>()
                 }
@@ -579,7 +532,7 @@ internal fun AssistantMessageContent(
                     }
                 }
 
-                val answerBodyText = errorContent?.answerText ?: renderedText.takeIf { !isError }
+                val answerBodyText = presentation.answerBodyText
                 val answerProjection = remember(answerBodyText, citations, isStreaming) {
                     citationMarkdownProjection(
                         answerText = answerBodyText.orEmpty(),
@@ -588,25 +541,13 @@ internal fun AssistantMessageContent(
                     )
                 }
                 val answerContent = answerProjection?.markdown ?: answerBodyText.orEmpty()
-                val lastVisibleTerminalPredecessor = if (useTimelineSegments) {
-                    mergedSegments.lastOrNull { segment ->
-                        segment.isVisibleAnswerSegment() || segment.isInfoSegment()
-                    }
-                } else {
-                    null
-                }
-                val terminalImmediatelyFollowsCard = if (useTimelineSegments) {
-                    lastVisibleTerminalPredecessor?.isInfoSegment() == true
-                } else {
-                    compactVisible && answerContent.isEmpty()
-                }
-                val inlineTerminalText = when {
-                    hasAnswerContent -> null
-                    errorContent != null -> errorContent.errorText
-                    !isStreaming && message.status == MessageStatus.STOPPED ->
-                        stringResource(R.string.generation_stopped)
-                    else -> null
-                }
+                val terminalImmediatelyFollowsCard =
+                    presentation.terminalImmediatelyFollowsCard(answerContent)
+                val inlineTerminalText = presentation.inlineTerminalText(
+                    message = message,
+                    isStreaming = isStreaming,
+                    stoppedText = stringResource(R.string.generation_stopped),
+                )
                 if (message.participant == Participant.MODEL) {
                     AssistantInlineActivity(
                         mode = inlineActivityMode,
@@ -685,7 +626,7 @@ internal fun AssistantMessageContent(
                     }
                 }
                 AnimatedVisibility(
-                    visible = hasAnswerContent && errorContent != null,
+                    visible = presentation.showsErrorBar,
                     enter = fadeIn(tween(durationMillis = 180, easing = LinearEasing)),
                     exit = fadeOut(tween(durationMillis = 180, easing = LinearEasing)),
                 ) {
@@ -698,8 +639,7 @@ internal fun AssistantMessageContent(
                     )
                 }
                 AnimatedVisibility(
-                    visible = hasAnswerContent && !isStreaming &&
-                        message.status == MessageStatus.STOPPED,
+                    visible = presentation.showsStoppedBar(message, isStreaming),
                     enter = fadeIn(tween(durationMillis = 180, easing = LinearEasing)),
                     exit = fadeOut(tween(durationMillis = 180, easing = LinearEasing)),
                 ) {

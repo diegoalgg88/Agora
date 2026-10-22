@@ -29,7 +29,10 @@ class ExperimentalGenerationUiSourceContractTest {
         assertTrue(assistant.contains("fadeOut(tween(durationMillis = 180"))
         assertTrue(assistant.contains("errorText = errorContent?.errorText ?: retainedErrorText"))
         assertTrue(assistant.contains("precededByCard = terminalImmediatelyFollowsCard"))
-        assertTrue(assistant.contains("lastVisibleTerminalPredecessor"))
+        assertTrue(
+            source(root, "message/AssistantMessagePresentation.kt")
+                .contains("lastVisibleTerminalPredecessor"),
+        )
         assertTrue(terminalBar.contains("precededByCard: Boolean = false"))
         assertTrue(terminalBar.contains("if (precededByCard) 12.dp else 8.dp"))
         assertTrue(terminalBar.contains("if (precededByCard) 12.dp"))
@@ -101,7 +104,8 @@ class ExperimentalGenerationUiSourceContractTest {
     fun `Thinking card uses compact chrome one trailing rotating arrow and synchronized motion`() {
         val root = locateMainSourceRoot()
         val timeline = source(root, "message/MessageItemTimeline.kt") +
-            source(root, "message/TimelineSegmentsContent.kt")
+            source(root, "message/TimelineSegmentsContent.kt") +
+            source(root, "message/AssistantMessagePresentation.kt")
         val assistant = source(root, "message/AssistantMessageContent.kt")
         val presentation = source(root, "message/ThinkingSegmentPresentation.kt")
         val mutedText = source(root, "message/StreamingMutedText.kt")
@@ -175,7 +179,8 @@ class ExperimentalGenerationUiSourceContractTest {
     fun `Timeline and Thinking sheet rows reuse grouping while keeping their own outer insets`() {
         val root = locateMainSourceRoot()
         val timeline = source(root, "message/MessageItemTimeline.kt") +
-            source(root, "message/TimelineSegmentsContent.kt")
+            source(root, "message/TimelineSegmentsContent.kt") +
+            source(root, "message/AssistantMessagePresentation.kt")
         val detail = source(root, "message/SegmentDetailSheet.kt")
         val segments = source(root, "message/MessageItemSegments.kt")
 
@@ -208,7 +213,8 @@ class ExperimentalGenerationUiSourceContractTest {
     fun `Thinking sheet matches Settings chrome and uses primary card icons`() {
         val root = locateMainSourceRoot()
         val timeline = source(root, "message/MessageItemTimeline.kt") +
-            source(root, "message/TimelineSegmentsContent.kt")
+            source(root, "message/TimelineSegmentsContent.kt") +
+            source(root, "message/AssistantMessagePresentation.kt")
         val detail = source(root, "message/SegmentDetailSheet.kt")
         val presentation = source(root, "message/ThinkingSegmentPresentation.kt")
         val sharedBackButton = File(

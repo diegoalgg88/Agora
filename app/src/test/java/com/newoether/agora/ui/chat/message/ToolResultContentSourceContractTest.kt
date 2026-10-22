@@ -76,8 +76,9 @@ class ToolResultContentSourceContractTest {
     fun `Generated image thumbnail keeps ordered fixed lifecycle presentation`() {
         val root = locateMainSourceRoot()
         val source = source(root, "ToolResultContent.kt")
+        val presentation = source(root, "AssistantMessagePresentation.kt")
         val timeline = source(root, "MessageItemTimeline.kt") +
-            source(root, "TimelineSegmentsContent.kt")
+            source(root, "TimelineSegmentsContent.kt") + presentation
         val assistant = source(root, "AssistantMessageContent.kt")
         val detailSheet = source(root, "SegmentDetailSheet.kt")
         val thumbnail = source
@@ -174,7 +175,7 @@ class ToolResultContentSourceContractTest {
         assertTrue(timeline.contains("preserveInitialCompactIdentity"))
         assertTrue(timeline.contains("expansionKey = if (useInitialCompactIdentity)"))
         assertTrue(timeline.contains("compactSegmentBlockAppearanceKey(message.id)"))
-        assertTrue(timeline.contains("collapseForImageBoundary = imageBoundary != null"))
+        assertTrue(timeline.contains("collapseForImageBoundary = block.imageBoundary != null"))
         assertTrue(timeline.contains("GENERATED_IMAGE_BOUNDARY_GAP_DP = 8"))
         assertTrue(timeline.contains("if (collapseForImageBoundary) {"))
         assertTrue(timeline.contains("GENERATED_IMAGE_BOUNDARY_GAP_DP.dp"))
@@ -192,9 +193,9 @@ class ToolResultContentSourceContractTest {
         assertTrue(timeline.contains("(onGroupHeaderClick ?: onSegmentClick)(blockDetailIndices)"))
         assertTrue(timeline.contains("GeneratedImageThumbnail("))
         assertTrue(timeline.contains("onMediaClick = onMediaClick"))
-        assertTrue(assistant.contains("val hasImageGenerationBoundary ="))
-        assertTrue(assistant.contains("hasImageGenerationBoundary &&\n                        mergedSegments.none"))
-        assertTrue(assistant.contains("useTimelineSegments =\n                    hasImageGenerationBoundary ||"))
+        assertTrue(presentation.contains("val hasImageGenerationBoundary ="))
+        assertTrue(presentation.contains("hasImageGenerationBoundary && mergedSegments.none"))
+        assertTrue(presentation.contains("useTimelineSegments = hasImageGenerationBoundary ||"))
         assertTrue(assistant.contains("message.images.isNotEmpty()"))
     }
 
