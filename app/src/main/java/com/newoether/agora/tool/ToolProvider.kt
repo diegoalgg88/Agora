@@ -71,6 +71,13 @@ interface ToolProvider {
      *  Returns the result string (usually JSON). */
     suspend fun execute(name: String, arguments: String, ctx: GenerationContext): String
 
+    /** Resultado one-shot con metadata; un texto exitoso arbitrario no implica error. */
+    suspend fun executeOneShotResult(
+        name: String,
+        arguments: String,
+        ctx: GenerationContext,
+    ): ToolExecutionResult = ToolExecutionResult(execute(name, arguments, ctx))
+
     /**
      * Streaming execution contract. One-shot providers inherit the adapter; streaming providers
      * emit progress/deltas and finish with exactly one [ToolExecutionEvent.Completed].
@@ -80,7 +87,7 @@ interface ToolProvider {
         arguments: String,
         ctx: GenerationContext,
     ): Flow<ToolExecutionEvent> = flow {
-        emit(ToolExecutionEvent.Completed(ToolExecutionResult(execute(name, arguments, ctx))))
+        emit(ToolExecutionEvent.Completed(executeOneShotResult(name, arguments, ctx)))
     }
 
     /** Whether this provider can execute the given tool name. */

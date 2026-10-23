@@ -167,6 +167,8 @@ class ConversationForkShareService(
         val forkConversation = ChatEntity(
             id = newConversationId,
             title = source.title,
+            // La lista Todo pertenece a la conversación: el fork la hereda.
+            todoJson = source.todoJson,
             selectedBranchesJson = explicitMessageSelections.encodeSelections(),
             systemPromptId = source.systemPromptId,
             modelId = source.modelId,

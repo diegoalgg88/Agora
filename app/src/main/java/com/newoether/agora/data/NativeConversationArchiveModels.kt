@@ -33,6 +33,8 @@ internal data class NativeExportChatEntity(
     val hasUnreadGeneration: Boolean = false,
     /** Conversación pineada (sección Pinned del drawer); se exporta y restaura. */
     val isPinned: Boolean = false,
+    /** Última lista Todo de la conversación; null = sin lista. */
+    val todoJson: String? = null,
 )
 
 @Serializable

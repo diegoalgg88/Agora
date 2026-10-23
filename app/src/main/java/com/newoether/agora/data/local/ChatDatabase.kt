@@ -74,7 +74,7 @@ abstract class ChatDatabase : RoomDatabase() {
     abstract fun localModelDownloadDao(): LocalModelDownloadDao
 
     companion object {
-        const val CURRENT_VERSION = 43
+        const val CURRENT_VERSION = 44
         const val DB_NAME = "agora_db"
 
         val ALL_MIGRATIONS = listOf(
@@ -230,6 +230,12 @@ abstract class ChatDatabase : RoomDatabase() {
             MIGRATION_40_41,
             MIGRATION_41_42,
             MIGRATION_42_43,
+            // Conversación-own todo capsules (upstream 19161280, renumerado del 36→37 al fork v43→v44).
+            object : Migration(43, 44) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE conversations ADD COLUMN todoJson TEXT")
+                }
+            },
         )
 
         fun inspectCompatibility(context: Context): DatabaseCompatibility {

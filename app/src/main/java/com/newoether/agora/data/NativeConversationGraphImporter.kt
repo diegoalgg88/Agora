@@ -228,6 +228,10 @@ internal class NativeConversationGraphImporter(
                     hasUnreadGeneration = false,
                     // Pin es preferencia de usuario y viaja con el contenido.
                     isPinned = conversation.isPinned,
+                    // El todo viaja con el contenido; re-encode valida y normaliza el payload.
+                    todoJson = com.newoether.agora.model.ConversationTodo.encode(
+                        com.newoether.agora.model.ConversationTodo.decode(conversation.todoJson),
+                    ),
                 ),
                 availableTaskIds,
             )
@@ -729,6 +733,8 @@ internal class NativeConversationGraphImporter(
         val hasUnreadGeneration: Boolean = false,
         /** Conversación pineada; viaja con el contenido en archives v5+. */
         val isPinned: Boolean = false,
+        /** Última lista Todo de la conversación; null = sin lista. */
+        val todoJson: String? = null,
     )
 
     @Serializable

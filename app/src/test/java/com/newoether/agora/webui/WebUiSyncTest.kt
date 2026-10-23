@@ -3,6 +3,7 @@
 import com.newoether.agora.automation.ConversationExecutionCoordinator
 import com.newoether.agora.data.local.MessageContextTopology
 import com.newoether.agora.data.repository.ConversationRepository
+import com.newoether.agora.data.repository.observeConversationTodo
 import com.newoether.agora.model.ChatConversation
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageStatus
@@ -84,6 +85,10 @@ class WebUiSyncTest {
             list.map { rows -> rows.find { it.id == id } }
         }
         coEvery { setConversationPinned(any(), any()) } returns true
+        // El stub del DAO crudo: la extensión observeConversationTodo decodifica encima.
+        every { chatDao } returns mockk<com.newoether.agora.data.local.ChatDao> {
+            every { observeConversationTodo(any()) } returns MutableStateFlow<String?>(null)
+        }
         every { observeMessageTopology("a") } returns topology
         coEvery { recoverConversationRuntime(any(), any()) } returns 0
     }

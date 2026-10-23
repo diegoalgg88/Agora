@@ -4,6 +4,7 @@ import com.newoether.agora.automation.ConversationExecutionCoordinator
 import com.newoether.agora.data.CustomProviderConfig
 import com.newoether.agora.data.forDisplay
 import com.newoether.agora.data.repository.ConversationRepository
+import com.newoether.agora.data.repository.observeConversationTodo
 import com.newoether.agora.model.ChatConversation
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.MessageSegment
@@ -203,6 +204,17 @@ internal class WebUiSync(
                             outbound.send(WebSyncEvent.Opened(target.conversationId, target.browserSeq))
                         }
                         coroutineScope {
+                            // El todo pertenece al target: solo esa conversación se observa y su
+                            // secuencia viaja para que el navegador descarte la del target viejo.
+                            launch {
+                                if (target.conversationId == null) {
+                                    outbound.send(WebSyncEvent.Todo(null, target.browserSeq, emptyList()))
+                                } else {
+                                    conversations.observeConversationTodo(target.conversationId).collect {
+                                        outbound.send(WebSyncEvent.Todo(target.conversationId, target.browserSeq, it))
+                                    }
+                                }
+                            }
                             launch {
                                 session.composerState
                                     .filter { it.conversationId == target.conversationId && it.seq == target.browserSeq }
@@ -865,6 +877,14 @@ internal sealed interface WebSyncEvent {
         val searching: Boolean,
         val items: List<JsonObject> = emptyList(),
         val failed: Boolean = false,
+    ) : WebSyncEvent
+
+    /** Todo de la conversación abierta; null en la lista significa que no hay lista. */
+    @Serializable @SerialName("todo")
+    data class Todo(
+        val conversationId: String?,
+        val seq: Long,
+        val items: List<com.newoether.agora.model.ConversationTodoItem>,
     ) : WebSyncEvent
 
     @Serializable @SerialName("scroll_to_bottom")

@@ -61,6 +61,10 @@ data class GenerationConfig(
 
 data class GenerationContext(
     val conversationId: String? = null,
+    /** Los tools de todo solo corren en conversaciones reales, nunca en compacts. */
+    val todoEnabled: Boolean = true,
+    /** Lo provee solo el executor autorizado, jamás los argumentos del Provider. */
+    val toolEffectIdentity: com.newoether.agora.model.RunEffectIdentity? = null,
     val accessSavedMemories: Boolean = true,
     val accessActiveMemory: Boolean = true,
     /** Habilita el tool ask_user: el modelo puede pausar y preguntar al usuario. */

@@ -131,6 +131,8 @@ data class ChatEntity(
     val hasUnreadGeneration: Boolean = false,
     /** Conversación pineada: encabeza la sección Pinned del drawer, recent-first dentro del grupo. */
     @ColumnInfo(defaultValue = "0") val isPinned: Boolean = false,
+    /** Última lista Todo de la conversación; null significa que no hay lista. */
+    val todoJson: String? = null,
 )
 
 /** A saved automation: a prompt + schedule that fans out a fresh conversation on each run. */

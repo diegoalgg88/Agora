@@ -42,6 +42,7 @@ interface ChatDao :
     ChatExportImportDao,
     ChatDraftDao,
     ChatModelReferenceDao,
+    ChatTodoDao,
     ChatAutomationDao,
     ChatContextCompactDao,
     ChatProviderContextDao,
