@@ -20,6 +20,14 @@ private fun decodeSelectionMap(raw: String?): MutableMap<String?, String> =
 private fun encodeSelectionMap(selections: Map<String?, String>): String =
     Json.encodeToString(selections.mapKeys { it.key ?: "null" })
 
+/** Solo las columnas que pinta la navegación; sin payloads owned por conversaciones. */
+data class DrawerConversationRow(
+    val id: String,
+    val title: String,
+    val hasUnreadGeneration: Boolean,
+    val isPinned: Boolean,
+)
+
 /**
  * Core conversation/message/Run CRUD and primary queries inherited by [ChatDao].
  *
@@ -29,6 +37,11 @@ private fun encodeSelectionMap(selections: Map<String?, String>): String =
 interface ChatCoreDao : ChatModelReferenceDao {
     @Query("SELECT id, title, systemPromptId, modelId, taskId, origin, graduated, hasUnreadGeneration, isPinned, selectedBranchesJson FROM conversations WHERE taskId IS NULL ORDER BY lastUpdated DESC")
     fun getAllConversations(): Flow<List<ChatConversation>>
+
+    @Query("SELECT id, title, hasUnreadGeneration, isPinned FROM conversations WHERE taskId IS NULL ORDER BY isPinned DESC, lastUpdated DESC, id LIMIT :limit")
+    fun observeDrawerConversations(limit: Int): Flow<List<DrawerConversationRow>>
+    @Query("SELECT id, title, hasUnreadGeneration, isPinned FROM conversations WHERE taskId IS NULL AND id IN (:ids)")
+    suspend fun getDrawerConversations(ids: List<String>): List<DrawerConversationRow>
 
     @Query("SELECT * FROM conversations WHERE taskId = :taskId ORDER BY lastUpdated DESC")
     fun getExecutionsForTask(taskId: String): Flow<List<ChatEntity>>

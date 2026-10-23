@@ -113,6 +113,11 @@ class ConversationRepository(
 
     fun getAllConversations(): Flow<List<ChatConversation>> = chatDao.getAllConversations()
 
+    fun observeDrawerConversations(limit: Int): Flow<List<com.newoether.agora.data.local.DrawerConversationRow>> =
+        chatDao.observeDrawerConversations(limit)
+    suspend fun getDrawerConversations(ids: List<String>): List<com.newoether.agora.data.local.DrawerConversationRow> =
+        if (ids.isEmpty()) emptyList() else chatDao.getDrawerConversations(ids)
+
     fun observeConversation(id: String): Flow<ChatConversation?> =
         chatDao.observeConversation(id).map { it?.toConversation() }
 
