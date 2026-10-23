@@ -25,6 +25,44 @@ class StreamTerminationTest {
         assertFalse(StreamEvent.TextChunk("").carriesModelOutput())
     }
 
+    @Test
+    fun formattingOnlyChunksKeepParseAndReadFailuresEligibleBeforeOutput() {
+        listOf(
+            StreamEvent.TextChunk(" \t\n"),
+            StreamEvent.ThoughtChunk(" \t\n"),
+        ).forEach { event ->
+            assertFalse(event.toString(), event.carriesModelOutput())
+            listOf(
+                GenerationError.SseParse("broken-json", "invalid JSON"),
+                GenerationError.Network(0, "The server response could not be read."),
+                GenerationError.Network(0, "Unexpected end of stream"),
+                GenerationError.Api(null, null, "The server response could not be read."),
+            ).forEach { error ->
+                val result = termination(
+                    sawTerminalMarker = false,
+                    stopReason = null,
+                    producedContent = event.carriesModelOutput(),
+                    streamError = error,
+                )
+                assertTrue(error.toString(), result.isRetryable)
+                assertFalse(result.copy(producedContent = true).isRetryable)
+                assertFalse(result.copy(alreadyReportedError = true).isRetryable)
+                assertFalse(result.copy(stopReason = "max_tokens").isRetryable)
+            }
+            val permanent = termination(
+                sawTerminalMarker = false,
+                stopReason = null,
+                producedContent = event.carriesModelOutput(),
+                streamError = GenerationError.Api("insufficient_quota", null, "The server response could not be read."),
+            )
+            assertFalse(permanent.isRetryable)
+        }
+        assertTrue(StreamEvent.TextChunk(" answer ").carriesModelOutput())
+        assertTrue(StreamEvent.ThoughtChunk(" reasoning ").carriesModelOutput())
+        assertTrue(StreamEvent.ThoughtChunk(" \n", signature = "signed").carriesModelOutput())
+        assertTrue(StreamEvent.ToolCallUpdate("call", id = null, name = "file_read", arguments = "{}").carriesModelOutput())
+    }
+
     private fun termination(
         sawTerminalMarker: Boolean = true,
         stopReason: String? = "end_turn",

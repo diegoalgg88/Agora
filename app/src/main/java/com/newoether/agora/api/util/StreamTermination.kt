@@ -50,10 +50,11 @@ internal data class StreamTermination(
         get() = !producedContent &&
             !alreadyReportedError &&
             !truncatedByTokenCap &&
-            (timedOut ||
-                streamError != null &&
-                (retryableStreamError || ProviderRetryPolicy.shouldRetryStreamError(streamError)) ||
-                toolCallInFlight || !sawTerminalMarker)
+            when (val error = streamError) {
+                is GenerationError.Api -> ProviderRetryPolicy.shouldRetryStreamError(error)
+                null -> timedOut || toolCallInFlight || !sawTerminalMarker
+                else -> retryableStreamError || ProviderRetryPolicy.shouldRetryStreamError(error)
+            }
 
     /** Terminal diagnostic to surface, or null when the stream ended cleanly. */
     fun toError(provider: String): GenerationError? = when {
@@ -139,9 +140,9 @@ private fun Throwable.matchingFailureMessage(
  * would duplicate content; usage / retry / error bookkeeping does not count.
  */
 internal fun StreamEvent.carriesModelOutput(): Boolean = when (this) {
-    is StreamEvent.TextChunk -> text.isNotEmpty()
+    is StreamEvent.TextChunk -> text.isNotBlank()
     is StreamEvent.CitationUpdate -> false
-    is StreamEvent.ThoughtChunk -> thought.isNotEmpty() || signature != null
+    is StreamEvent.ThoughtChunk -> thought.isNotBlank() || signature != null
     is StreamEvent.HostedToolCallUpdate -> true
     is StreamEvent.ToolCallUpdate -> true
     is StreamEvent.ToolCallRequest -> true

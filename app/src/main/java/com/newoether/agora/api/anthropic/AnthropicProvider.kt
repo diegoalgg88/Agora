@@ -705,7 +705,8 @@ class AnthropicProvider(
         all
     }
 
-    private companion object {
+    // Internal so the OpenAI-compatible path can send the same default to Claude behind relays.
+    internal companion object {
         /**
          * Headroom reserved above the thinking budget for the answer AND any tool_use block.
          * Anthropic's max_tokens covers thinking + output together, so this slack is what keeps a

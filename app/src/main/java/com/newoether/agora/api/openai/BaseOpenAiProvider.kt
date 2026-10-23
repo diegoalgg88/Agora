@@ -142,7 +142,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                             },
                         serviceTier = config.openAiServiceTier,
                         temperature = config.temperature,
-                        maxOutputTokens = config.maxTokens,
+                        maxOutputTokens = config.effectiveOpenAiMaxTokens(),
                         topP = config.topP,
                         promptCacheKey = config.promptCacheKey,
                     )
@@ -156,7 +156,7 @@ abstract class BaseOpenAiProvider : LlmProvider {
                         streamOptions = OpenAiStreamOptions(includeUsage = true),
                         tools = config.tools,
                         temperature = config.temperature,
-                        maxTokens = config.maxTokens,
+                        maxTokens = config.effectiveOpenAiMaxTokens(),
                         topP = config.topP,
                         frequencyPenalty = config.frequencyPenalty,
                         presencePenalty = config.presencePenalty,

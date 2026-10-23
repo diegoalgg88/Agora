@@ -123,6 +123,43 @@ class OpenAiCompatibleGenerationParameterForwardingTest {
         assertStandardParameters(body)
     }
 
+    @Test
+    fun unsetMaxTokensGetsTheClaudeDefaultForKnownModelsOnly() = withServer { deepSeekServer ->
+        // DeepSeek's own default is small enough to cut off compacts, which run without thinking.
+        val deepSeek = deepSeekServer.capture(
+            DeepSeekProvider(),
+            config(deepSeekServer, "deepseek-flash").copy(maxTokens = null, thinkingEnabled = false),
+        )
+        assertEquals(32768, deepSeek["max_tokens"]!!.jsonPrimitive.int)
+
+        withServer { claudeServer ->
+            val relayClaude = claudeServer.capture(
+                CustomOpenAiProvider("Relay", claudeServer.baseUrl),
+                config(claudeServer, "anthropic/claude-3-opus").copy(maxTokens = null),
+            )
+            // Lowered to the documented ceiling, as on the native Anthropic path.
+            assertEquals(4096, relayClaude["max_tokens"]!!.jsonPrimitive.int)
+        }
+        withServer { budgetServer ->
+            val budgeted = budgetServer.capture(
+                CustomOpenAiProvider("Relay", budgetServer.baseUrl),
+                config(budgetServer, "claude-opus-5").copy(
+                    maxTokens = null,
+                    thinkingBudgetEnabled = true,
+                    thinkingBudgetTokens = 40000,
+                ),
+            )
+            assertEquals(48192, budgeted["max_tokens"]!!.jsonPrimitive.int)
+        }
+        withServer { unknownServer ->
+            val unknown = unknownServer.capture(
+                CustomOpenAiProvider("Relay", unknownServer.baseUrl),
+                config(unknownServer, "llama-3.3-70b").copy(maxTokens = null),
+            )
+            assertFalse(unknown.containsKey("max_tokens"))
+        }
+    }
+
     private fun assertStandardParameters(body: JsonObject) {
         assertEquals(0.7f, body["temperature"]!!.jsonPrimitive.float)
         assertEquals(777, body["max_tokens"]!!.jsonPrimitive.int)

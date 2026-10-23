@@ -7,3 +7,7 @@ class DeepSeekProvider : BaseOpenAiProvider() {
     override val defaultBaseUrl: String = "https://api.deepseek.com"
     // Reasoning/content parsing uses BaseOpenAiProvider's default (reasoning_content + content).
 }
+
+/** True when a model id names a DeepSeek model, including hub- and relay-style prefixes. */
+internal fun isDeepSeekModel(modelId: String): Boolean =
+    modelId.contains("deepseek", ignoreCase = true)

@@ -270,6 +270,47 @@ class ProviderPassRunnerTest {
         )
     }
 
+    @Test
+    fun `successful thought prefix signature and whitespace only completion stay exact`() = runTest {
+        listOf(CONFIG.copy(tools = null), CONFIG).forEach { config ->
+            val thoughts = mutableListOf<StreamEvent>()
+            runner(listOf(
+                StreamEvent.ThoughtChunk("\n\n", title = "Failed attempt"),
+                StreamEvent.Retrying(1, 5),
+                StreamEvent.ThoughtChunk(" \t\n"),
+                StreamEvent.ThoughtChunk("reason", signature = "signature"),
+            )).run(IDENTITY, messages(), config, thoughts::add)
+            assertEquals(" \t\nreason", thoughts.filterIsInstance<StreamEvent.ThoughtChunk>().joinToString("") { it.thought })
+            assertTrue(thoughts.filterIsInstance<StreamEvent.ThoughtChunk>().any { it.signature == "signature" })
+
+            val blank = mutableListOf<StreamEvent>()
+            runner(listOf(StreamEvent.TextChunk(" \t\n"))).run(IDENTITY, messages(), config, blank::add)
+            assertEquals(" \t\n", blank.filterIsInstance<StreamEvent.TextChunk>().joinToString("") { it.text })
+        }
+    }
+
+    @Test
+    fun `held formatting preserves metadata at retry and terminal boundaries`() = runTest {
+        val usage = StreamEvent.UsageUpdate(12)
+        val citation = StreamEvent.CitationUpdate(
+            CitationRecord(sourceId = "held_source", provider = "test", kind = "url", title = "Source"),
+        )
+        val prefix = listOf(StreamEvent.TextChunk("  "), usage, citation)
+        val retry = StreamEvent.Retrying(1, 5)
+        val error = StreamEvent.Error(GenerationError.Api("bad", "request", "failure"))
+        val cases = listOf(
+            (prefix + retry + StreamEvent.TextChunk("ok")) to
+                listOf(usage, citation, retry, StreamEvent.TextChunk("ok")),
+            (prefix + error) to (prefix + error),
+            prefix to prefix,
+        )
+        cases.forEach { (events, expected) ->
+            val forwarded = mutableListOf<StreamEvent>()
+            runner(events).run(IDENTITY, messages(), CONFIG.copy(tools = null), forwarded::add)
+            assertEquals(expected, forwarded)
+        }
+    }
+
     private fun runner(events: List<StreamEvent>) = ProviderPassRunnerHarness(
         ProviderPassRunner(),
         fakeProvider(flowOf(*events.toTypedArray())),
