@@ -574,6 +574,7 @@ class AppContainer(
             // conversación abierta puede resolver (Fase B, sub-bloques S1/S2/S3 de 4e6b5634).
             askUser = askUserController,
             shellConfirmation = shellConfirmationController,
+            forkShare = chatRuntime.conversationForkShare,
         )
     }
 

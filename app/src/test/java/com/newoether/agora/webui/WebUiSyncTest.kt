@@ -31,6 +31,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.TestScope
@@ -68,7 +69,21 @@ class WebUiSyncTest {
         "m2" to message("m2", "root", Participant.MODEL, "other"),
     )
     private val conversations = mockk<ConversationRepository> {
-        every { getAllConversations() } returns list
+        every { observeDrawerConversations(any()) } answers {
+            val limit = firstArg<Int>()
+            list.map { rows ->
+                rows.take(limit).map {
+                    com.newoether.agora.data.local.DrawerConversationRow(
+                        it.id, it.title, it.hasUnreadGeneration, it.isPinned,
+                    )
+                }
+            }
+        }
+        every { observeConversation(any()) } answers {
+            val id = firstArg<String>()
+            list.map { rows -> rows.find { it.id == id } }
+        }
+        coEvery { setConversationPinned(any(), any()) } returns true
         every { observeMessageTopology("a") } returns topology
         coEvery { recoverConversationRuntime(any(), any()) } returns 0
     }

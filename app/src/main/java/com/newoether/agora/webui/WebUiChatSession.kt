@@ -9,6 +9,7 @@ import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.data.repository.decodeSelectedAttachments
 import com.newoether.agora.data.repository.removedReclaimablePaths
 import com.newoether.agora.data.repository.updateConversationModel
+import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.ModelId
 import com.newoether.agora.model.SelectedAttachment
 import com.newoether.agora.model.apiModelName
@@ -124,6 +125,12 @@ internal class WebUiChatSession(
         val attachments: List<SelectedAttachment> = emptyList(),
         /** Progreso de pre-render de PDF por attachment (done/total). */
         val pdfProgress: Map<String, Pair<Int, Int>> = emptyMap(),
+        /** Prompt de sistema elegido para el target actual; null = el default de la app. */
+        val systemPromptId: String? = null,
+        /** Catálogo de prompts de sistema que el selector del navegador lista. */
+        val systemPrompts: List<com.newoether.agora.data.SystemPromptEntry> = emptyList(),
+        /** Prompt activo global de la app, para marcar la entrada default del selector. */
+        val activeSystemPromptId: String? = null,
     )
 
     private val target = MutableStateFlow(OpenTarget(null, browserSeq = 0L, movedByServer = false))
@@ -160,6 +167,12 @@ internal class WebUiChatSession(
 
     /** Model chosen on this browser's New Chat page; null follows the default model. */
     private val newChatModelId = MutableStateFlow<String?>(null)
+    /** Prompt de sistema elegido en el New Chat de este navegador; null sigue el default. */
+    private val newChatSystemPromptId = MutableStateFlow<String?>(null)
+    private val selectedSystemPrompt = openId.flatMapLatest { id ->
+        (if (id == null) newChatSystemPromptId else conversations.observeConversation(id).map { it?.systemPromptId })
+            .map { id to it }
+    }.stateIn(scope, SharingStarted.Eagerly, null)
     private val validModels = settings.validChatModels(scope)
     private val runtimeFacade = CurrentConversationRuntimeFacade(openId, registry, scope)
     /** Etiquetas de modelo ordenadas por provider+nombre; el composer del navegador las lista. */
@@ -197,7 +210,7 @@ internal class WebUiChatSession(
                     NewChatWorkspaceSnapshot(
                         persisted = null,
                         modelId = newChatModelId.value,
-                        systemPromptId = null,
+                        systemPromptId = newChatSystemPromptId.value,
                         conversationSettings = null,
                         sessionLocal = true,
                     )
@@ -208,7 +221,14 @@ internal class WebUiChatSession(
             generation.prepareForegroundSend(sendTarget, composer, this@WebUiChatSession)
         },
         send = { admission, text, attachments, onAccepted ->
-            generation.sendMessage(admission, text, attachments, onAccepted, this@WebUiChatSession)
+            generation.sendMessage(admission, text, attachments, { accepted ->
+                if (admission.target.wasNewChat) ownerMutex.withLock {
+                    if (newChatSystemPromptId.value == admission.target.newChatWorkspace?.systemPromptId) {
+                        newChatSystemPromptId.value = null
+                    }
+                }
+                onAccepted(accepted)
+            }, this@WebUiChatSession)
         },
         // The in-memory draft store cannot fail to clear, so no retry surface is needed.
     )
@@ -231,6 +251,9 @@ internal class WebUiChatSession(
         val runtime = owner.takeUnless { it == NEW_CHAT_WORKSPACE_ID }?.let(registry::getOrCreate)
         combine(draft, state, editRevision, actionId, activeModel) { _, _, _, _, _ -> Unit }
             .combine(modelLabels) { _, _ -> Unit }
+            .combine(selectedSystemPrompt) { _, _ -> Unit }
+            .combine(settings.systemPrompts) { _, _ -> Unit }
+            .combine(settings.activeSystemPromptId) { _, _ -> Unit }
             .combine(runtime?.queuedSends ?: flowOf(emptyList())) { _, _ -> Unit }
             .combine(runtime?.generating ?: flowOf(false)) { _, _ -> Unit }
             .combine(runtime?.stopping ?: flowOf(false)) { _, _ ->
@@ -248,6 +271,9 @@ internal class WebUiChatSession(
                             modelLabels.value, runtime?.queuedSends?.value.orEmpty().sortedBy(QueuedSend::createdAt),
                             draft.value.attachments,
                             draft.value.pdfPreviewProgress,
+                            selectedSystemPrompt.value?.takeIf { it.first == selected.conversationId }?.second,
+                            settings.systemPrompts.value,
+                            settings.activeSystemPromptId.value,
                         )
                     }
                 }
@@ -271,6 +297,29 @@ internal class WebUiChatSession(
         target.value = OpenTarget(conversationId, seq, movedByServer = false)
         openId.value = conversationId
         retainOwnerLocked(conversationId ?: NEW_CHAT_WORKSPACE_ID)
+    }
+
+    /**
+     * One row-level command: the browser names a row, and the phone's own owners decide the branch.
+     * [path] es la rama que esta conexión muestra, porque el teléfono resuelve su límite de
+     * generación dentro de las filas que el navegador realmente ve.
+     */
+    suspend fun rowCommand(command: WebSyncCommand, path: List<ChatMessage>) {
+        val opened = openTarget.value
+        if (opened.browserSeq != command.seq) return
+        val conversationId = opened.conversationId ?: return
+        val messageId = command.messageId ?: return
+        val modelId = activeModel.value?.takeIf { it.first == conversationId }?.second.orEmpty()
+        val text = command.text.orEmpty()
+        when (command.type) {
+            "edit" -> if (modelId.isNotBlank() && text.isNotBlank()) {
+                generation.editMessage(this, conversationId, messageId, text, modelId, path)
+            }
+            "regenerate" -> if (modelId.isNotBlank()) {
+                generation.regenerate(this, conversationId, messageId, modelId, path)
+            }
+            "delete" -> generation.deleteMessage(this, conversationId, messageId, path)
+        }
     }
 
     /** Applies one ordered browser edit to the canonical composer owner. */
@@ -574,7 +623,14 @@ internal class WebUiChatSession(
         scope.launch { ownerMutex.withLock { moveByServer(conversationId) } }
     }
 
-    // The browser offers no share action.
+    /** El fork terminó y la conexión aún muestra el target esperado: muévase al fork. */
+    suspend fun openForkIfCurrent(conversationId: String, expected: OpenTarget): Boolean = ownerMutex.withLock {
+        if (closed || target.value != expected) return@withLock false
+        moveByServer(conversationId)
+        true
+    }
+
+    // WebUiSync entrega los resultados identificados de share directamente al navegador.
     override fun showShareText(text: String) = Unit
 
     override fun settleDeletedConversation(conversationId: String) {

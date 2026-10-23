@@ -39,6 +39,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
 import kotlinx.coroutines.flow.shareIn
@@ -82,6 +83,8 @@ internal class WebUiSync(
     private val askUser: com.newoether.agora.viewmodel.AskUserController? = null,
     /** Confirmaciones de shell pendientes; el navegador responde vía shell_decision. */
     private val shellConfirmation: com.newoether.agora.viewmodel.ShellConfirmationController? = null,
+    /** Fork/share identificados hacia el navegador; null deshabilita esos comandos. */
+    private val forkShare: com.newoether.agora.viewmodel.ConversationForkShareController? = null,
     private val projectionDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     /** Sesiones vivas por connectionId; el token de login amarra cada una a su dueño. */
@@ -116,27 +119,34 @@ internal class WebUiSync(
             // lento frena a los productores en vez de inflar una cola.
             val outbound = Channel<WebSyncEvent>()
             launch { for (event in outbound) send(json.encodeToString(WebSyncEvent.serializer(), event)) }
+            // El drawer pagina con la proyección angosta del DAO; el límite crece con list_more.
+            val listLimit = MutableStateFlow(DRAWER_PAGE_SIZE)
+            val list = combine(
+                listLimit.flatMapLatest { limit ->
+                    conversations.observeDrawerConversations(limit + 1).map { rows -> limit to rows }
+                },
+                registry.activeConversationIds,
+            ) { (limit, rows), active ->
+                WebSyncEvent.Conversations(
+                    rows.take(limit).map {
+                        WebConversation(it.id, it.title, it.id in active, it.hasUnreadGeneration, it.isPinned)
+                    },
+                    hasMore = rows.size > limit,
+                    limit = limit,
+                )
+            }.shareIn(this, SharingStarted.Eagerly, replay = 1)
+            launch { list.distinctUntilChanged().collect { outbound.send(it) } }
             val displayContext = display.distinctUntilChanged()
                 .shareIn(this, SharingStarted.Eagerly, replay = 1)
             launch { displayContext.collect { outbound.send(it.toEvent()) } }
-            val session = openChatSession(this)
-            val list = combine(
-                conversations.getAllConversations(),
-                registry.activeConversationIds,
-            ) { items, active -> items to active }
-                .shareIn(this, SharingStarted.Eagerly, replay = 1)
-            launch {
-                list.map { (items, active) ->
-                    WebSyncEvent.Conversations(
-                        items.map { it.toWeb(generating = it.id in active) },
-                    )
-                }
-                    .distinctUntilChanged()
-                    .collect { outbound.send(it) }
-            }
             val watched = MutableStateFlow<Set<String>>(emptySet())
+            val session = openChatSession(this)
             // Búsqueda dentro de la conversación abierta; revisión creciente descarta viejas.
             val conversationQuery = MutableStateFlow<WebSyncCommand?>(null)
+            // Los comandos de fila resuelven dentro de las filas que esta conexión muestra.
+            val visiblePath = MutableStateFlow<List<ChatMessage>>(emptyList())
+            val pendingPageAction = java.util.concurrent.atomic.AtomicReference<WebSyncCommand?>(null)
+            var lastPageActionId = 0L
             val connectionId = java.util.UUID.randomUUID().toString()
             val connectionJob = coroutineContext[Job]!!
             try {
@@ -183,6 +193,7 @@ internal class WebUiSync(
                 // borrado) se anuncia antes de cualquier evento del target nuevo.
                 launch {
                     session.openTarget.collectLatest { target ->
+                        conversationQuery.value = null
                         if (target.movedByServer) {
                             outbound.send(WebSyncEvent.Opened(target.conversationId, target.browserSeq))
                         }
@@ -238,8 +249,8 @@ internal class WebUiSync(
                             }
                             target.conversationId?.let { id ->
                                 openConversation(
-                                    id, list.map { it.first }, watched, displayContext, outbound,
-                                    connectionId, target.browserSeq, conversationQuery,
+                                    id, session, watched, displayContext, outbound,
+                                    connectionId, target.browserSeq, conversationQuery, visiblePath,
                                 )
                             }
                         }
@@ -312,6 +323,49 @@ internal class WebUiSync(
                             // observeConversation vía conversationQuery; aquí solo se admite.
                             conversationQuery.value = command
                         }
+                        "list_more" -> if (command.revision == listLimit.value.toLong()) {
+                            listLimit.value += DRAWER_PAGE_SIZE
+                        }
+                        "edit", "regenerate", "delete" -> session.rowCommand(command, visiblePath.value)
+                        "fork", "share" -> {
+                            val target = session.openTarget.value
+                            if (forkShare == null ||
+                                target.conversationId == null || target.conversationId != command.conversationId ||
+                                target.browserSeq != command.seq || command.actionId <= lastPageActionId) continue
+                            val pending = pendingPageAction.get()
+                            if (pending != null && pending.seq == target.browserSeq &&
+                                pending.conversationId == target.conversationId) continue
+                            lastPageActionId = command.actionId
+                            pendingPageAction.set(command)
+                            val isCurrent = { connectionJob.isActive && session.openTarget.value == target }
+                            val complete: (Boolean, String?) -> Unit = { success, shared ->
+                                if (pendingPageAction.compareAndSet(command, null) && connectionJob.isActive) launch {
+                                    outbound.send(
+                                        WebSyncEvent.PageAction(
+                                            command.conversationId!!, command.seq,
+                                            command.actionId, command.type, success, shared,
+                                        ),
+                                    )
+                                }
+                            }
+                            // La fila nombra su propio Fork/Share; el top bar no envía ninguna,
+                            // así que forkear y compartir la conversación completa sigue igual.
+                            val started = when {
+                                command.type == "fork" -> forkShare.fork(
+                                    session, command.messageId,
+                                    isCurrent = isCurrent,
+                                    openFork = { session.openForkIfCurrent(it, target) },
+                                    onResult = { complete(it, null) },
+                                )
+                                command.messageId != null -> forkShare.shareGeneration(
+                                    session, command.messageId, isCurrent,
+                                ) { complete(it != null, it) }
+                                else -> forkShare.shareConversation(
+                                    session, isCurrent,
+                                ) { complete(it != null, it) }
+                            }
+                            if (!started) complete(false, null)
+                        }
                         "attachment_remove", "attachment_retry", "attachment_pdf", "attachment_video" ->
                             session.attachmentCommand(command)
                     }
@@ -333,22 +387,29 @@ internal class WebUiSync(
 
     private suspend fun openConversation(
         id: String,
-        list: Flow<List<ChatConversation>>,
+        session: WebUiChatSession,
         watched: StateFlow<Set<String>>,
         display: Flow<WebDisplayContext>,
         outbound: SendChannel<WebSyncEvent>,
         connectionId: String,
         seq: Long,
         query: StateFlow<WebSyncCommand?>,
+        visiblePath: MutableStateFlow<List<ChatMessage>>,
     ) {
-        // La web solo puede abrir lo que su lista mostró; una fila que ya no existe fue borrada.
-        if (list.first().none { it.id == id }) {
+        val selected = conversations.observeConversation(id)
+        // La web solo puede abrir lo que existe; una fila que ya no existe fue borrada.
+        if (selected.first() == null) {
             outbound.send(WebSyncEvent.Deleted(id))
             return
         }
         // Un fallo en cualquier collector termina solo esta conversación, jamás la conexión.
         try {
-            coroutineScope { observeConversation(id, list, watched, display, outbound, connectionId, seq, query) }
+            coroutineScope {
+                observeConversation(
+                    id, session, selected, visiblePath, watched, display, outbound,
+                    connectionId, seq, query,
+                )
+            }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -359,7 +420,9 @@ internal class WebUiSync(
 
     private suspend fun CoroutineScope.observeConversation(
         id: String,
-        list: Flow<List<ChatConversation>>,
+        session: WebUiChatSession,
+        selected: Flow<ChatConversation?>,
+        visiblePath: MutableStateFlow<List<ChatMessage>>,
         watched: StateFlow<Set<String>>,
         display: Flow<WebDisplayContext>,
         outbound: SendChannel<WebSyncEvent>,
@@ -371,8 +434,7 @@ internal class WebUiSync(
             conversations.recoverConversationRuntime(id)
         }
         val state = registry.getOrCreate(id)
-        val selectedChildren = list.map { items ->
-            val row = items.firstOrNull { it.id == id }
+        val selectedChildren = selected.map { row ->
             if (row == null) {
                 outbound.send(WebSyncEvent.Deleted(id))
                 this@observeConversation.cancel()
@@ -390,6 +452,9 @@ internal class WebUiSync(
                 val path = withContext(projectionDispatcher) {
                     ConversationUiState.resolvePath(all, snapshot.streamingMessage, selected)
                 }
+                // Los comandos de fila resuelven el límite de generación del teléfono dentro
+                // de las filas que este navegador muestra.
+                visiblePath.value = path
                 WebSyncEvent.Path(
                     conversationId = id,
                     messages = path.map { it.toWebPathEntry() },
@@ -514,6 +579,9 @@ internal class WebUiSync(
         /** Tope de filas a las que un navegador puede suscribirse a la vez. */
         const val MAX_WATCHED = 48
 
+        /** Página del drawer: cuántas filas trae cada consulta del navegador. */
+        const val DRAWER_PAGE_SIZE = 80
+
         internal val json = Json {
             ignoreUnknownKeys = true
             explicitNulls = false
@@ -621,6 +689,8 @@ internal data class WebSyncCommand(
     val requestId: String? = null,
     /** Shell decision: confiar siempre en este server. */
     val alwaysAllow: Boolean? = null,
+    /** Comandos de fila: la fila que edit/regenerate/delete nombra. */
+    val messageId: String? = null,
     /** Interacciones: respuestas de question_submit, keyed por id de pregunta. */
     val answers: Map<String, QuestionAnswers>? = null,
 ) {
@@ -640,7 +710,13 @@ internal sealed interface WebSyncEvent {
     data class Connection(val connectionId: String) : WebSyncEvent
 
     @Serializable @SerialName("conversations")
-    data class Conversations(val items: List<WebConversation>) : WebSyncEvent
+    data class Conversations(
+        val items: List<WebConversation>,
+        /** True cuando el query trajo más filas que el límite actual del drawer. */
+        val hasMore: Boolean = false,
+        /** El límite que produjo esta página; el navegador lo repite en list_more. */
+        val limit: Int = 0,
+    ) : WebSyncEvent
 
     /** La sesión siguió un movimiento del runtime; [seq] es el open request del navegador que sigue vigente. */
     @Serializable @SerialName("opened")
@@ -711,6 +787,17 @@ internal sealed interface WebSyncEvent {
         val failed: Boolean = false,
     ) : WebSyncEvent
 
+    /** Resultado identificado de un fork/share: el navegador descarta duplicados por actionId. */
+    @Serializable @SerialName("page_action")
+    data class PageAction(
+        val conversationId: String,
+        val seq: Long,
+        val actionId: Long,
+        val action: String,
+        val success: Boolean,
+        val sharedText: String? = null,
+    ) : WebSyncEvent
+
     @Serializable @SerialName("scroll_to_bottom")
     data class ScrollToBottom(val conversationId: String, val messageId: String, val seq: Long) : WebSyncEvent
 
@@ -737,6 +824,7 @@ internal data class WebConversation(
     val title: String,
     val generating: Boolean,
     val unread: Boolean,
+    val isPinned: Boolean = false,
 )
 
 @Serializable

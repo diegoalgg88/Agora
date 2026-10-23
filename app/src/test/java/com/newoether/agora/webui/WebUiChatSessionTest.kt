@@ -78,6 +78,8 @@ class WebUiChatSessionTest {
         every { modelAliases } returns MutableStateFlow(emptyMap())
         every { modelProviderNames } returns MutableStateFlow(emptyMap())
         every { customProviders } returns MutableStateFlow(emptyList())
+        every { systemPrompts } returns MutableStateFlow(emptyList())
+        every { activeSystemPromptId } returns MutableStateFlow(null)
         coEvery { awaitInitialLoad() } just Runs
     }
 
