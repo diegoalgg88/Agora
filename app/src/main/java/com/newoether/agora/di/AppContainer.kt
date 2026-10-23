@@ -570,6 +570,10 @@ class AppContainer(
                     uploadDirectory = application.filesDir,
                 )
             },
+            // Interacciones del navegador: preguntas ask_user y confirmaciones de shell que la
+            // conversación abierta puede resolver (Fase B, sub-bloques S1/S2/S3 de 4e6b5634).
+            askUser = askUserController,
+            shellConfirmation = shellConfirmationController,
         )
     }
 

@@ -27,6 +27,8 @@ import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.channels.ReceiveChannel
 import kotlinx.coroutines.channels.SendChannel
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -76,6 +78,10 @@ internal class WebUiSync(
     private val display: Flow<WebDisplayContext> = emptyFlow(),
     /** Construye el [WebUiChatSession] de una conexión con el scope de esa conexión. */
     private val openChatSession: (CoroutineScope) -> WebUiChatSession,
+    /** Preguntas ask_user activas; el navegador responde vía question_submit/skip. */
+    private val askUser: com.newoether.agora.viewmodel.AskUserController? = null,
+    /** Confirmaciones de shell pendientes; el navegador responde vía shell_decision. */
+    private val shellConfirmation: com.newoether.agora.viewmodel.ShellConfirmationController? = null,
     private val projectionDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     /** Sesiones vivas por connectionId; el token de login amarra cada una a su dueño. */
@@ -129,6 +135,8 @@ internal class WebUiSync(
                     .collect { outbound.send(it) }
             }
             val watched = MutableStateFlow<Set<String>>(emptySet())
+            // Búsqueda dentro de la conversación abierta; revisión creciente descarta viejas.
+            val conversationQuery = MutableStateFlow<WebSyncCommand?>(null)
             val connectionId = java.util.UUID.randomUUID().toString()
             val connectionJob = coroutineContext[Job]!!
             try {
@@ -137,6 +145,40 @@ internal class WebUiSync(
                 outbound.send(WebSyncEvent.Connection(connectionId))
                 launch { session.snackbars.collect { outbound.send(WebSyncEvent.Snackbar(it)) } }
                 launch { session.scrollRequests.collect { outbound.send(it) } }
+                // Interacciones visibles para la conversación que este navegador muestra: solo
+                // esa conversación ve sus preguntas; una global siempre es visible.
+                val interactionActionId = MutableStateFlow(0L)
+                if (askUser != null && shellConfirmation != null) {
+                    launch {
+                        combine(
+                            session.openTarget, askUser.requests, shellConfirmation.pendingShellCommand, interactionActionId,
+                        ) { target, questions, shell, actionId ->
+                            val visible = com.newoether.agora.ui.chat.interaction.userInteractions(
+                                target.conversationId, questions, shell,
+                            )
+                            WebSyncEvent.Interactions(
+                                target.conversationId, target.browserSeq, actionId,
+                                visible.map { request -> when (request) {
+                                    is com.newoether.agora.ui.chat.interaction.UserInteraction.Question ->
+                                        buildJsonObject {
+                                            put("kind", "question")
+                                            put("id", request.request.id.toString())
+                                            put("question", request.request.question)
+                                            put("options", JsonArray(request.request.options.map(::JsonPrimitive)))
+                                            put("allowMultiple", request.request.allowMultiple)
+                                        }
+                                    is com.newoether.agora.ui.chat.interaction.UserInteraction.ShellCommand ->
+                                        buildJsonObject {
+                                            put("kind", "shell")
+                                            put("id", request.pending.id.toString())
+                                            put("server", request.pending.server)
+                                            put("summary", request.pending.summary)
+                                        }
+                                } },
+                            )
+                        }.distinctUntilChanged().collect { outbound.send(it) }
+                    }
+                }
                 // La sesión decide qué está abierto; un movimiento del runtime (send de New Chat,
                 // borrado) se anuncia antes de cualquier evento del target nuevo.
                 launch {
@@ -195,7 +237,10 @@ internal class WebUiSync(
                                     }.distinctUntilChanged().collect { outbound.send(it) }
                             }
                             target.conversationId?.let { id ->
-                                openConversation(id, list.map { it.first }, watched, displayContext, outbound)
+                                openConversation(
+                                    id, list.map { it.first }, watched, displayContext, outbound,
+                                    connectionId, target.browserSeq, conversationQuery,
+                                )
                             }
                         }
                     }
@@ -217,6 +262,56 @@ internal class WebUiSync(
                         COMMAND_MODEL -> session.selectModel(command.modelId.orEmpty(), command.seq, command.actionId)
                         COMMAND_REMOVE_QUEUED -> session.removeQueued(command.queuedId.orEmpty(), command.seq)
                         COMMAND_SEND_QUEUED -> session.sendQueued(command.seq, command.actionId)
+                        "pin" -> {
+                            val id = command.conversationId ?: continue
+                            val pinned = command.enabled ?: continue
+                            conversations.setConversationPinned(id, pinned)
+                        }
+                        "question_submit", "question_skip", "shell_decision" -> {
+                            val target = session.openTarget.value
+                            if (askUser == null || shellConfirmation == null ||
+                                command.connectionId.isBlank() || command.seq != target.browserSeq ||
+                                command.conversationId != target.conversationId ||
+                                command.actionId <= interactionActionId.value) continue
+                            // La acción se consume identificada aunque el request desaparezca en
+                            // otro cliente: el actionId evita doble submit.
+                            interactionActionId.value = command.actionId
+                            val visibleQuestions = askUser.requests.value.filter {
+                                it.conversationId == null || it.conversationId == target.conversationId
+                            }
+                            when (command.type) {
+                                "question_submit" -> {
+                                    val answers = command.answers ?: continue
+                                    if (answers.isEmpty()) continue
+                                    val waiting = visibleQuestions.associateBy { it.id.toString() }
+                                    if (answers.any { (id, answer) ->
+                                        val request = waiting[id]
+                                        request == null || answer.choices.distinct().size != answer.choices.size ||
+                                            answer.choices.any { it !in request.options } ||
+                                            (!request.allowMultiple && answer.choices.size > 1)
+                                    }) continue
+                                    answers.forEach { (id, answer) -> askUser.submit(id.toLong(), answer.choices) }
+                                }
+                                "question_skip" -> {
+                                    val request = visibleQuestions.firstOrNull {
+                                        it.id.toString() == command.requestId
+                                    } ?: continue
+                                    askUser.dismiss(request.id)
+                                }
+                                "shell_decision" -> {
+                                    val pending = shellConfirmation.pendingShellCommand.value ?: continue
+                                    if (pending.id.toString() != command.requestId ||
+                                        (pending.conversationId != null &&
+                                            pending.conversationId != target.conversationId)) continue
+                                    shellConfirmation.resolve(command.enabled ?: continue, command.alwaysAllow == true)
+                                }
+                            }
+                        }
+                        "conversation_search" -> {
+                            // La búsqueda dentro de la conversación abierta la maneja el job de
+                            // observeConversation vía conversationQuery; aquí solo se admite.
+                            conversationQuery.value = command
+                        }
                         "attachment_remove", "attachment_retry", "attachment_pdf", "attachment_video" ->
                             session.attachmentCommand(command)
                     }
@@ -242,6 +337,9 @@ internal class WebUiSync(
         watched: StateFlow<Set<String>>,
         display: Flow<WebDisplayContext>,
         outbound: SendChannel<WebSyncEvent>,
+        connectionId: String,
+        seq: Long,
+        query: StateFlow<WebSyncCommand?>,
     ) {
         // La web solo puede abrir lo que su lista mostró; una fila que ya no existe fue borrada.
         if (list.first().none { it.id == id }) {
@@ -250,7 +348,7 @@ internal class WebUiSync(
         }
         // Un fallo en cualquier collector termina solo esta conversación, jamás la conexión.
         try {
-            coroutineScope { observeConversation(id, list, watched, display, outbound) }
+            coroutineScope { observeConversation(id, list, watched, display, outbound, connectionId, seq, query) }
         } catch (error: CancellationException) {
             throw error
         } catch (error: Exception) {
@@ -265,6 +363,9 @@ internal class WebUiSync(
         watched: StateFlow<Set<String>>,
         display: Flow<WebDisplayContext>,
         outbound: SendChannel<WebSyncEvent>,
+        connectionId: String,
+        seq: Long,
+        query: StateFlow<WebSyncCommand?>,
     ) {
         executionCoordinator.tryWithConversationLock(id) {
             conversations.recoverConversationRuntime(id)
@@ -282,6 +383,8 @@ internal class WebUiSync(
             .distinctUntilChanged()
             .map { topology -> topology.map { it.toUiChatMessageStub() } }
         val pathIds = MutableStateFlow<Set<String>>(emptySet())
+        // Mensajes del path elegibles para búsqueda: USER/MODEL reales, sin tool/result/compact.
+        val searchIds = MutableStateFlow<List<String>>(emptyList())
         launch {
             combine(stubs, selectedChildren, state.generationSnapshot) { all, selected, snapshot ->
                 val path = withContext(projectionDispatcher) {
@@ -296,6 +399,12 @@ internal class WebUiSync(
                 .distinctUntilChanged()
                 .collect { event ->
                     pathIds.value = event.messages.mapTo(mutableSetOf()) { it.id }
+                    searchIds.value = event.messages.filter {
+                        (it.participant == "USER" || it.participant == "MODEL") &&
+                            !it.id.startsWith(com.newoether.agora.util.Constants.TOOL_MSG_PREFIX) &&
+                            !it.id.startsWith(com.newoether.agora.util.Constants.RESULT_MSG_PREFIX) &&
+                            !it.id.startsWith(com.newoether.agora.util.Constants.COMPACT_MSG_PREFIX)
+                    }.map { it.id }
                     outbound.send(event)
                 }
         }
@@ -310,6 +419,42 @@ internal class WebUiSync(
                 .collect { outbound.send(WebSyncEvent.Streaming(id, it)) }
         }
         launch { servePayloads(id, watched, pathIds, display, outbound) }
+        // Búsqueda dentro de la conversación abierta: revisión creciente, carga paginada y solo
+        // mensajes del path visible; el streaming en vuelo se proyecta desde la snapshot.
+        launch(projectionDispatcher) {
+            combine(searchIds, query, customProviders, state.generationSnapshot) { ids, command, providers, snapshot ->
+                Triple(ids, command, providers) to snapshot.streamingMessage
+            }.collectLatest { (input, streaming) ->
+                val (ids, command, providers) = input
+                if (command == null || command.conversationId != id || command.seq != seq) return@collectLatest
+                val text = command.text.orEmpty()
+                suspend fun publish(searching: Boolean, matches: List<JsonObject> = emptyList(), failed: Boolean = false) {
+                    outbound.send(WebSyncEvent.ConversationSearch(command.connectionId, id, seq, command.revision, text, searching, matches, failed))
+                }
+                if (text.isBlank()) { publish(false); return@collectLatest }
+                publish(true)
+                try {
+                    val matches = com.newoether.agora.ui.chat.scanConversationSearchMatches(ids, text) { page ->
+                        val rows = hydration.loadMessages(id, page) { it.forDisplay(providers) }
+                        if (streaming == null || streaming.id !in page) rows
+                        else rows.filterNot { it.id == streaming.id } + streaming.forDisplay(providers)
+                    }.map { match -> buildJsonObject {
+                        put("messageId", match.messageId)
+                        put("start", match.start)
+                        put("endExclusive", match.endExclusive)
+                        put("occurrence", match.occurrenceInMessage)
+                        put("key", match.key)
+                    } }
+                    currentCoroutineContext().ensureActive()
+                    publish(false, matches)
+                } catch (error: CancellationException) {
+                    throw error
+                } catch (error: Exception) {
+                    DebugLog.e(TAG, "WebUI conversation search failed", error)
+                    publish(false, failed = true)
+                }
+            }
+        }
     }
 
     /** Una suscripción de payload por fila observada; solo filas del path actual se sirven. */
@@ -454,6 +599,8 @@ private fun MessageSegment.toWeb(inlineDollarMath: Boolean) = WebSegment(
 @Serializable
 internal data class WebSyncCommand(
     val type: String,
+    /** Identifica la conexión que envía el comando; los comandos de otras conexiones se ignoran. */
+    val connectionId: String = "",
     val conversationId: String? = null,
     val messageIds: List<String> = emptyList(),
     /** La secuencia del request open del navegador, repetida en [WebSyncEvent.Opened]. */
@@ -468,7 +615,23 @@ internal data class WebSyncCommand(
     val pages: List<Int> = emptyList(),
     val frameCount: Int? = null,
     val intervalMs: Long? = null,
-)
+    /** Pin de conversación: activar o desactivar. */
+    val enabled: Boolean? = null,
+    /** Interacciones: id de la pregunta o shell pendiente que este comando resuelve. */
+    val requestId: String? = null,
+    /** Shell decision: confiar siempre en este server. */
+    val alwaysAllow: Boolean? = null,
+    /** Interacciones: respuestas de question_submit, keyed por id de pregunta. */
+    val answers: Map<String, QuestionAnswers>? = null,
+) {
+    /** Respuesta de una pregunta; [answered] distingue skip de submit vacío. */
+    @Serializable
+    data class QuestionAnswers(
+        val choices: List<String> = emptyList(),
+        val text: String? = null,
+        val answered: Boolean = false,
+    )
+}
 
 @Serializable
 internal sealed interface WebSyncEvent {
@@ -521,6 +684,32 @@ internal sealed interface WebSyncEvent {
 
     @Serializable @SerialName("snackbar")
     data class Snackbar(val message: String) : WebSyncEvent
+
+    /**
+     * Interacciones visibles para la conversación que este navegador muestra: preguntas ask_user
+     * y confirmaciones de shell pendientes. [actionId] crece con cada acción consumida para que
+     * el navegador descarte duplicados; [items] serializa kind/id/question/options por pregunta.
+     */
+    @Serializable @SerialName("interactions")
+    data class Interactions(
+        val conversationId: String?,
+        val seq: Long,
+        val actionId: Long,
+        val items: List<JsonObject>,
+    ) : WebSyncEvent
+
+    /** Matches de búsqueda dentro de la conversación abierta; [revision] descarta respuestas viejas. */
+    @Serializable @SerialName("conversation_search")
+    data class ConversationSearch(
+        val connectionId: String,
+        val conversationId: String,
+        val seq: Long,
+        val revision: Long,
+        val query: String,
+        val searching: Boolean,
+        val matches: List<JsonObject>? = null,
+        val failed: Boolean = false,
+    ) : WebSyncEvent
 
     @Serializable @SerialName("scroll_to_bottom")
     data class ScrollToBottom(val conversationId: String, val messageId: String, val seq: Long) : WebSyncEvent
