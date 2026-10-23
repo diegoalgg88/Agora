@@ -487,6 +487,8 @@ class AnthropicProvider(
                             consecutiveReadTimeouts = 0
                         } catch (e: java.net.SocketTimeoutException) {
                             if (!currentCoroutineContext().isActive) break
+                            responseBodyReadError = e.asRetryableResponseBodyReadError()
+                            if (responseBodyReadError != null) break
                             if (++consecutiveReadTimeouts >= 3) {
                                 timedOut = true
                                 break
@@ -549,11 +551,18 @@ class AnthropicProvider(
                     )
 
                     if (termination.isRetryable && attempt < maxAttempts) {
-                        // Nothing was surfaced yet, so replaying cannot duplicate visible output.
+                        // Consumers roll back only this attempt before the retry begins.
                         DebugLog.w("AgoraAPI",
                             "[$name] Incomplete stream on attempt $attempt/$maxAttempts, retrying")
                         val retryDelayMs = ProviderRetryPolicy.delayMillis(attempt)
-                        emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
+                        emit(
+                            StreamEvent.Retrying(
+                                attempt,
+                                ProviderRetryPolicy.MAX_RETRIES,
+                                resetCurrentAttempt = termination.producedContent ||
+                                    ProviderRetryPolicy.requiresResponseReadRetry(termination.streamError),
+                            ),
+                        )
                         delay(retryDelayMs)
                     } else {
                         done = true

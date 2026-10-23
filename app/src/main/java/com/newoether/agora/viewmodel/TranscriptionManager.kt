@@ -225,6 +225,11 @@ class TranscriptionManager(
                         transcription.append(event.text)
                         onProgress(transcription.toString())
                     }
+                    is StreamEvent.Retrying -> if (event.resetCurrentAttempt) {
+                        transcription.setLength(0)
+                        streamError = null
+                        onProgress(context.getString(R.string.transcription_ellipsis_single))
+                    }
                     is StreamEvent.Error -> streamError = event
                     else -> {}
                 }
@@ -233,11 +238,12 @@ class TranscriptionManager(
                 }
             }
         }
-        if (streamError != null) {
+        val finalStreamError = streamError
+        if (finalStreamError != null) {
             onProgress(
                 context.getString(
                     R.string.generation_error_transcription,
-                    localizedGenerationError(context, streamError.error),
+                    localizedGenerationError(context, finalStreamError.error),
                 ),
             )
             return null
@@ -361,6 +367,17 @@ class TranscriptionManager(
                             ))
                         }
                         is StreamEvent.Error -> { streamError = localizedGenerationError(context, event.error) }
+                        is StreamEvent.Retrying -> if (event.resetCurrentAttempt) {
+                            transcription.setLength(0)
+                            streamError = null
+                            transcriptionSegments[transcriptionSegments.lastIndex] = currentSegment
+                            onProgress(ChatMessage(
+                                id = modelMessageId, parentId = parentId, text = "",
+                                participant = Participant.MODEL, status = MessageStatus.TRANSCRIBING, timestamp = startTime,
+                                thoughtTitle = context.getString(R.string.transcription_label),
+                                segments = transcriptionSegments.toList() + MessageSegment(type = "answer"),
+                            ))
+                        }
                         else -> {}
                     }
                 }

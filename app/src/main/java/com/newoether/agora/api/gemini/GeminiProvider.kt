@@ -704,6 +704,8 @@ class GeminiProvider(
                                 handle.readLine()
                             } catch (e: java.net.SocketTimeoutException) {
                                 if (!currentCoroutineContext().isActive) break
+                                streamError = e.asRetryableResponseBodyReadError()
+                                if (streamError != null) break
                                 if (++consecutiveReadTimeouts >= 3) {
                                     timedOut = true
                                     break
@@ -885,7 +887,14 @@ class GeminiProvider(
                         }
                         DebugLog.d("AgoraSSE", "[$name] ${termination.describe()}")
                         if (termination.isRetryable && attempt < maxAttempts) {
-                            emit(StreamEvent.Retrying(attempt, ProviderRetryPolicy.MAX_RETRIES))
+                            emit(
+                                StreamEvent.Retrying(
+                                    attempt,
+                                    ProviderRetryPolicy.MAX_RETRIES,
+                                    resetCurrentAttempt = termination.producedContent ||
+                                        ProviderRetryPolicy.requiresResponseReadRetry(termination.streamError),
+                                ),
+                            )
                             delay(ProviderRetryPolicy.delayMillis(attempt))
                         } else {
                             termination.toError(name)?.let { emit(StreamEvent.Error(it)) }

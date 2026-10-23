@@ -57,7 +57,7 @@ internal object ProviderRetryPolicy {
     fun isFailedToGenerateOutcome(raw: String?): Boolean =
         raw?.contains("failed to generate", ignoreCase = true) == true
 
-    /** Exact response-body read failure eligible for pre-output Provider replay. */
+    /** Exact response-read failure eligible for Provider replay, including partial output. */
     fun isUnreadableServerResponseFailure(raw: String?): Boolean =
         raw?.contains("the server response could not be read", ignoreCase = true) == true
 
@@ -73,7 +73,28 @@ internal object ProviderRetryPolicy {
             retryableUpstreamMessages.any { message -> text.contains(message, ignoreCase = true) }
         } == true
 
-    /** Permanent account/request failures win over status codes and generic transient wording. */
+    /** Response-read failures must consume the existing retry budget before becoming terminal. */
+    fun requiresResponseReadRetry(error: GenerationError?): Boolean {
+        return when (error) {
+            is GenerationError.SseParse -> true
+            is GenerationError.Api -> isUnreadableServerResponseFailure(error.message)
+            is GenerationError.Network -> isUnreadableServerResponseFailure(error.message)
+            is GenerationError.Unknown -> {
+                val seen = mutableSetOf<Throwable>()
+                var failure: Throwable? = error.cause
+                var matches = false
+                while (failure != null && seen.add(failure)) {
+                    if (failure is kotlinx.coroutines.CancellationException) return false
+                    matches = matches || isUnreadableServerResponseFailure(failure.localizedMessage)
+                    failure = failure.cause
+                }
+                matches
+            }
+            else -> false
+        }
+    }
+
+    /** Other permanent account/request failures win over generic transient wording. */
     fun isPermanentApiFailure(error: GenerationError.Api): Boolean =
         listOfNotNull(error.code, error.type).any {
             it.trim().lowercase() in permanentErrorIdentifiers
@@ -82,20 +103,27 @@ internal object ProviderRetryPolicy {
     fun isPermanentHttpFailure(statusCode: Int, body: String?): Boolean =
         statusCode in setOf(401, 403) || isPermanentApiFailure(providerHttpError(statusCode, body))
 
-    /** A relay may put the same transient outcome in a non-200 HTTP body instead of SSE JSON. */
-    fun shouldRetryHttp(statusCode: Int, body: String?, retryableStatusCodes: Set<Int>): Boolean =
-        !isPermanentHttpFailure(statusCode, body) &&
-            (statusCode in retryableStatusCodes || isRetryableUpstreamFailure(body))
+    /** Inspect decoded fields too, since a JSON error message can contain Unicode escapes. */
+    fun isResponseReadHttpFailure(statusCode: Int, body: String?): Boolean =
+        isUnreadableServerResponseFailure(body) ||
+            requiresResponseReadRetry(providerHttpError(statusCode, body))
 
-    /** An explicit API error needs positive transient evidence, even without a terminal marker. */
-    fun shouldRetryStreamError(error: GenerationError?): Boolean = when (error) {
-        is GenerationError.Api -> !isPermanentApiFailure(error) && (
-            listOfNotNull(error.code, error.type).any {
-                it.trim().lowercase() in retryableErrorIdentifiers
-            } || isRetryableUpstreamFailure(error.message)
-        )
-        is GenerationError.Network ->
-            isRetryableUpstreamFailure(error.message) || isUnexpectedEndFailure(error.message)
-        else -> false
-    }
+    /** Other permanent HTTP failures retain their existing non-retryable semantics. */
+    fun shouldRetryHttp(statusCode: Int, body: String?, retryableStatusCodes: Set<Int>): Boolean =
+        isResponseReadHttpFailure(statusCode, body) ||
+            (!isPermanentHttpFailure(statusCode, body) &&
+                (statusCode in retryableStatusCodes || isRetryableUpstreamFailure(body)))
+
+    /** Response-read failures take priority; all other API errors need transient evidence. */
+    fun shouldRetryStreamError(error: GenerationError?): Boolean =
+        requiresResponseReadRetry(error) || when (error) {
+            is GenerationError.Api -> !isPermanentApiFailure(error) && (
+                listOfNotNull(error.code, error.type).any {
+                    it.trim().lowercase() in retryableErrorIdentifiers
+                } || isRetryableUpstreamFailure(error.message)
+            )
+            is GenerationError.Network ->
+                isRetryableUpstreamFailure(error.message) || isUnexpectedEndFailure(error.message)
+            else -> false
+        }
 }

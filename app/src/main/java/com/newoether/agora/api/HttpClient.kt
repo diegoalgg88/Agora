@@ -1,5 +1,7 @@
 package com.newoether.agora.api
 
+import com.newoether.agora.api.util.ProviderRetryPolicy
+import com.newoether.agora.api.util.asRetryableResponseBodyReadError
 import com.newoether.agora.diagnostics.DeveloperDiagnostics
 import com.newoether.agora.diagnostics.DiagnosticRequestContext
 import okhttp3.MediaType.Companion.toMediaType
@@ -290,8 +292,12 @@ object HttpClient {
                     )
                 }
                 body
-            } catch (_: Exception) {
-                null
+            } catch (cancelled: kotlinx.coroutines.CancellationException) {
+                throw cancelled
+            } catch (failure: Exception) {
+                // Keep explicit read diagnostics available to the provider's existing retry owner.
+                (failure.asRetryableResponseBodyReadError() as? GenerationError.Network)
+                    ?.message?.takeIf(ProviderRetryPolicy::isUnreadableServerResponseFailure)
             }
 
         internal fun attach(openedResponse: okhttp3.Response) {

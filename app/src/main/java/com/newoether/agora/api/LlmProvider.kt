@@ -75,8 +75,13 @@ sealed class StreamEvent {
     ) : StreamEvent()
     data class ToolCallsRequest(val calls: List<ToolCallRequest>) : StreamEvent()
     /** Emitted before one provider retry. [attempt] is the 1-based retry number, while
-     *  [maxAttempts] is the retry budget and excludes the initial request. */
-    data class Retrying(val attempt: Int, val maxAttempts: Int) : StreamEvent()
+     *  [maxAttempts] is the retry budget and excludes the initial request.
+     *  [resetCurrentAttempt] replaces only this request's failed partial output. */
+    data class Retrying(
+        val attempt: Int,
+        val maxAttempts: Int,
+        val resetCurrentAttempt: Boolean = false,
+    ) : StreamEvent()
 }
 
 data class ProviderRequestInput(

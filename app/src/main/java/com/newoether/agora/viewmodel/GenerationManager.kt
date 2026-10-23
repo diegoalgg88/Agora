@@ -220,6 +220,7 @@ class GenerationManager(
         var terminalPersisted = false
         var terminalConversationVisible: Boolean? = null
         var terminalOutputText = ""
+        var restoreProviderAttempt: (() -> Unit)? = null
 
         fun projectOutput(message: ChatMessage): ChatMessage =
             message.withBoundedOutputTextTransform(callbacks.transformFinalText)
@@ -533,8 +534,15 @@ class GenerationManager(
                         }
                     }
                     is StreamEvent.Retrying -> {
+                        if (event.resetCurrentAttempt) {
+                            checkNotNull(restoreProviderAttempt) {
+                                "Provider attempt reset arrived without a request baseline"
+                            }.invoke()
+                        }
                         retryText = context.getString(R.string.generation_retry_attempt, event.attempt, event.maxAttempts)
-                        onStreamUpdate(projectOutput(modelMessage()))
+                        val projected = projectOutput(modelMessage())
+                        onStreamUpdate(projected)
+                        if (event.resetCurrentAttempt) checkpoints.persist(projected, force = true)
                     }
                     is StreamEvent.Error -> {
                         flushThoughtSegment()
@@ -618,6 +626,23 @@ class GenerationManager(
             ): ProviderPassOutcome {
                 val providerAnswerStart = totalText.length
                 tokenUsageAccumulator.beginRequest()
+                val bText = totalText.toString(); val bThoughts = totalThoughts
+                val bThoughtTitle = totalThoughtTitle; val bStatus = currentStatus
+                val bAnswer = currentAnswerBuf.toString(); val bDeltas = currentAnswerDeltas.toList()
+                val bDeltaSeq = nextAnswerDeltaSequence; val bThought = currentThoughtBuf.toString()
+                val bSig = currentThoughtSignature; val bSigProvider = currentThoughtSignatureProvider
+                val restoreOverlay = toolOverlay.capture(); val restoreTiming = thoughtTiming.capture()
+                restoreProviderAttempt = {
+                    totalText.clear(); totalText.append(bText)
+                    totalThoughts = bThoughts; totalThoughtTitle = bThoughtTitle
+                    currentStatus = bStatus; currentAnswerBuf = StringBuilder(bAnswer)
+                    currentAnswerDeltas = bDeltas.toMutableList(); nextAnswerDeltaSequence = bDeltaSeq
+                    currentThoughtBuf = StringBuilder(bThought); currentThoughtSignature = bSig
+                    currentThoughtSignatureProvider = bSigProvider
+                    generationErrorMessage = null; generationErrorCode = null
+                    restoreOverlay(); restoreTiming(); tokenUsageAccumulator.resetCurrentAttempt()
+                    totalTokenUsage = tokenUsageAccumulator.snapshot(); totalTokenCount = totalTokenUsage?.totalTokenCount ?: 0
+                }
                 val providerRequestIndex = providerRequestOrdinal++
                 val providerRequestTrace = if (providerRequestIndex == 0) {
                     requestTrace

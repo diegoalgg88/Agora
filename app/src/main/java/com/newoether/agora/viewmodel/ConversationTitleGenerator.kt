@@ -169,6 +169,10 @@ class ConversationTitleGenerator(
                     requestTrace.recordParsedEvent(event)
                     when (event) {
                         is StreamEvent.TextChunk -> title += event.text
+                        is StreamEvent.Retrying -> if (event.resetCurrentAttempt) {
+                            title = ""
+                            providerError = null
+                        }
                         is StreamEvent.Error -> providerError = event.message
                         else -> Unit
                     }
