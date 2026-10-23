@@ -1141,6 +1141,7 @@
     <string name="tool_line_count">%1$d줄</string>
     <string name="tool_listing_shell_jobs">셸 작업 목록 가져오는 중…</string>
     <string name="tool_no_output">(출력 없음)</string>
+    <string name="tool_json_empty_container">콘텐츠 없음</string>
     <string name="tool_no_shell_jobs">셸 작업 없음</string>
     <string name="tool_read_file_empty">%1$s 읽음 · 비어 있음</string>
     <string name="tool_reading_shell_job">셸 작업 %1$s 읽는 중…</string>

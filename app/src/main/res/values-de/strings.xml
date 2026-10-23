@@ -1141,6 +1141,7 @@
     <string name="tool_line_count">%1$d Zeilen</string>
     <string name="tool_listing_shell_jobs">Shell-Aufträge werden aufgelistet…</string>
     <string name="tool_no_output">(Keine Ausgabe)</string>
+    <string name="tool_json_empty_container">Kein Inhalt</string>
     <string name="tool_no_shell_jobs">Keine Shell-Aufträge</string>
     <string name="tool_read_file_empty">%1$s gelesen · leer</string>
     <string name="tool_reading_shell_job">Shell-Auftrag %1$s wird gelesen…</string>

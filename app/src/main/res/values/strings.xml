@@ -86,6 +86,7 @@
     <string name="tool_state_stopped">Stopped</string>
     <string name="tool_unknown_device">Unknown device</string>
     <string name="tool_no_output">(No output)</string>
+    <string name="tool_json_empty_container">No content</string>
     <string name="tool_background_job_running">Background job %1$s is running</string>
     <string name="tool_shell_jobs">List Shell Jobs</string>
     <string name="tool_shell_job">Get Shell Job</string>

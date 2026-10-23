@@ -1141,6 +1141,7 @@
     <string name="tool_line_count">%1$d 行</string>
     <string name="tool_listing_shell_jobs">シェルジョブを一覧表示中…</string>
     <string name="tool_no_output">（出力なし）</string>
+    <string name="tool_json_empty_container">コンテンツなし</string>
     <string name="tool_no_shell_jobs">シェルジョブはありません</string>
     <string name="tool_read_file_empty">%1$s を読み取り · 空</string>
     <string name="tool_reading_shell_job">シェルジョブ %1$s を読み取り中…</string>

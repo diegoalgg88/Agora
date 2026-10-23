@@ -229,10 +229,10 @@ internal class WebUiController(
         tlsBackendPort = NO_PORT
     }
 
-    /** `http(s)://<address>:<port>` para cada dirección IPv4 no-loopback que esté activa. */
+    /** Links de acceso del LAN actual, tethering y direcciones peer-VPN soportadas. */
     fun accessUrls(port: Int, https: Boolean): List<String> {
         val scheme = if (https) "https" else "http"
-        return interfaceAddresses().map { "$scheme://${it.hostAddress}:$port" }
+        return webUiNetworkAddresses(appContext).map { "$scheme://${it.hostAddress}:$port" }
     }
 
     /** Lo llama el tema Compose; la próxima carga de página en el navegador lo usa. */
@@ -275,7 +275,7 @@ internal class WebUiController(
             "bolditalic" to com.newoether.agora.R.font.jetbrains_mono_bolditalic,
         )
 
-        /** Direcciones IPv4 no-loopback de interfaces activas (LAN, Tailscale, hotspot). */
+        /** Los candidatos SAN del certificado pueden ser un superconjunto de los links anunciados. */
         fun interfaceAddresses(): List<Inet4Address> = runCatching {
             NetworkInterface.getNetworkInterfaces().toList()
                 .filter { it.isUp && !it.isLoopback }

@@ -1141,6 +1141,7 @@
     <string name="tool_line_count">%1$d سطر</string>
     <string name="tool_listing_shell_jobs">جارٍ عرض مهام الصدفة…</string>
     <string name="tool_no_output">(لا يوجد إخراج)</string>
+    <string name="tool_json_empty_container">لا يوجد محتوى</string>
     <string name="tool_no_shell_jobs">لا توجد مهام صدفة</string>
     <string name="tool_read_file_empty">تمت قراءة %1$s · فارغ</string>
     <string name="tool_reading_shell_job">جارٍ قراءة مهمة الصدفة %1$s…</string>

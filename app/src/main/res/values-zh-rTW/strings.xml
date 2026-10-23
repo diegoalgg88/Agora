@@ -686,6 +686,7 @@
     <string name="tool_state_stopped">已停止</string>
     <string name="tool_unknown_device">未知裝置</string>
     <string name="tool_no_output">(No output)</string>
+    <string name="tool_json_empty_container">無內容</string>
     <string name="tool_background_job_running">背景工作 %1$s 正在執行</string>
     <string name="tool_shell_jobs">列出 Shell 工作</string>
     <string name="tool_shell_job">取得 Shell 工作</string>

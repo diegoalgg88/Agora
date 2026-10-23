@@ -1141,6 +1141,7 @@
     <string name="tool_line_count">%1$d строк</string>
     <string name="tool_listing_shell_jobs">Получение списка задач оболочки…</string>
     <string name="tool_no_output">(Нет вывода)</string>
+    <string name="tool_json_empty_container">Нет содержимого</string>
     <string name="tool_no_shell_jobs">Нет задач оболочки</string>
     <string name="tool_read_file_empty">Прочитано %1$s · пусто</string>
     <string name="tool_reading_shell_job">Чтение задачи оболочки %1$s…</string>

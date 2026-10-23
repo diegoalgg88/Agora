@@ -1147,6 +1147,7 @@
     <string name="tool_line_count">%1$d dòng</string>
     <string name="tool_listing_shell_jobs">Đang liệt kê tác vụ shell…</string>
     <string name="tool_no_output">(Không có đầu ra)</string>
+    <string name="tool_json_empty_container">Không có nội dung</string>
     <string name="tool_no_shell_jobs">Không có tác vụ shell</string>
     <string name="tool_read_file_empty">Đã đọc %1$s · trống</string>
     <string name="tool_reading_shell_job">Đang đọc tác vụ shell %1$s…</string>
