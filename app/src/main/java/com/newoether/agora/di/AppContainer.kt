@@ -575,6 +575,20 @@ class AppContainer(
             askUser = askUserController,
             shellConfirmation = shellConfirmationController,
             forkShare = chatRuntime.conversationForkShare,
+            // Búsqueda global del navegador: mismo ruteo que la app — RAG cuando el método manual
+            // lo elige y hay embeddings, keyword search en caso contrario.
+            search = { query ->
+                if (settingsRepository.manualSearchMethod.value == com.newoether.agora.util.Constants.SEARCH_METHOD_RAG) {
+                    com.newoether.agora.viewmodel.SemanticSearchService(
+                        settings = settingsRepository,
+                        activeEmbeddingConfig = { chatRuntime.ragManager.activeEmbeddingModel.value },
+                        resolveEmbeddingApiKey = chatRuntime.ragManager::resolveEmbeddingApiKey,
+                        search = chatRuntime.generationManager::semanticSearch,
+                    ).search(query, 20)
+                } else {
+                    conversationRepository.searchMessages(query, 20).map { it to 0f }
+                }
+            },
         )
     }
 

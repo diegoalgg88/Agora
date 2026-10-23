@@ -85,6 +85,8 @@ internal class WebUiSync(
     private val shellConfirmation: com.newoether.agora.viewmodel.ShellConfirmationController? = null,
     /** Fork/share identificados hacia el navegador; null deshabilita esos comandos. */
     private val forkShare: com.newoether.agora.viewmodel.ConversationForkShareController? = null,
+    /** Búsqueda global de conversaciones; devuelve mensaje + score por match. */
+    private val search: suspend (String) -> List<Pair<com.newoether.agora.data.local.MessageEntity, Float>> = { emptyList() },
     private val projectionDispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) {
     /** Sesiones vivas por connectionId; el token de login amarra cada una a su dueño. */
@@ -143,6 +145,9 @@ internal class WebUiSync(
             val session = openChatSession(this)
             // Búsqueda dentro de la conversación abierta; revisión creciente descarta viejas.
             val conversationQuery = MutableStateFlow<WebSyncCommand?>(null)
+            // Búsqueda global: revisión creciente y un solo job vivo por conexión.
+            val searchRevision = MutableStateFlow(0L)
+            var searchJob: Job? = null
             // Los comandos de fila resuelven dentro de las filas que esta conexión muestra.
             val visiblePath = MutableStateFlow<List<ChatMessage>>(emptyList())
             val pendingPageAction = java.util.concurrent.atomic.AtomicReference<WebSyncCommand?>(null)
@@ -322,6 +327,57 @@ internal class WebUiSync(
                             // La búsqueda dentro de la conversación abierta la maneja el job de
                             // observeConversation vía conversationQuery; aquí solo se admite.
                             conversationQuery.value = command
+                        }
+                        "search" -> {
+                            if (command.connectionId != connectionId ||
+                                command.revision <= searchRevision.value) continue
+                            searchRevision.value = command.revision
+                            searchJob?.cancel()
+                            val query = command.text.orEmpty()
+                            searchJob = launch(projectionDispatcher) {
+                                if (query.isBlank()) {
+                                    outbound.send(WebSyncEvent.Search(connectionId, command.revision, query, false))
+                                    return@launch
+                                }
+                                outbound.send(WebSyncEvent.Search(connectionId, command.revision, query, true))
+                                try {
+                                    kotlinx.coroutines.delay(200)
+                                    val matches = search(query).take(20)
+                                    currentCoroutineContext().ensureActive()
+                                    val titles = conversations.getDrawerConversations(
+                                        matches.map { it.first.conversationId }.distinct(),
+                                    ).associate { it.id to it.title }
+                                    val providers = customProviders.value
+                                    val items = matches.groupBy { it.first.conversationId }.mapNotNull { (id, entries) ->
+                                        val title = titles[id] ?: return@mapNotNull null
+                                        buildJsonObject {
+                                            put("id", id)
+                                            put("title", com.newoether.agora.data.replaceCustomProviderIdsForDisplay(title, providers))
+                                            put("score", entries.maxOf { it.second })
+                                            put("snippets", JsonArray(entries.take(2).map { (message, _) ->
+                                                val text = com.newoether.agora.data.replaceCustomProviderIdsForDisplay(message.text, providers)
+                                                val index = text.indexOf(query, ignoreCase = true)
+                                                val start = if (index < 0) 0 else (index - 20).coerceAtLeast(0)
+                                                val end = if (index < 0) text.length else (index + query.length + 20).coerceAtMost(text.length)
+                                                buildJsonObject {
+                                                    put("role", message.participant.name)
+                                                    put("text", (if (start > 0) "…" else "") + text.substring(start, end) +
+                                                        (if (end < text.length) "…" else ""))
+                                                }
+                                            }))
+                                        }
+                                    }
+                                    if (searchRevision.value == command.revision) {
+                                        outbound.send(WebSyncEvent.Search(connectionId, command.revision, query, false, items))
+                                    }
+                                } catch (cancelled: CancellationException) {
+                                    throw cancelled
+                                } catch (_: Exception) {
+                                    if (searchRevision.value == command.revision) {
+                                        outbound.send(WebSyncEvent.Search(connectionId, command.revision, query, false, failed = true))
+                                    }
+                                }
+                            }
                         }
                         "list_more" -> if (command.revision == listLimit.value.toLong()) {
                             listLimit.value += DRAWER_PAGE_SIZE
@@ -796,6 +852,17 @@ internal sealed interface WebSyncEvent {
         val action: String,
         val success: Boolean,
         val sharedText: String? = null,
+    ) : WebSyncEvent
+
+    /** Resultado de la búsqueda global de conversaciones; [revision] descarta respuestas viejas. */
+    @Serializable @SerialName("search")
+    data class Search(
+        val connectionId: String,
+        val revision: Long,
+        val query: String,
+        val searching: Boolean,
+        val items: List<JsonObject> = emptyList(),
+        val failed: Boolean = false,
     ) : WebSyncEvent
 
     @Serializable @SerialName("scroll_to_bottom")
