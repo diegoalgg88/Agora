@@ -379,7 +379,7 @@ internal class WebUiSync(
                                 }
                             }
                         }
-                        "list_more" -> if (command.revision == listLimit.value.toLong()) {
+                        "list_more" -> if (command.tokens == listLimit.value.toLong()) {
                             listLimit.value += DRAWER_PAGE_SIZE
                         }
                         "edit", "regenerate", "delete" -> session.rowCommand(command, visiblePath.value)
@@ -747,6 +747,8 @@ internal data class WebSyncCommand(
     val alwaysAllow: Boolean? = null,
     /** Comandos de fila: la fila que edit/regenerate/delete nombra. */
     val messageId: String? = null,
+    /** list_more: el límite de página que el navegador vio en el último evento. */
+    val tokens: Long? = null,
     /** Interacciones: respuestas de question_submit, keyed por id de pregunta. */
     val answers: Map<String, QuestionAnswers>? = null,
 ) {
