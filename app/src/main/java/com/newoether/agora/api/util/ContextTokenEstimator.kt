@@ -73,6 +73,58 @@ object ContextTokenEstimator {
         return applySafetyMargin(raw.coerceAtMost(Int.MAX_VALUE.toLong()))
     }
 
+    /**
+     * El mismo costo fijo de [estimateFixed] desglosado por origen, para que el indicador de
+     * contexto muestre qué llena la ventana. El margen de seguridad se aplica por parte, así las
+     * dos partes pueden diferir de [estimateFixed] por un token de redondeo.
+     */
+    fun estimateFixedComposition(
+        systemPrompt: String?,
+        tools: List<ToolDefinition>,
+        initialUserPrompt: String? = null,
+        codeExecutionEnabled: Boolean = false,
+        googleSearchEnabled: Boolean = false,
+        openAiWebSearchEnabled: Boolean = false,
+    ): FixedContextComposition {
+        var prompt = MESSAGE_OVERHEAD.toLong() + estimateTextRaw(systemPrompt.orEmpty())
+        initialUserPrompt?.takeIf(String::isNotBlank)?.let { initial ->
+            prompt += MESSAGE_OVERHEAD + estimateTextRaw(initial)
+        }
+        var toolTokens = 0L
+        tools.forEach { tool ->
+            toolTokens += TOOL_CALL_OVERHEAD
+            toolTokens += estimateTextRaw(tool.type)
+            toolTokens += estimateTextRaw(tool.function.name)
+            toolTokens += estimateTextRaw(tool.function.description)
+            // El estimado cuenta el schema que se envía: un schema externo (MCP) va verbatim,
+            // así que es su texto completo lo que consume el contexto.
+            val externalSchema = tool.function.parameters.schema
+            if (externalSchema != null) {
+                toolTokens += estimateTextRaw(externalSchema.toString())
+            } else {
+                toolTokens += estimateTextRaw(tool.function.parameters.type)
+                tool.function.parameters.properties.toSortedMap().forEach { (name, property) ->
+                    toolTokens += estimateTextRaw(name)
+                    toolTokens += estimateToolPropertyRaw(property)
+                }
+                tool.function.parameters.required.sorted().forEach { required ->
+                    toolTokens += estimateTextRaw(required)
+                }
+            }
+        }
+        listOfNotNull(
+            "code_execution".takeIf { codeExecutionEnabled },
+            "google_search".takeIf { googleSearchEnabled },
+            "web_search".takeIf { openAiWebSearchEnabled },
+        ).forEach { nativeTool ->
+            toolTokens += TOOL_CALL_OVERHEAD + estimateTextRaw(nativeTool)
+        }
+        return FixedContextComposition(
+            systemPromptTokens = applySafetyMargin(prompt.coerceAtMost(Int.MAX_VALUE.toLong())),
+            toolTokens = applySafetyMargin(toolTokens.coerceAtMost(Int.MAX_VALUE.toLong())),
+        )
+    }
+
     internal fun estimateText(text: String): Int = applySafetyMargin(estimateTextRaw(text))
 
     private fun estimateMessageRaw(message: ChatMessage): Long {

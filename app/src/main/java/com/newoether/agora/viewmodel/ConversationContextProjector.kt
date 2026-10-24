@@ -5,6 +5,10 @@ import com.newoether.agora.api.util.contextWindowRetainedMessageIds
 import com.newoether.agora.api.util.contextWindowUsage
 import com.newoether.agora.data.repository.ConversationRepository
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -34,6 +38,28 @@ internal class ConversationContextProjector(
     private val requestIds = AtomicLong(0L)
     private val _projection = MutableStateFlow(ConversationContextProjection())
     val projection: StateFlow<ConversationContextProjection> = _projection.asStateFlow()
+
+    private var latestRequest: kotlinx.coroutines.Job? = null
+    private val projectionTurn = kotlinx.coroutines.sync.Mutex()
+
+    /**
+     * Proyecta en el scope del caller cancelando el request anterior: cada conexión del WebUI
+     * tiene su propio projector, y el último request de esa conexión es el que cuenta.
+     */
+    fun request(
+        scope: kotlinx.coroutines.CoroutineScope,
+        conversationId: String?,
+        selectedBranchesJson: String?,
+        selectedModelId: String,
+        tokenBudget: Int,
+    ) {
+        latestRequest?.cancel()
+        latestRequest = scope.launch {
+            projectionTurn.withLock {
+                project(conversationId, selectedBranchesJson, selectedModelId, tokenBudget)
+            }
+        }
+    }
 
     fun invalidate(conversationId: String?) {
         val previousUsage = _projection.value.usage
@@ -103,6 +129,11 @@ internal class ConversationContextProjector(
             val fixedTokenCost = snapshot?.let {
                 generationManager().fixedContextTokenCost(it.config, it.context)
             } ?: 0
+            // Desglose del costo fijo (prompt de sistema vs tools) para el indicador de
+            // contexto; sin snapshot no hay desglose y las partes reportan 0.
+            val fixedComposition = snapshot?.let {
+                generationManager().fixedContextComposition(it.config, it.context)
+            }
             ConversationContextProjection(
                 conversationId = conversationId,
                 selectedBranchesJson = selectedBranchesJson,
@@ -110,6 +141,7 @@ internal class ConversationContextProjector(
                     messages = contextMessages,
                     tokenBudget = tokenBudget,
                     fixedTokenCost = fixedTokenCost,
+                    fixedComposition = fixedComposition,
                 ),
                 retainedMessageIds = contextWindowRetainedMessageIds(
                     messages = contextMessages,

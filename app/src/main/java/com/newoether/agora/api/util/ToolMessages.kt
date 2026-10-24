@@ -128,21 +128,44 @@ fun splitLogicalContext(messages: List<ChatMessage>, retainLogicalMessages: Int)
     return LogicalContextSplit(messages.take(cut), messages.drop(cut), count)
 }
 
+/**
+ * Desglose del costo fijo del contexto: lo que cuesta el prompt de sistema (+prompt inicial)
+ * aparte de lo que cuestan las definiciones de tools. Lo produce GenerationManager con el mismo
+ * estimador que el costo fijo total, así las partes nunca divergen de la aritmética del dispatch.
+ */
+data class FixedContextComposition(
+    val systemPromptTokens: Int,
+    val toolTokens: Int,
+)
+
 data class ContextWindowUsage(
     val estimatedTokenCount: Int,
     val tokenBudget: Int,
     val logicalMessageCount: Int,
     val hasCompactBoundary: Boolean,
+    /** Costo del prompt de sistema dentro de [estimatedTokenCount]; 0 cuando no se desglosa. */
+    val systemPromptTokens: Int = 0,
+    /** Costo de las definiciones de tools dentro de [estimatedTokenCount]; 0 cuando no se desglosa. */
+    val toolTokens: Int = 0,
 ) {
     val progress: Float
         get() = if (tokenBudget <= 0) 0f else
             (estimatedTokenCount.toFloat() / tokenBudget).coerceIn(0f, 1f)
+
+    /**
+     * Lo que cuesta la transcripción en sí: el estimado menos el prompt fijo y las tools.
+     * Derivado en vez de almacenado para que las tres partes siempre sumen [estimatedTokenCount].
+     */
+    val messageTokens: Int
+        get() = (estimatedTokenCount - systemPromptTokens - toolTokens).coerceAtLeast(0)
 }
 
 fun contextWindowUsage(
     messages: List<ChatMessage>,
     tokenBudget: Int,
     fixedTokenCost: Int = 0,
+    /** Desglose opcional del costo fijo; sin él las partes reportan 0. */
+    fixedComposition: FixedContextComposition? = null,
 ): ContextWindowUsage {
     val safeBudget = tokenBudget.coerceAtLeast(1)
     val canonical = canonicalContextMessages(messages)
@@ -155,6 +178,8 @@ fun contextWindowUsage(
         logicalMessageCount = splitLogicalContext(canonical, retainLogicalMessages = 0)
             .logicalMessageCount,
         hasCompactBoundary = messages.any(ChatMessage::isSuccessfulContextCompact),
+        systemPromptTokens = fixedComposition?.systemPromptTokens ?: 0,
+        toolTokens = fixedComposition?.toolTokens ?: 0,
     )
 }
 

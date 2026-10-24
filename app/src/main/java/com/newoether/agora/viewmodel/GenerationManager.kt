@@ -108,18 +108,22 @@ class GenerationManager(
         )
     }
 
-    internal fun fixedContextTokenCost(
-        config: GenerationConfig,
-        context: GenerationContext,
-    ): Int = ContextTokenEstimator.estimateFixed(
-        systemPrompt = config.effectiveSystemPrompt,
-        tools = if (config.lowContextModeEnabled) emptyList()
-        else toolExecutor.definitions(context),
-        initialUserPrompt = config.initialUserPrompt,
-        codeExecutionEnabled = config.codeExecutionEnabled,
-        googleSearchEnabled = config.googleSearchEnabled,
-        openAiWebSearchEnabled = config.openAiWebSearchEnabled,
-    )
+    internal fun fixedContextTokenCost(config: GenerationConfig, context: GenerationContext): Int =
+        ContextTokenEstimator.estimateFixed(
+            config.effectiveSystemPrompt,
+            if (config.lowContextModeEnabled) emptyList() else toolExecutor.definitions(context),
+            config.initialUserPrompt, config.codeExecutionEnabled,
+            config.googleSearchEnabled, config.openAiWebSearchEnabled)
+
+    /** El mismo costo fijo desglosado (prompt de sistema vs tools) para el indicador de contexto. */
+    internal fun fixedContextComposition(
+        config: GenerationConfig, context: GenerationContext,
+    ): com.newoether.agora.api.util.FixedContextComposition =
+        ContextTokenEstimator.estimateFixedComposition(
+            config.effectiveSystemPrompt,
+            if (config.lowContextModeEnabled) emptyList() else toolExecutor.definitions(context),
+            config.initialUserPrompt, config.codeExecutionEnabled,
+            config.googleSearchEnabled, config.openAiWebSearchEnabled)
 
     internal suspend fun resolvedFixedContextTokenCost(
         config: GenerationConfig,
@@ -141,13 +145,8 @@ class GenerationManager(
         )
         val resolvedRequest = providerConfig.resolveRequest(emptyList())
         return ContextTokenEstimator.estimateFixed(
-            systemPrompt = resolvedRequest.systemPrompt,
-            tools = definitions,
-            initialUserPrompt = config.initialUserPrompt,
-            codeExecutionEnabled = config.codeExecutionEnabled,
-            googleSearchEnabled = config.googleSearchEnabled,
-            openAiWebSearchEnabled = config.openAiWebSearchEnabled,
-        )
+            resolvedRequest.systemPrompt, definitions, config.initialUserPrompt,
+            config.codeExecutionEnabled, config.googleSearchEnabled, config.openAiWebSearchEnabled)
     }
 
     internal suspend fun buildApiPath(request: GenerationApiPathRequest): GenerationApiPath =

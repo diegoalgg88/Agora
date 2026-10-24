@@ -29,6 +29,10 @@ class ConversationContextProjectorTest {
         val conversations = mockk<ConversationRepository>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val generationManager = mockk<GenerationManager>()
+        // El desglose del costo fijo es nuevo (F4): los tests de proyección no afirman sobre las
+        // partes, así que el stub global reporta 0/0 y estimatedTokenCount queda como antes.
+        every { generationManager.fixedContextComposition(any(), any()) } returns
+            com.newoether.agora.api.util.FixedContextComposition(0, 0)
         val admission = testGenerationAdmissionSnapshot(
             conversationId = "context-preview-conversation",
         )
@@ -68,6 +72,10 @@ class ConversationContextProjectorTest {
         val conversations = mockk<ConversationRepository>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val generationManager = mockk<GenerationManager>()
+        // El desglose del costo fijo es nuevo (F4): los tests de proyección no afirman sobre las
+        // partes, así que el stub global reporta 0/0 y estimatedTokenCount queda como antes.
+        every { generationManager.fixedContextComposition(any(), any()) } returns
+            com.newoether.agora.api.util.FixedContextComposition(0, 0)
         val contextLoader = mockk<DurableSelectedContextLoader>()
         val user = entity("user", null, Participant.USER, "question", 0)
         val model = entity("model", user.id, Participant.MODEL, "", 1).copy(
@@ -140,6 +148,10 @@ class ConversationContextProjectorTest {
         val conversations = mockk<ConversationRepository>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val generationManager = mockk<GenerationManager>()
+        // El desglose del costo fijo es nuevo (F4): los tests de proyección no afirman sobre las
+        // partes, así que el stub global reporta 0/0 y estimatedTokenCount queda como antes.
+        every { generationManager.fixedContextComposition(any(), any()) } returns
+            com.newoether.agora.api.util.FixedContextComposition(0, 0)
         val contextLoader = mockk<DurableSelectedContextLoader>()
         val user = entity(
             "user",
@@ -181,6 +193,10 @@ class ConversationContextProjectorTest {
         val conversations = mockk<ConversationRepository>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val generationManager = mockk<GenerationManager>()
+        // El desglose del costo fijo es nuevo (F4): los tests de proyección no afirman sobre las
+        // partes, así que el stub global reporta 0/0 y estimatedTokenCount queda como antes.
+        every { generationManager.fixedContextComposition(any(), any()) } returns
+            com.newoether.agora.api.util.FixedContextComposition(0, 0)
         val contextLoader = mockk<DurableSelectedContextLoader>()
         val firstUser = entity("user-1", null, Participant.USER, "first", 0)
         val firstModel = entity("model-1", firstUser.id, Participant.MODEL, "first answer", 1)
@@ -221,6 +237,10 @@ class ConversationContextProjectorTest {
         val conversations = mockk<ConversationRepository>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val generationManager = mockk<GenerationManager>()
+        // El desglose del costo fijo es nuevo (F4): los tests de proyección no afirman sobre las
+        // partes, así que el stub global reporta 0/0 y estimatedTokenCount queda como antes.
+        every { generationManager.fixedContextComposition(any(), any()) } returns
+            com.newoether.agora.api.util.FixedContextComposition(0, 0)
         val contextLoader = mockk<DurableSelectedContextLoader>()
         val first = entity("branch-first", null, Participant.USER, "first", 0)
         val second = entity("branch-second", null, Participant.USER, "second", 1)
@@ -276,6 +296,10 @@ class ConversationContextProjectorTest {
         val conversations = mockk<ConversationRepository>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val generationManager = mockk<GenerationManager>()
+        // El desglose del costo fijo es nuevo (F4): los tests de proyección no afirman sobre las
+        // partes, así que el stub global reporta 0/0 y estimatedTokenCount queda como antes.
+        every { generationManager.fixedContextComposition(any(), any()) } returns
+            com.newoether.agora.api.util.FixedContextComposition(0, 0)
         val contextLoader = mockk<DurableSelectedContextLoader>()
         val first = entity("first", null, Participant.USER, "first", 0)
         val second = entity("second", null, Participant.USER, "second ".repeat(200), 1)
@@ -350,6 +374,10 @@ class ConversationContextProjectorTest {
         val conversations = mockk<ConversationRepository>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val generationManager = mockk<GenerationManager>()
+        // El desglose del costo fijo es nuevo (F4): los tests de proyección no afirman sobre las
+        // partes, así que el stub global reporta 0/0 y estimatedTokenCount queda como antes.
+        every { generationManager.fixedContextComposition(any(), any()) } returns
+            com.newoether.agora.api.util.FixedContextComposition(0, 0)
         val contextLoader = mockk<DurableSelectedContextLoader>()
         val first = entity("first", null, Participant.USER, "first", 0)
         val second = entity("second", null, Participant.USER, "second", 1)
@@ -426,6 +454,10 @@ class ConversationContextProjectorTest {
         val conversations = mockk<ConversationRepository>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val generationManager = mockk<GenerationManager>()
+        // El desglose del costo fijo es nuevo (F4): los tests de proyección no afirman sobre las
+        // partes, así que el stub global reporta 0/0 y estimatedTokenCount queda como antes.
+        every { generationManager.fixedContextComposition(any(), any()) } returns
+            com.newoether.agora.api.util.FixedContextComposition(0, 0)
         val contextLoader = mockk<DurableSelectedContextLoader>()
         val first = entity("branch-first", null, Participant.USER, "first", 0)
         val second = entity("branch-second", null, Participant.USER, "second", 1)
@@ -485,6 +517,10 @@ class ConversationContextProjectorTest {
         val conversations = mockk<ConversationRepository>()
         val requestBuilder = mockk<GenerationRequestBuilder>()
         val generationManager = mockk<GenerationManager>()
+        // El desglose del costo fijo es nuevo (F4): los tests de proyección no afirman sobre las
+        // partes, así que el stub global reporta 0/0 y estimatedTokenCount queda como antes.
+        every { generationManager.fixedContextComposition(any(), any()) } returns
+            com.newoether.agora.api.util.FixedContextComposition(0, 0)
         val contextLoader = mockk<DurableSelectedContextLoader>()
         val first = entity("first", null, Participant.USER, "first", 0)
         var loadIndex = 0

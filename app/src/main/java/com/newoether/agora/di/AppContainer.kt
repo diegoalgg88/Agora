@@ -616,6 +616,18 @@ class AppContainer(
                     conversationRepository.searchMessages(query, 20).map { it to 0f }
                 }
             },
+            // Context accounting por conexión: cada navegador pricea la conversación que muestra
+            // con su propio projector; la política de compactación es el settings flow del teléfono.
+            contextAccounting = com.newoether.agora.webui.WebUiContextAccounting(
+                conversations = conversationRepository,
+                requestBuilder = chatRuntime.requestBuilder,
+                generationManager = { chatRuntime.generationManager },
+                generationErrorFormatter = { raw ->
+                    com.newoether.agora.viewmodel.normalizePersistedGenerationErrorText(appContext, raw)
+                },
+                compactThresholdPercent = settingsRepository.contextCompactThresholdPercent,
+                compactEnabled = settingsRepository.contextCompactEnabled,
+            ),
         )
     }
 
