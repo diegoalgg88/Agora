@@ -218,6 +218,34 @@ class WebUiChatSessionEditorsTest {
         verify(exactly = 0) { settings.updateConversationSettings(any(), any()) }
     }
 
+    @Test fun recompactRoutesThroughTheRowPathOnlyForVisibleCompactRowsAndUsesConfiguredDefaults() = runBlocking {
+        val started = CompletableDeferred<CompactRequest>()
+        coEvery { generation.compactManual("a", any()) } coAnswers {
+            started.complete(secondArg()); CompactResult.Created("compact")
+        }
+        session.start()
+        ready("a", 7)
+        // Un recompact de una fila que no es context compact visible jamás llega al owner.
+        session.rowCommand(WebSyncCommand("recompact", conversationId = "a", seq = 7, messageId = "plain-row"), emptyList())
+        // conversationId distinto del target también se fenced.
+        session.rowCommand(WebSyncCommand("recompact", conversationId = "other", seq = 7, messageId = "plain-row"), emptyList())
+        io.mockk.coVerify(exactly = 0) { generation.compactManual(any(), any()) }
+        val compactRow = com.newoether.agora.model.ChatMessage(
+            id = com.newoether.agora.util.Constants.COMPACT_MSG_PREFIX + "row",
+            participant = com.newoether.agora.model.Participant.MODEL, text = "",
+            status = com.newoether.agora.model.MessageStatus.SUCCESS)
+        session.rowCommand(WebSyncCommand("recompact", conversationId = "a", seq = 7, messageId = compactRow.id, actionId = 12), listOf(compactRow))
+        val captured = withTimeout(5_000) { started.await() }
+        // El request reusa los defaults configurados del Compact y fija replaceMessageId.
+        assertEquals("OpenAI:compact", captured.model)
+        assertEquals("configured summary", captured.prompt)
+        assertEquals(4, captured.retainLogicalMessages)
+        assertEquals(compactRow.id, captured.replaceMessageId)
+        assertEquals(true, captured.preserveSystemPrompt)
+        withTimeout(5_000) { session.composerState.first { it.actionId == 12L } }
+        Unit
+    }
+
     @Test fun disconnectCancelsOnlySessionWaitAndDoesNotReplayCompact() = runBlocking {
         val started = CompletableDeferred<Unit>()
         val cancelled = CompletableDeferred<Unit>()

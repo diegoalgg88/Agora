@@ -385,7 +385,7 @@ internal class WebUiChatSession(
      */
     suspend fun rowCommand(command: WebSyncCommand, path: List<ChatMessage>) {
         val opened = openTarget.value
-        if (opened.browserSeq != command.seq) return
+        if (opened.browserSeq != command.seq || opened.conversationId != command.conversationId) return
         val conversationId = opened.conversationId ?: return
         val messageId = command.messageId ?: return
         val modelId = activeModel.value?.takeIf { it.first == conversationId }?.second.orEmpty()
@@ -398,6 +398,8 @@ internal class WebUiChatSession(
                 generation.regenerate(this, conversationId, messageId, modelId, path)
             }
             "delete" -> generation.deleteMessage(this, conversationId, messageId, path)
+            // Recompact solo si la fila nombrada es un context compact que esta conexión ve.
+            "recompact" -> if (path.any { it.id == messageId && it.isContextCompact() }) editorCommand(command)
         }
     }
 
@@ -480,9 +482,15 @@ internal class WebUiChatSession(
                 } finally { actionId.value = command.actionId }
                 return@withLock null
             }
-            if (command.type != "compact") return@withLock null
+            if (command.type !in listOf("compact", "recompact")) return@withLock null
             val id = openId.value
-            val request = command.retainCount?.let { CompactRequest(command.modelId.orEmpty(), command.text.orEmpty(), it,
+            // Recompact reusa los defaults configurados del Compact; un compact manual trae los
+            // suyos. Ambos respetan la preferencia global de preservar el system prompt.
+            val request = if (command.type == "recompact") command.messageId?.let { CompactRequest(
+                settings.contextCompactModel.value?.takeIf(String::isNotBlank) ?: activeModel.value?.takeIf { it.first == id }?.second.orEmpty(),
+                settings.contextCompactPrompt.value, settings.contextCompactRetainCount.value, replaceMessageId = it,
+                preserveSystemPrompt = settings.contextCompactPreserveSystemPrompt.value,
+            ) } else command.retainCount?.let { CompactRequest(command.modelId.orEmpty(), command.text.orEmpty(), it,
                 preserveSystemPrompt = settings.contextCompactPreserveSystemPrompt.value) }
             if (id == null || request == null || request.model !in validModels.value.orEmpty() || request.prompt.isBlank() ||
                 request.retainLogicalMessages < 0 || registry.getOrCreate(id).stopping.value ||

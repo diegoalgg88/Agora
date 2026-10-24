@@ -380,7 +380,7 @@ internal class WebUiSync(
                         "list_more" -> if (command.tokens == listLimit.value.toLong()) {
                             listLimit.value += DRAWER_PAGE_SIZE
                         }
-                        "edit", "regenerate", "delete" -> session.rowCommand(command, visiblePath.value)
+                        "edit", "regenerate", "delete", "recompact" -> session.rowCommand(command, visiblePath.value)
                         "fork", "share" -> {
                             val target = session.openTarget.value
                             if (forkShare == null ||
