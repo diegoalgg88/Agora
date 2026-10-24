@@ -23,7 +23,7 @@ class SubagentManager(
     private val conversations: ConversationRepository,
     private val settings: SettingsRepository,
     private val transfers: ConversationSettingsTransferCoordinator,
-    private val engine: TaskExecutionEngine,
+    private val engine: () -> TaskExecutionEngine,
     private val registry: ConversationStateRegistry,
     private val coordinator: ConversationExecutionCoordinator,
     private val gate: AutomationExecutionGate,
@@ -88,7 +88,7 @@ class SubagentManager(
                         transfers.complete(child.id)
                         conversations.recoverConversationRuntime(child.id)
                         previousMessageId = conversations.getLastMessageForConversation(child.id)?.id
-                        val result = engine.runOnceWithAutomationGuardsHeld(
+                        val result = engine().runOnceWithAutomationGuardsHeld(
                             conversationId = child.id, userText = task, modelId = child.modelId,
                             requestKind = "subagent", contextOverride = ctx,
                         )
@@ -164,7 +164,7 @@ class SubagentManager(
     suspend fun cancel(id: String) {
         val job = jobs[id]
         job?.cancel()
-        engine.stopConversationAndAwait(id)
+        engine().stopConversationAndAwait(id)
         job?.join()
     }
 
@@ -241,7 +241,7 @@ class SubagentManager(
                     val result = checkNotNull(SubagentCompletion.decode(it.resultJson))
                     "${it.title} (${it.id}) [${result.status}]\n${result.text}"
                 }
-                engine.runOnceWithAutomationGuardsHeld(
+                engine().runOnceWithAutomationGuardsHeld(
                     conversationId = parentId, userText = text, requestKind = "subagent",
                     source = MessageSource(MessageSource.Kind.SUBAGENT, subagentResults = receipts),
                 )

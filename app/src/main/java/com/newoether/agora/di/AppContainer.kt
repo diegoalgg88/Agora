@@ -317,7 +317,8 @@ class AppContainer(
             conversations = conversationRepository,
             settings = settingsRepository,
             transfers = conversationSettingsTransfers,
-            engine = taskExecutionEngine,
+            // Lambda diferida: rompe el ciclo engine → subagentToolProvider → manager → engine.
+            engine = { taskExecutionEngine },
             registry = conversationStateRegistry,
             coordinator = conversationExecutionCoordinator,
             gate = automationExecutionGate,
