@@ -36,6 +36,13 @@ internal class ConversationLifecycleController(
         }
     }
 
+    /** El pin también es metadata durable: un solo owner, el mismo que el teléfono. */
+    fun setPinned(conversationId: String, pinned: Boolean) {
+        scope.launch {
+            conversations.setConversationPinned(conversationId, pinned)
+        }
+    }
+
     fun delete(
         origin: ChatClient,
         conversationId: String,

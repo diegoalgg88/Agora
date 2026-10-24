@@ -86,6 +86,8 @@ internal class WebUiSync(
     private val shellConfirmation: com.newoether.agora.viewmodel.ShellConfirmationController? = null,
     /** Fork/share identificados hacia el navegador; null deshabilita esos comandos. */
     private val forkShare: com.newoether.agora.viewmodel.ConversationForkShareController? = null,
+    /** El único owner de metadata de conversación que el teléfono también usa; el menú del drawer va por él. */
+    private val conversationLifecycle: com.newoether.agora.viewmodel.ConversationLifecycleController? = null,
     /** Búsqueda global de conversaciones; devuelve mensaje + score por match. */
     private val search: suspend (String) -> List<Pair<com.newoether.agora.data.local.MessageEntity, Float>> = { emptyList() },
     private val projectionDispatcher: CoroutineDispatcher = Dispatchers.Default,
@@ -293,7 +295,33 @@ internal class WebUiSync(
                         "pin" -> {
                             val id = command.conversationId ?: continue
                             val pinned = command.enabled ?: continue
-                            conversations.setConversationPinned(id, pinned)
+                            conversationLifecycle?.setPinned(id, pinned)
+                                ?: conversations.setConversationPinned(id, pinned)
+                        }
+                        "conversation_rename" -> {
+                            val id = command.conversationId ?: continue
+                            val title = command.text?.trim().orEmpty()
+                            // Como el ChatRenameDialog del teléfono: un título vacío jamás escribe.
+                            if (title.isNotEmpty()) conversationLifecycle?.rename(id, title)
+                        }
+                        "conversation_delete" -> {
+                            val id = command.conversationId ?: continue
+                            val actionId = command.actionId
+                            if (actionId <= 0L) continue
+                            val lifecycle = conversationLifecycle
+                            if (lifecycle == null) {
+                                outbound.send(WebSyncEvent.ConversationDelete(id, actionId, false))
+                                continue
+                            }
+                            // La transacción del teléfono: rechazada con un send admitido, y cada
+                            // cliente que aún muestre la conversación cae a New Chat. Esta sesión
+                            // es el origen; solo su propio navegador settlea el diálogo que abrió.
+                            val accepted = lifecycle.delete(session, id) { deleted ->
+                                if (connectionJob.isActive) launch {
+                                    outbound.send(WebSyncEvent.ConversationDelete(id, actionId, deleted))
+                                }
+                            }
+                            if (!accepted) outbound.send(WebSyncEvent.ConversationDelete(id, actionId, false))
                         }
                         "question_submit", "question_skip", "shell_decision" -> {
                             val target = session.openTarget.value
@@ -810,6 +838,18 @@ internal sealed interface WebSyncEvent {
 
     @Serializable @SerialName("deleted")
     data class Deleted(val conversationId: String) : WebSyncEvent
+
+    /**
+     * Cómo el owner de conversación del teléfono respondió al delete de ESTA conexión.
+     * [actionId] repite el request: solo el navegador que preguntó settlea su propio diálogo;
+     * un delete iniciado por otro cliente llega aquí como [Deleted] y una lista más corta.
+     */
+    @Serializable @SerialName("conversation_delete")
+    data class ConversationDelete(
+        val conversationId: String,
+        val actionId: Long,
+        val success: Boolean,
+    ) : WebSyncEvent
 
     @Serializable @SerialName("load_failed")
     data class LoadFailed(val conversationId: String) : WebSyncEvent

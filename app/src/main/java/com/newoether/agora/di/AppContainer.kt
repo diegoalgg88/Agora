@@ -598,6 +598,8 @@ class AppContainer(
             askUser = askUserController,
             shellConfirmation = shellConfirmationController,
             forkShare = chatRuntime.conversationForkShare,
+            // El menú del drawer (pin/rename/delete) va por el mismo owner que el teléfono.
+            conversationLifecycle = chatRuntime.conversationLifecycle,
             // Búsqueda global del navegador: mismo ruteo que la app — RAG cuando el método manual
             // lo elige y hay embeddings, keyword search en caso contrario.
             search = { query ->
