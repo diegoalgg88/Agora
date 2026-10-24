@@ -1,0 +1,8 @@
+<resources>
+    <string name="message_source_subagent">Unteragent</string>
+    <string name="subagent_running">Wird ausgeführt</string>
+    <string name="subagent_completed">Abgeschlossen</string>
+    <string name="subagent_failed">Fehlgeschlagen</string>
+    <string name="subagent_stopped">Gestoppt</string>
+    <string name="subagent_idle">Bereit</string>
+</resources>

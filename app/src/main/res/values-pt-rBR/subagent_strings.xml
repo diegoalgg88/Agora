@@ -1,0 +1,8 @@
+<resources>
+    <string name="message_source_subagent">Subagente</string>
+    <string name="subagent_running">Em execução</string>
+    <string name="subagent_completed">Concluído</string>
+    <string name="subagent_failed">Falhou</string>
+    <string name="subagent_stopped">Interrompido</string>
+    <string name="subagent_idle">Inativo</string>
+</resources>

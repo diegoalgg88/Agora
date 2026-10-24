@@ -1,0 +1,8 @@
+<resources>
+    <string name="message_source_subagent">Субагент</string>
+    <string name="subagent_running">Выполняется</string>
+    <string name="subagent_completed">Завершено</string>
+    <string name="subagent_failed">Ошибка</string>
+    <string name="subagent_stopped">Остановлено</string>
+    <string name="subagent_idle">Ожидание</string>
+</resources>

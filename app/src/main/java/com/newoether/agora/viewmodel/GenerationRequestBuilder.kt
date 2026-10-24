@@ -186,6 +186,9 @@ class GenerationRequestBuilder(
         providerRegistry.awaitInitialSync()
         val selectedModelId = providerRegistry.canonicalModelId(modelId)
         val providerName = providerRegistry.providerForModel(selectedModelId)
+        // Un subagent jamás delega otros subagents ni consulta historial ajeno.
+        val admissionConversation = conversationOverride ?: convRepo.getConversation(conversationId)
+        val isSubagent = admissionConversation?.parentConversationId != null
         val effectiveSettings = if (conversationOverride != null) {
             resolveEffectiveConversationSettings(
                 conversationSettingsOverride ?: ConversationSettings(),
@@ -316,6 +319,9 @@ class GenerationRequestBuilder(
             selectedModelId = selectedModelId,
             config = ordinaryConfig,
             context = context.copy(
+                // Un subagent no delega más subagents ni consulta historial ajeno.
+                subagentToolsEnabled = !isSubagent,
+                accessPastConversations = context.accessPastConversations && !isSubagent,
                 webSearchApiKeys = context.webSearchApiKeys.toMap(),
                 shellDevices = context.shellDevices.toList(),
             ),
@@ -338,6 +344,9 @@ class GenerationRequestBuilder(
     ): GenerationContextProjectionSnapshot {
         val selectedModelId = providerRegistry.canonicalModelId(modelId)
         val providerName = providerRegistry.providerForModel(selectedModelId)
+        // Un subagent jamás delega otros subagents ni consulta historial ajeno.
+        val projectionConversation = convRepo.getConversation(conversationId)
+        val isSubagent = projectionConversation?.parentConversationId != null
         val effectiveSettings = conversationSettingsOverride
             ?.let(::resolveEffectiveConversationSettings)
             ?: buildEffectiveConversationSettings(conversationId)
@@ -358,13 +367,17 @@ class GenerationRequestBuilder(
                             effectiveSettings.lowContextModeEnabled == true
                         ),
         )
+        // La proyección cercada: subagents pierden delegación e historial cruzado.
+        val projectionContext = context.copy(
+            subagentToolsEnabled = !isSubagent,
+            accessPastConversations = context.accessPastConversations && !isSubagent,
+            webSearchApiKeys = context.webSearchApiKeys.toMap(),
+            shellDevices = context.shellDevices.toList(),
+        )
         if (baseConfig.lowContextModeEnabled) {
             return GenerationContextProjectionSnapshot(
                 config = baseConfig,
-                context = context.copy(
-                    webSearchApiKeys = context.webSearchApiKeys.toMap(),
-                    shellDevices = context.shellDevices.toList(),
-                ),
+                context = projectionContext,
             )
         }
         val promptTemplate = capturePromptTemplate(
@@ -456,6 +469,9 @@ class GenerationRequestBuilder(
         )
         val genCtx = GenerationContext(
             conversationId = currentId,
+            // El chat ordinario puede delegar subagents; el catálogo de modelos listado.
+            subagentToolsEnabled = true,
+            enabledModelIds = settings.enabledModels.value.sorted(),
             accessSavedMemories = settings.accessSavedMemories.value,
             accessActiveMemory = settings.accessActiveMemory.value,
             askUserEnabled = settings.askUserEnabled.value,

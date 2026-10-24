@@ -206,6 +206,8 @@ data class ChatConversation(
     /** Conversación pineada: encabeza la sección Pinned del drawer. */
     val isPinned: Boolean = false,
     val selectedBranchesJson: String? = null,
+    /** La conversación padre de un subagent; null en conversaciones normales. */
+    val parentConversationId: String? = null,
 )
 
 fun ChatMessage.isContextCompact(): Boolean =

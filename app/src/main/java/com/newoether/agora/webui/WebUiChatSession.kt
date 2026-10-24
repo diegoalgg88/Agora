@@ -99,6 +99,8 @@ internal class WebUiChatSession(
     private val uploadDirectory: File,
     private val allowLocalSandbox: () -> Boolean = { false },
     sandboxHomeDir: () -> File? = { null },
+    /** Notifica la apertura de conversación (p. ej. subagent delivery al navegador). */
+    private val onConversationOpened: (String) -> Unit = {},
 ) : ChatClient {
     /** Where this session shows; [browserSeq] is the browser's last open request it follows. */
     data class OpenTarget(
@@ -297,6 +299,8 @@ internal class WebUiChatSession(
         target.value = OpenTarget(conversationId, seq, movedByServer = false)
         openId.value = conversationId
         retainOwnerLocked(conversationId ?: NEW_CHAT_WORKSPACE_ID)
+        // La conversación recién abierta puede tener receipts de subagent por entregar.
+        conversationId?.let(onConversationOpened)
     }
 
     /**

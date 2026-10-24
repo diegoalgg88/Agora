@@ -249,8 +249,9 @@ internal class ConversationCompactController(
             thinkingEnabled = false,
         ),
         context = context.copy(
-            // El compact no es una conversación real: los tools de todo no corren ahí.
+            // El compact no es una conversación real: los tools de todo y de subagents no corren ahí.
             todoEnabled = false,
+            subagentToolsEnabled = false,
             accessSavedMemories = false,
             accessActiveMemory = false,
             skillReadAccess = false,

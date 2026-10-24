@@ -1,0 +1,8 @@
+<resources>
+    <string name="message_source_subagent">子 Agent</string>
+    <string name="subagent_running">运行中</string>
+    <string name="subagent_completed">已完成</string>
+    <string name="subagent_failed">失败</string>
+    <string name="subagent_stopped">已停止</string>
+    <string name="subagent_idle">空闲</string>
+</resources>

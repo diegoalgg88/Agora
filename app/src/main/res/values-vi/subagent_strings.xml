@@ -1,0 +1,8 @@
+<resources>
+    <string name="message_source_subagent">Tác tử phụ</string>
+    <string name="subagent_running">Đang chạy</string>
+    <string name="subagent_completed">Đã hoàn thành</string>
+    <string name="subagent_failed">Thất bại</string>
+    <string name="subagent_stopped">Đã dừng</string>
+    <string name="subagent_idle">Chờ</string>
+</resources>

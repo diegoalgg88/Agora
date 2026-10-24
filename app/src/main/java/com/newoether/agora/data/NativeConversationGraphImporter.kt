@@ -228,6 +228,12 @@ internal class NativeConversationGraphImporter(
                     hasUnreadGeneration = false,
                     // Pin es preferencia de usuario y viaja con el contenido.
                     isPinned = conversation.isPinned,
+                    parentConversationId = conversation.parentConversationId,
+                    subagentResultJson = conversation.subagentResultJson,
+                    subagentResultId = conversation.subagentResultId,
+                    subagentResultStatus = conversation.subagentResultStatus,
+                    // El trabajo restaurado queda dormant: jamás dispara generaciones nuevas.
+                    subagentDeliveredResultId = conversation.subagentResultId,
                     // El todo viaja con el contenido; re-encode valida y normaliza el payload.
                     todoJson = com.newoether.agora.model.ConversationTodo.encode(
                         com.newoether.agora.model.ConversationTodo.decode(conversation.todoJson),
@@ -241,6 +247,8 @@ internal class NativeConversationGraphImporter(
         } else {
             mutableSetOf()
         }.apply { addAll(conversations.map { it.id }) }
+        // El bosque de subagents debe ser plano y consistente antes de tocar el grafo durable.
+        validateSubagentArchiveOwners(conversations, availableConversationIds, chatDao::getConversation)
 
         val availableRawRuns = rawRuns.filter {
             it.conversationId in availableConversationIds
@@ -733,6 +741,12 @@ internal class NativeConversationGraphImporter(
         val hasUnreadGeneration: Boolean = false,
         /** Conversación pineada; viaja con el contenido en archives v5+. */
         val isPinned: Boolean = false,
+        /** Bosque de subagents: parent plano y outbox de completion durable. */
+        val parentConversationId: String? = null,
+        val subagentResultJson: String? = null,
+        val subagentResultId: String? = null,
+        val subagentResultStatus: String? = null,
+        val subagentDeliveredResultId: String? = null,
         /** Última lista Todo de la conversación; null = sin lista. */
         val todoJson: String? = null,
     )

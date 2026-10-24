@@ -1,0 +1,8 @@
+<resources>
+    <string name="message_source_subagent">하위 에이전트</string>
+    <string name="subagent_running">실행 중</string>
+    <string name="subagent_completed">완료</string>
+    <string name="subagent_failed">실패</string>
+    <string name="subagent_stopped">중지됨</string>
+    <string name="subagent_idle">대기 중</string>
+</resources>

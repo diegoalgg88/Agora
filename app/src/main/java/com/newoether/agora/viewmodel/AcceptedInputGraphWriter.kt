@@ -39,6 +39,8 @@ internal class AcceptedInputGraphWriter(
         val newChatPersistSnapshot: NewChatPersistEntity? = null,
         /** Origin kind persisted on the Run ("chat", "heartbeat", "task", "loop", ...). */
         val requestKind: String,
+        /** Source del turno; un subagent trae los receipts consumidos en el mismo commit. */
+        val source: com.newoether.agora.model.MessageSource? = null,
     ) {
         val conversationId: String get() = inputEffect.identity.conversationId
         val runId: String get() = inputEffect.identity.runId
@@ -84,6 +86,8 @@ internal class AcceptedInputGraphWriter(
             participant = Participant.USER,
             timestamp = request.userTimestamp,
             attachmentMeta = request.attachmentMeta,
+            // El source viaja con el turno: receipts de subagent se consumen en el mismo commit.
+            sourceJson = request.source?.let(com.newoether.agora.model.MessageSource::encode),
             runId = request.runId,
             runSequence = 0,
             consumedAtPass = 0,

@@ -61,6 +61,9 @@ data class GenerationConfig(
 
 data class GenerationContext(
     val conversationId: String? = null,
+    /** Subagents delegables desde este contexto; el compact y los hijos los apagan. */
+    val subagentToolsEnabled: Boolean = false,
+    val enabledModelIds: List<String> = emptyList(),
     /** Los tools de todo solo corren en conversaciones reales, nunca en compacts. */
     val todoEnabled: Boolean = true,
     /** Lo provee solo el executor autorizado, jamás los argumentos del Provider. */

@@ -10,6 +10,7 @@ import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.diagnostics.DeveloperDiagnostics
 import com.newoether.agora.model.ChatMessage
+import com.newoether.agora.model.MessageSource
 import com.newoether.agora.model.MessageStatus
 import com.newoether.agora.model.Participant
 import com.newoether.agora.model.RunEffect
@@ -160,6 +161,19 @@ class TaskExecutionEngine(
         emitSnackbar = {},
     )
     private val stopFinalizer = GenerationFinalizer(convRepo, ragManager::indexMessageForRag)
+
+    /** Detiene la generación viva de una conversación y espera el settle durable de su stop. */
+    internal suspend fun stopConversationAndAwait(conversationId: String) {
+        val state = generationRegistry.get(conversationId) ?: return
+        val stopped = state.stop()
+        stopped.finalizationEffect?.let { effect ->
+            stopFinalizer.settleTaskStopEffect(
+                state, effect, stopped.stoppedMessage?.let(::listOf).orEmpty(),
+            )
+        }
+        state.awaitSendAvailable()
+    }
+
     private val runFinalizationEffects = RunFinalizationEffectCoordinator()
     private val titleGenerator = ConversationTitleGenerator(convRepo, settings, providerRegistry)
     private val contextCompactor = ContextCompactor(
@@ -372,6 +386,10 @@ class TaskExecutionEngine(
         images: List<String> = emptyList(),
         attachmentMeta: String? = null,
         suppressTerminalNotification: Boolean = false,
+        /** Source explícito del turno automático; los subagents traen receipts propios. */
+        source: MessageSource? = null,
+        /** Contexto cercado del caller (p.ej. subagent heredado del parent); null = ordinary. */
+        contextOverride: com.newoether.agora.viewmodel.GenerationContext? = null,
     ): Result = automationExecutionGate.withExecution {
         executionCoordinator.withAutomationConversationLock(conversationId) {
             settings.awaitInitialLoad()
@@ -388,6 +406,8 @@ class TaskExecutionEngine(
                     images = images,
                     attachmentMeta = attachmentMeta,
                     suppressTerminalNotification = suppressTerminalNotification,
+                    source = source,
+                    contextOverride = contextOverride,
                 )
             }
         }
@@ -407,6 +427,8 @@ class TaskExecutionEngine(
         precondition: suspend () -> Boolean = { true },
         requestKind: String = "loop",
         suppressTerminalNotification: Boolean = false,
+        source: MessageSource? = null,
+        contextOverride: com.newoether.agora.viewmodel.GenerationContext? = null,
     ): Result {
         settings.awaitInitialLoad()
         return automationWakeLockOwner.whileHeld(settings.automationWakeLockEnabled.value) {
@@ -434,6 +456,8 @@ class TaskExecutionEngine(
         images: List<String> = emptyList(),
         attachmentMeta: String? = null,
         suppressTerminalNotification: Boolean = false,
+        source: MessageSource? = null,
+        contextOverride: com.newoether.agora.viewmodel.GenerationContext? = null,
     ): Result {
         require(requestKind.isNotBlank())
         settings.awaitInitialLoad()
@@ -452,7 +476,7 @@ class TaskExecutionEngine(
         // conversation lease still spans the whole generation and the Result reflects what
         // actually happened rather than merely "the send was accepted".
         val bridge = currentForegroundSendBridge()
-        if (bridge != null) {
+        if (bridge != null && requestKind != "subagent") {
             when (
                 val outcome = bridge(
                     conversationId,
@@ -515,10 +539,16 @@ class TaskExecutionEngine(
                     )
                 },
             )
-            val taskContext = captured.context.copy(
+            // Subagents retienen los tools admitidos del parent salvo delegación/historial
+            // recursivas; una corrida ordinaria conserva el comportamiento de siempre.
+            val taskContext = (contextOverride ?: captured.context).copy(
+                conversationId = conversationId,
+                toolEffectIdentity = null,
+                subagentToolsEnabled = captured.context.subagentToolsEnabled && contextOverride == null,
+                accessPastConversations = captured.context.accessPastConversations && contextOverride == null,
                 // Automation tools are intentionally foreground-only: a scheduled run must
                 // not recursively create more tasks/loops without a user in the loop.
-                automationToolsEnabled = false,
+                automationToolsEnabled = contextOverride?.automationToolsEnabled ?: false,
                 foregroundServiceManagedExternally = foregroundServiceManagedExternally,
             )
             val generationSnapshot = captured.copy(
@@ -613,6 +643,8 @@ class TaskExecutionEngine(
                     userTimestamp = now,
                     touchConversationOnAdmission = false,
                     requestKind = requestKind,
+                    // Un subagent trae sus receipts; una corrida ordinaria no lleva source.
+                    source = source ?: MessageSource.forAutomationRequestKind(requestKind),
                 ),
             )
             runCreated = true

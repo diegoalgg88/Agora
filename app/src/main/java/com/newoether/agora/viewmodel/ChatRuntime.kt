@@ -55,7 +55,18 @@ class ChatRuntime(
      * el upstream solo registra automation+mcp+askUser, pero este fork los ofrece en chat.
      */
     extraToolProviders: List<com.newoether.agora.tool.ToolProvider> = emptyList(),
+    /** Tool de subagents del chat; el modelo delega en conversaciones hijas aisladas. */
+    subagentToolProvider: com.newoether.agora.tool.SubagentToolProvider? = null,
+    /** Lifecycle de subagents: apertura de conversación e idle les notifica para entrega durable. */
+    subagentManager: com.newoether.agora.automation.SubagentManager? = null,
 ) {
+    /** Subagents: la conversación abierta puede recibir resultados de sus hijos. */
+    internal val onConversationOpened: (String) -> Unit =
+        if (subagentManager != null) {
+            { id -> subagentManager!!.conversationOpened(id) }
+        } else {
+            {}
+        }
     // replay=0: los eventos emitidos sin cliente colectando se descartan en vez de re-reproducirse
     // stale al siguiente cliente. El buffer de 1 slot mantiene tryEmit sin pérdida para
     // colectores lentos.
@@ -91,7 +102,7 @@ class ChatRuntime(
                 automationToolProvider,
                 mcpToolProvider,
                 AskUserToolProvider(askUser),
-            ) + extraToolProviders,
+            ) + extraToolProviders + listOfNotNull(subagentToolProvider),
             customProviders = { settings.customProviders.value },
         ).also { gm ->
             // Gate vive en RagManager.indexMessageForRag (autoCacheEnabled + modelo activo).
@@ -191,6 +202,8 @@ class ChatRuntime(
             }
             state.onIdle = { conversationId ->
                 clients.generationActivityChanged(conversationId, active = false)
+                // Un subagent idle notifica al manager para orquestar la entrega durable.
+                subagentManager?.conversationIdle(conversationId)
             }
             state.onStreamCommit = clients::commitTerminalStreamingMessage
             state.onQueueDrainRequested = { settledState ->

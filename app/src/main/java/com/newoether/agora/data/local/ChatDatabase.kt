@@ -74,7 +74,7 @@ abstract class ChatDatabase : RoomDatabase() {
     abstract fun localModelDownloadDao(): LocalModelDownloadDao
 
     companion object {
-        const val CURRENT_VERSION = 44
+        const val CURRENT_VERSION = 45
         const val DB_NAME = "agora_db"
 
         val ALL_MIGRATIONS = listOf(
@@ -234,6 +234,17 @@ abstract class ChatDatabase : RoomDatabase() {
             object : Migration(43, 44) {
                 override fun migrate(db: SupportSQLiteDatabase) {
                     db.execSQL("ALTER TABLE conversations ADD COLUMN todoJson TEXT")
+                }
+            },
+            // Subagents aislados (upstream d50903e2, renumerado del 37→38 al fork v44→v45).
+            object : Migration(44, 45) {
+                override fun migrate(db: SupportSQLiteDatabase) {
+                    db.execSQL("ALTER TABLE conversations ADD COLUMN parentConversationId TEXT")
+                    db.execSQL("ALTER TABLE conversations ADD COLUMN subagentResultJson TEXT")
+                    db.execSQL("ALTER TABLE conversations ADD COLUMN subagentResultId TEXT")
+                    db.execSQL("ALTER TABLE conversations ADD COLUMN subagentResultStatus TEXT")
+                    db.execSQL("ALTER TABLE conversations ADD COLUMN subagentDeliveredResultId TEXT")
+                    db.execSQL("CREATE INDEX IF NOT EXISTS index_conversations_parentConversationId ON conversations (parentConversationId)")
                 }
             },
         )

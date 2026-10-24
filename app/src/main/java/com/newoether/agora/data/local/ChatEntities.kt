@@ -105,7 +105,7 @@ data class ConversationSettingsImportTransferEntity(
     }
 }
 
-@Entity(tableName = "conversations", indices = [Index(value = ["taskId"])])
+@Entity(tableName = "conversations", indices = [Index(value = ["taskId"]), Index(value = ["parentConversationId"])])
 data class ChatEntity(
     @PrimaryKey val id: String,
     val title: String,
@@ -133,6 +133,13 @@ data class ChatEntity(
     @ColumnInfo(defaultValue = "0") val isPinned: Boolean = false,
     /** Última lista Todo de la conversación; null significa que no hay lista. */
     val todoJson: String? = null,
+    /** La propiedad del parent es distinta del ancestry de mensajes; los subagents jamás heredan historial. */
+    val parentConversationId: String? = null,
+    /** Outbox durable de completion; no es un segundo lifecycle de generación. */
+    val subagentResultJson: String? = null,
+    val subagentResultId: String? = null,
+    val subagentResultStatus: String? = null,
+    val subagentDeliveredResultId: String? = null,
 )
 
 /** A saved automation: a prompt + schedule that fans out a fresh conversation on each run. */
@@ -268,6 +275,8 @@ data class MessageEntity(
     val modelName: String? = null,
     val toolCallJson: String? = null,
     val attachmentMeta: String? = null,
+    /** Source del turno (p. ej. receipts de subagent consumidos); null en filas ordinarias. */
+    val sourceJson: String? = null,
     val runId: String,
     val runSequence: Long = UNASSIGNED_RUN_SEQUENCE,
     /** Non-null only for visible user input; null for model/tool/result rows. */

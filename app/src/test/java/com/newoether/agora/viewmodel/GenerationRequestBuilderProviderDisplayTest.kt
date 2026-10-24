@@ -115,7 +115,8 @@ class GenerationRequestBuilderProviderDisplayTest {
         assertFalse(snapshot.context.skillReadAccess)
         assertFalse(snapshot.context.skillModifyAccess)
         assertEquals("", snapshot.context.skillCatalog)
-        coVerify(exactly = 0) { fixture.conversations.getConversation(any()) }
+        // El admission ahora resuelve la conversación para cercar el gating de subagent.
+        coVerify(exactly = 1) { fixture.conversations.getConversation("conversation") }
         verify(exactly = 0) { fixture.memoryManager.getActiveMemory() }
         verify(exactly = 0) { fixture.skillManager.catalog() }
 
@@ -411,6 +412,8 @@ private class RequestBuilderFixture(
             )
         )
         every { settings.maxContextWindow } returns MutableStateFlow(32_768)
+        // El admission congela el catálogo de modelos para el gating de subagents.
+        every { settings.enabledModels } returns MutableStateFlow(setOf(modelId))
         every { settings.defaultTemperature } returns MutableStateFlow(null)
         every { settings.defaultMaxTokens } returns MutableStateFlow(null)
         every { settings.defaultTopP } returns MutableStateFlow(null)

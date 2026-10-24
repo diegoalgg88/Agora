@@ -305,8 +305,30 @@ class AppContainer(
                 notificationToolProvider,
                 assistantDeviceToolProvider,
                 emailToolProvider,
+            // Subagents: el mismo engine corre las conversaciones hijas aisladas.
+                subagentToolProvider,
             ),
         )
+    }
+
+    /** Orquestador de subagents: crea hijas, corre completion durable y entrega receipts. */
+    val subagentManager: com.newoether.agora.automation.SubagentManager by lazy {
+        com.newoether.agora.automation.SubagentManager(
+            conversations = conversationRepository,
+            settings = settingsRepository,
+            transfers = conversationSettingsTransfers,
+            engine = taskExecutionEngine,
+            registry = conversationStateRegistry,
+            coordinator = conversationExecutionCoordinator,
+            gate = automationExecutionGate,
+            scope = appScope,
+            stopLoop = { loopManager.stopLoop(it) },
+        )
+    }
+
+    /** Tool de subagents expuesto al modelo: delegar en conversaciones hijas aisladas. */
+    val subagentToolProvider: com.newoether.agora.tool.SubagentToolProvider by lazy {
+        com.newoether.agora.tool.SubagentToolProvider(subagentManager)
     }
 
     val taskManager: TaskManager by lazy {
@@ -619,6 +641,9 @@ class AppContainer(
             taskExecutionEngine = taskExecutionEngine,
             scope = appScope,
             extraToolProviders = listOf(heartbeatToolProvider, smsToolProvider, notificationToolProvider, assistantDeviceToolProvider, emailToolProvider),
+            // Subagents en el chat interactivo: el modelo delega en conversaciones hijas.
+            subagentToolProvider = subagentToolProvider,
+            subagentManager = subagentManager,
         )
     }
 

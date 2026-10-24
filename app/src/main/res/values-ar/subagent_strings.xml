@@ -1,0 +1,8 @@
+<resources>
+    <string name="message_source_subagent">وكيل فرعي</string>
+    <string name="subagent_running">قيد التشغيل</string>
+    <string name="subagent_completed">مكتمل</string>
+    <string name="subagent_failed">فشل</string>
+    <string name="subagent_stopped">متوقف</string>
+    <string name="subagent_idle">خامل</string>
+</resources>

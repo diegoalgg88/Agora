@@ -43,6 +43,7 @@ interface ChatDao :
     ChatDraftDao,
     ChatModelReferenceDao,
     ChatTodoDao,
+    ChatSubagentDao,
     ChatAutomationDao,
     ChatContextCompactDao,
     ChatProviderContextDao,
