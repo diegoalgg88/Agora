@@ -323,6 +323,11 @@ fun MainNavigation(
     var taskToOpen by remember { mutableStateOf<String?>(null) }
     val taskHistoryPreview = taskEditorSession.historyPreview
     val currentConversationId by viewModel.currentConversationId.collectAsState()
+    val selectedConversation by viewModel.currentConversation.collectAsState()
+    // Una hija de subagent regresa a su parent con Back y deshabilita el drawer, igual que
+    // el preview de task history.
+    val subagentParentId = selectedConversation
+        ?.takeIf { it.id == currentConversationId }?.parentConversationId
     val isNewChatMode by viewModel.isNewChatMode.collectAsState()
     val isConversationSwitching by viewModel.isSwitching.collectAsState()
     com.newoether.agora.ui.tasks.TaskHistoryDestinationEffect(
@@ -724,7 +729,12 @@ fun MainNavigation(
             ChatApp(
                 viewModel = viewModel,
                 initialComposerFocusReady = initialComposerFocusReady,
-                onNavigateBack = taskHistoryPreview.taskId
+                onNavigateBack = subagentParentId?.takeIf { !isNewChatMode }?.let { parent ->
+                    {
+                        viewModel.selectConversation(parent)
+                        Unit
+                    }
+                } ?: taskHistoryPreview.taskId
                     ?.takeIf { taskHistoryPreview.active }
                     ?.let { taskId ->
                         {
@@ -743,7 +753,7 @@ fun MainNavigation(
                             showTasks = true
                         }
                     },
-                drawerEnabled = !taskHistoryPreview.active,
+                drawerEnabled = (isNewChatMode || subagentParentId == null) && !taskHistoryPreview.active,
                 onOpenSettings = {
                     topLevelPresentation.present(TopLevelPresentation.SETTINGS)
                     showSettings = true

@@ -25,6 +25,8 @@ import com.newoether.agora.data.ShellDeviceConfig
 import com.newoether.agora.data.local.ChatEntity
 import com.newoether.agora.data.repository.ConversationRepository
 import com.newoether.agora.data.repository.observeConversationTodo
+import com.newoether.agora.data.repository.observeSubagents
+import com.newoether.agora.data.repository.observeParentConversationId
 import com.newoether.agora.data.repository.ConversationSettingsTransferCoordinator
 import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.model.AttachmentItem
@@ -335,6 +337,19 @@ class ChatViewModel(
         else convRepo.observeConversationTodo(id).map { id to it }
             .onStart { emit(id to emptyList()) }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(0), null to emptyList())
+    /** Subagents del target: la raíz proyecta sus hijas, una hija sus hermanas; (id, items) cercando owner. */
+    @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
+    val currentSubagents = currentConversationId.flatMapLatest { id ->
+        if (id == null) flowOf(id to emptyList<com.newoether.agora.model.SubagentSummary>())
+        else convRepo.observeParentConversationId(id).flatMapLatest { parent ->
+            convRepo.observeSubagents(parent ?: id).map { id to it }
+        }.onStart { emit(id to emptyList()) }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(0), null to emptyList())
+    // La conversación recién abierta puede tener receipts de subagent por entregar (delivery
+    // durable): el open nativo dispara el mismo hook que el WebUI.
+    private val subagentDeliveryOnOpen = viewModelScope.launch {
+        currentConversationId.collect { id -> id?.let(chatRuntime.onConversationOpened) }
+    }
     val selectedConversationGenerationSnapshot: StateFlow<ConversationGenerationSnapshot>
         get() = selectionController.selectedConversationGenerationSnapshot
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)

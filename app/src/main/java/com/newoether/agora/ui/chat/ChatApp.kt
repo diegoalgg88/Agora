@@ -53,6 +53,7 @@ import com.newoether.agora.util.gradientBlur
 import com.newoether.agora.ui.chat.bottombar.CHAT_BOTTOM_BAR_OUTER_SHAPE
 import com.newoether.agora.ui.chat.bottombar.ChatBottomBar
 import com.newoether.agora.ui.chat.interaction.ConversationTodoBarHost
+import com.newoether.agora.ui.chat.interaction.ConversationSubagentsBarHost
 import com.newoether.agora.ui.chat.bottombar.LoopStatusBackdrop
 import com.newoether.agora.ui.chat.composables.PendingDeviceActionBanners
 import com.newoether.agora.ui.components.AnimatedBlobBackground
@@ -877,8 +878,7 @@ fun ChatApp(
                             isRunning = currentConversationId in runningLoopIds,
                             onStop = { viewModel.stopCurrentLoop() },
                         )
-                        // ask_user/shell + todo capsule: hermanos ENCIMA del composer.
-                        ChatUserInteractionBarHost(viewModel, currentConversationId); ConversationTodoBarHost(viewModel, currentConversationId)
+                        ChatUserInteractionBarHost(viewModel, currentConversationId); ConversationTodoBarHost(viewModel, currentConversationId); ConversationSubagentsBarHost(viewModel, currentConversationId) { viewModel.selectConversation(it) }
                         Surface(
                             modifier = Modifier
                                 .fillMaxWidth()
