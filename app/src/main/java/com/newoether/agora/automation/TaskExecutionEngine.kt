@@ -97,7 +97,8 @@ class TaskExecutionEngine(
     sealed interface Result {
         data class Success(val modelMessageId: String, val text: String) : Result
         data class Busy(val reason: String = "Conversation is already generating") : Result
-        data class Failure(val reason: String) : Result
+        /** [modelMessageId] identifica el mensaje terminal persistido, si el Run llegó a crearse. */
+        data class Failure(val reason: String, val modelMessageId: String? = null) : Result
     }
 
     /**
@@ -310,7 +311,8 @@ class TaskExecutionEngine(
                 )
             } ?: return StandardCompactContinuationResult(lastModelMessageId)
             launch.job.join()
-            state.awaitSendAvailable()
+            // La continuation ya pudo admitir a un sucesor: se espera al owner exacto del launch.
+            state.awaitGenerationSettled(launch.uiToken)
             val continuationMessage = convRepo.getMessage(launch.modelMessageId)
             if (continuationMessage?.status == MessageStatus.STOPPED) {
                 return StandardCompactContinuationResult(lastModelMessageId, aborted = true)
@@ -681,7 +683,9 @@ class TaskExecutionEngine(
                 }
                 ownerJob.complete()
                 ownerJob.join()
-                generationState.awaitSendAvailable()
+                // Esperar al owner exacto (no solo al slot libre): un sucesor ya admitido no
+                // debe extender esta espera mientras retiene el lock que el worker necesita.
+                generationState.awaitGenerationSettled(uiToken)
                 currentCoroutineContext().ensureActive()
                 return Result.Failure("Execution cancelled")
             }
@@ -744,7 +748,9 @@ class TaskExecutionEngine(
             if (boundaryParentId != null) generationState.deferNextQueueDrain()
             ownerJob.complete()
             ownerJob.join()
-            generationState.awaitSendAvailable()
+            // Espera al owner exacto: el handoff de queue/continuation ya pudo admitir a un
+            // sucesor, y ese slot tomado no debe extender la settlement de este worker.
+            generationState.awaitGenerationSettled(uiToken)
 
             if (boundaryParentId != null) {
                 val continuationResult = continueThroughStandardCompactGenerations(
@@ -782,6 +788,9 @@ class TaskExecutionEngine(
                 Result.Failure(
                     finalMsg?.let { "Generation ended with status ${it.status}" }
                         ?: "Generation failed",
+                    // El id terminal viaja con el fallo para que los receipts retengan
+                    // diagnósticos aunque el streaming overlay ya se haya limpiado.
+                    finalModelMessageId,
                 )
             }
         } catch (e: CancellationException) {
@@ -953,7 +962,7 @@ class TaskExecutionEngine(
                     )
                 }
             }
-            Result.Failure(reason)
+            Result.Failure(reason, modelMessageId.takeIf { runCreated })
         }
     }
 }

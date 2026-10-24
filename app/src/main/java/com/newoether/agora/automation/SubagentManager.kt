@@ -96,8 +96,11 @@ class SubagentManager(
                             is TaskExecutionEngine.Result.Success -> SubagentCompletion(
                                 result.modelMessageId, "completed", result.text, result.modelMessageId,
                             )
+                            // El id terminal persistido gana sobre el overlay de streaming
+                            // (que ya pudo limpiarse): los receipts retienen el diagnóstico exacto.
                             is TaskExecutionEngine.Result.Failure -> SubagentCompletion(
-                                UUID.randomUUID().toString(), "failed", result.reason,
+                                result.modelMessageId ?: UUID.randomUUID().toString(),
+                                "failed", result.reason, result.modelMessageId,
                             )
                             is TaskExecutionEngine.Result.Busy -> null
                         }

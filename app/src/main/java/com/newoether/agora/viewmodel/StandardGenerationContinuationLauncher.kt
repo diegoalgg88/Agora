@@ -42,6 +42,8 @@ internal data class StandardGenerationContinuationLaunch(
     val job: Job,
     val modelMessageId: String,
     val started: Deferred<Boolean>,
+    /** Token del owner que la continuation espera, para settlement exacto tras el handoff. */
+    val uiToken: Long,
 )
 
 /**
@@ -247,6 +249,7 @@ internal class StandardGenerationContinuationLauncher(
             job = generationJob,
             modelMessageId = modelMessageId,
             started = started,
+            uiToken = uiToken,
         )
     }
 }

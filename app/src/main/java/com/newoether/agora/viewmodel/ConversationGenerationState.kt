@@ -19,6 +19,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
@@ -85,6 +86,8 @@ class ConversationGenerationState(
     private val genLock = Any()
     /** Authoritative process-slot state. All mutations go through [ConversationRuntimeReducer]. */
     private var runState: RunState = RunState.Idle(conversationId)
+    /** Proyección wait-only de la ownership del reducer; la revocación de UI token del Stop no la settlea. */
+    private val generationOwner = MutableStateFlow<Long?>(null)
     private val runtimeTrace = ConversationRuntimeTrace()
     /** Foreground/headless Send, Stop, and tool-effect lifecycle commands enter here. */
     private val commandMailbox = ConversationCommandMailbox(scope, ::reduceMailboxCommand)
@@ -159,6 +162,12 @@ class ConversationGenerationState(
         // Fire after mailbox handling and outside [genLock].
         onQueueDrainRequested?.invoke(this@ConversationGenerationState)
         RunFinalizationOutcome.SETTLED
+    }
+
+    /** Espera a que el reducer libere a ESTE owner, aunque un sucesor ya reclamó el slot. */
+    suspend fun awaitGenerationSettled(uiToken: Long) {
+        require(uiToken > 0)
+        generationOwner.first { owner -> owner != uiToken }
     }
 
     /** Wait until the conversation's one ordinary generation slot is available. */
@@ -633,6 +642,7 @@ class ConversationGenerationState(
         resources.publishGenerationSnapshot(runState)
         if (events.activated) notifyActivatedLocked()
         if (events.released) notifyReleasedLocked()
+        generationOwner.value = runState.identityOrNull()?.ownerToken
     }
 
     private fun applyActivatedSlotLocked(identity: RuntimeRunIdentity, loading: Boolean) {
@@ -640,6 +650,7 @@ class ConversationGenerationState(
         resources.activate(identity, loading)
         resources.publishGenerationSnapshot(runState)
         notifyActivatedLocked()
+        generationOwner.value = identity.ownerToken
     }
 
     private fun notifyActivatedLocked() {
