@@ -366,6 +366,9 @@ internal class WebUiChatSession(
 
     /** The browser opened [conversationId] (null is a fresh New Chat page) with request [seq]. */
     suspend fun open(conversationId: String?, seq: Long) = ownerMutex.withLock {
+        // Cambiar de target abandona cualquier fade/scroll en vuelo: la transición visual
+        // pertenece a la conversación que el navegador dejaba de ver.
+        branchTransitions.abortCurrent()
         if (conversationId == null) {
             newChatEntryId.incrementAndGet()
         }
@@ -712,6 +715,8 @@ internal class WebUiChatSession(
     /** Connection children settle before this call, so no importer or Send outlives reclamation. */
     suspend fun close() = withContext(NonCancellable) {
         clients.detach(this@WebUiChatSession)
+        // La conexión se va: ningún waiter de fade debe sobrevivir al ciclo de vida de la sesión.
+        branchTransitions.abortCurrent()
         ownerMutex.withLock {
             closed = true
             val abandoned = draftPersistence.ownerIds().flatMap { drafts.load(it).attachments }

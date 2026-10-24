@@ -112,6 +112,7 @@ class WebUiSyncTest {
         every { snackbars } returns this@WebUiSyncTest.snackbars
         every { scrollRequests } returns this@WebUiSyncTest.scrollRequests
         every { composerState } returns this@WebUiSyncTest.composerState
+        every { branchTransitions } returns com.newoether.agora.viewmodel.BranchReplacementTransitionCoordinator()
         coEvery { start() } just Runs
         coEvery { close() } just Runs
         // serve() del paso 2057da82 llama endUploads() en el finally; sin el stub mockk

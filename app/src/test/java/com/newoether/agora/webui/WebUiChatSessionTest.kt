@@ -219,7 +219,10 @@ class WebUiChatSessionTest {
         session.start()
         session.open("a", seq = 1L)
         assertTrue(clients.isConversationOpen("a"))
+        // Una transición visual en vuelo no sobrevive al cierre de la conexión.
+        session.branchTransitions.begin("a", "old")
         session.close()
+        assertNull(session.branchTransitions.request.value)
         assertFalse(clients.isConversationOpen("a"))
     }
     @Test
@@ -326,7 +329,10 @@ class WebUiChatSessionTest {
         session.open("a", 1)
         withTimeout(TIMEOUT_MS) { session.composerState.first { it.conversationId == "a" && it.controls != null } }
         assertTrue(session.composerState.first().controls!!.webSearchEnabled)
+        // Cambiar de target aborta la transición visual de la conversación que se deja de ver.
+        session.branchTransitions.begin("a", "old")
         session.open(null, 2)
+        assertNull(session.branchTransitions.request.value)
         val local = withTimeout(TIMEOUT_MS) { session.composerState.first { it.seq == 2L && it.controls != null } }
         assertTrue(local.controls!!.webSearchEnabled)
     }

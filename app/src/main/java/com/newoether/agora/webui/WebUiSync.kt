@@ -206,6 +206,9 @@ internal class WebUiSync(
                             outbound.send(WebSyncEvent.Opened(target.conversationId, target.browserSeq))
                         }
                         coroutineScope {
+                            // El handshake visual del branch replacement se proyecta por
+                            // conexión; el coordinator de la sesión es el owner del lifetime.
+                            launch { forwardBranchReplacement(session, target, connectionId, outbound) }
                             // El todo pertenece al target: solo esa conversación se observa y su
                             // secuencia viaja para que el navegador descarte la del target viejo.
                             launch {
@@ -380,7 +383,9 @@ internal class WebUiSync(
                         "list_more" -> if (command.tokens == listLimit.value.toLong()) {
                             listLimit.value += DRAWER_PAGE_SIZE
                         }
-                        "edit", "regenerate", "delete", "recompact" -> session.rowCommand(command, visiblePath.value)
+                        "branch_fade", "branch_scroll", "branch_complete" ->
+                            acknowledgeBranchReplacement(session, command, connectionId, visiblePath.value)
+                        "edit", "regenerate", "delete", "recompact" -> launch { session.rowCommand(command, visiblePath.value) }
                         "fork", "share" -> {
                             val target = session.openTarget.value
                             if (forkShare == null ||
@@ -903,6 +908,19 @@ internal sealed interface WebSyncEvent {
 
     @Serializable @SerialName("scroll_to_bottom")
     data class ScrollToBottom(val conversationId: String, val messageId: String, val seq: Long) : WebSyncEvent
+
+    /**
+     * Handshake visual de un branch replacement: el navegador proyecta el fade/scroll de la
+     * composición saliente y confirma con branch_fade/branch_scroll/branch_complete; el
+     * coordinator de la sesión sigue siendo el owner del lifetime de la transición.
+     */
+    @Serializable @SerialName("branch_replacement")
+    data class BranchReplacement(
+        val connectionId: String,
+        val conversationId: String,
+        val seq: Long,
+        val request: JsonObject? = null,
+    ) : WebSyncEvent
 
     /**
      * Shim del presentation block (c6b2c8ef, diferido): el frontend lee display.reduceMotion SIN
