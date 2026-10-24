@@ -591,6 +591,8 @@ class AppContainer(
                     scope = scope,
                     // filesDir (no cacheDir): la preview valida que el artifact esté bajo este root.
                     uploadDirectory = application.filesDir,
+                    // El compact manual del navegador reporta fallos con el mismo string del teléfono.
+                    compactFailureMessage = { com.newoether.agora.viewmodel.compactFailureMessage(application, it) },
                 )
             },
             // Interacciones del navegador: preguntas ask_user y confirmaciones de shell que la

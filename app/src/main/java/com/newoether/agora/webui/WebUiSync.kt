@@ -219,52 +219,10 @@ internal class WebUiSync(
                             }
                             launch {
                                 session.composerState
+                                    .combine(customProviders) { state, _ -> state }
                                     .filter { it.conversationId == target.conversationId && it.seq == target.browserSeq }
-                                    .map {
-                                        WebSyncEvent.Composer(
-                                            it.conversationId, it.snapshot.phase.name, it.snapshot.acceptedVersion,
-                                            it.seq, it.text, it.editRevision, it.actionId, it.modelValid,
-                                            it.generating, it.stopping,
-                                            it.modelId, it.models, it.queue.map { queued ->
-                                                buildJsonObject {
-                                                    put("id", queued.id)
-                                                    put("text", queued.text)
-                                                    put("attachmentCount", queued.attachments.size)
-                                                }
-                                            },
-                                            it.attachments.map { attachment ->
-                                                buildJsonObject {
-                                                    put("id", attachment.localId)
-                                                    put("type", attachment.type)
-                                                    put("name", attachment.fileName)
-                                                    put("state", attachment.importState.name)
-                                                    put("storage", attachment.storage.name)
-                                                    put("unavailable", attachment.unavailable)
-                                                    put("pageCount", attachment.pageCount)
-                                                    put("durationMs", attachment.videoDurationMs)
-                                                    put("frameCount", attachment.frameCount)
-                                                    put("intervalMs", attachment.sliceIntervalMs)
-                                                    put("staged", attachment.localPath != null)
-                                                    if (attachment.type == "file" && attachment.importState == com.newoether.agora.model.AttachmentImportState.READY &&
-                                                        attachment.storage == com.newoether.agora.model.AttachmentStorage.APP_PRIVATE && !attachment.unavailable) {
-                                                        put("text", attachment.preparedText)
-                                                    }
-                                                    attachment.selectedPages?.let { pages ->
-                                                        put("selectedPages", JsonArray(pages.sorted().map(::JsonPrimitive)))
-                                                    }
-                                                    put("pagePreviewCount", attachment.preRenderedPaths?.size ?: 0)
-                                                    put("framePreviewCount", attachment.processedFrames?.size ?: 0)
-                                                    attachment.videoDurationMs?.let { duration ->
-                                                        put("defaultFrameCount", com.newoether.agora.ui.chat.VideoSliceDefaults.defaultFrameCount(duration))
-                                                    }
-                                                    it.pdfProgress[attachment.localId]?.let { (done, total) ->
-                                                        put("previewDone", done)
-                                                        put("previewTotal", total)
-                                                    }
-                                                }
-                                            },
-                                        )
-                                    }.distinctUntilChanged().collect { outbound.send(it) }
+                                    .map { projectComposerEvent(it, customProviders.value, json) }
+                                    .distinctUntilChanged().collect { outbound.send(it) }
                             }
                             target.conversationId?.let { id ->
                                 openConversation(
@@ -464,6 +422,8 @@ internal class WebUiSync(
                         }
                         "attachment_remove", "attachment_retry", "attachment_pdf", "attachment_video" ->
                             session.attachmentCommand(command)
+                        "setting" -> session.settingCommand(command)
+                        "advanced", "compact" -> session.editorCommand(command)
                     }
                 }
             } finally {
@@ -781,6 +741,14 @@ internal data class WebSyncCommand(
     val intervalMs: Long? = null,
     /** Pin de conversación: activar o desactivar. */
     val enabled: Boolean? = null,
+    /** Comando setting: el control del tools menu que cambia. */
+    val setting: String? = null,
+    /** Comando setting: valor string (thinkingLevel/openAiServiceTier). */
+    val value: String? = null,
+    /** Editor advanced: el draft de los seis parámetros validado server-side. */
+    val parameters: com.newoether.agora.data.ConversationSettings? = null,
+    /** Editor compact: cuántos mensajes recientes retener. */
+    val retainCount: Int? = null,
     /** Interacciones: id de la pregunta o shell pendiente que este comando resuelve. */
     val requestId: String? = null,
     /** Shell decision: confiar siempre en este server. */
@@ -866,6 +834,12 @@ internal sealed interface WebSyncEvent {
         val queue: List<JsonObject>,
         /** Proyección de attachments del draft: id, tipo, estado, configuración y previews. */
         val attachments: List<JsonObject> = emptyList(),
+        /** Controles efectivos + capabilities resueltas del modelo activo; null mientras carga. */
+        val controls: JsonObject? = null,
+        /** Overrides/defaults de los seis parámetros de generación + presets. */
+        val advanced: JsonObject? = null,
+        /** Configuración del editor manual de Compact; null en New Chat. */
+        val compact: JsonObject? = null,
     ) : WebSyncEvent
 
     @Serializable @SerialName("snackbar")

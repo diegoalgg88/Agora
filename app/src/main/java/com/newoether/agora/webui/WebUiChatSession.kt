@@ -1,6 +1,7 @@
 ﻿package com.newoether.agora.webui
 
 import com.newoether.agora.automation.ConversationExecutionCoordinator
+import com.newoether.agora.data.ConversationSettings
 import com.newoether.agora.data.modelDisplayName
 import com.newoether.agora.data.providerDisplayName
 import com.newoether.agora.data.repository.ConversationRepository
@@ -9,16 +10,28 @@ import com.newoether.agora.data.repository.SettingsRepository
 import com.newoether.agora.data.repository.decodeSelectedAttachments
 import com.newoether.agora.data.repository.removedReclaimablePaths
 import com.newoether.agora.data.repository.updateConversationModel
+import com.newoether.agora.data.thinkingCapabilityForSelectedModel
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.ModelId
+import com.newoether.agora.model.OpenAiServiceTiers
 import com.newoether.agora.model.SelectedAttachment
+import com.newoether.agora.model.ThinkingLevels
+import com.newoether.agora.model.ThinkingResolution
 import com.newoether.agora.model.apiModelName
+import com.newoether.agora.model.isContextCompact
+import com.newoether.agora.ui.chat.EffectiveConversationControls
+import com.newoether.agora.ui.chat.resolveEffectiveConversationControls
+import com.newoether.agora.ui.chat.validGenerationParameters
+import com.newoether.agora.ui.chat.withGenerationParameters
 import com.newoether.agora.util.AttachmentFiles
 import com.newoether.agora.util.FileValidator
 import com.newoether.agora.viewmodel.AttachmentImportProcessor
 import com.newoether.agora.viewmodel.BranchReplacementTransitionCoordinator
 import com.newoether.agora.viewmodel.ChatClient
 import com.newoether.agora.viewmodel.ChatClients
+import com.newoether.agora.viewmodel.CompactFailureReason
+import com.newoether.agora.viewmodel.CompactRequest
+import com.newoether.agora.viewmodel.CompactResult
 import com.newoether.agora.viewmodel.ComposerDraftController
 import com.newoether.agora.viewmodel.ComposerDraftPersistence
 import com.newoether.agora.viewmodel.ConversationComposerController
@@ -60,6 +73,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.first
@@ -91,12 +105,14 @@ internal class WebUiChatSession(
     private val conversations: ConversationRepository,
     private val registry: ConversationStateRegistry,
     executionCoordinator: ConversationExecutionCoordinator,
-    settings: SettingsRepository,
+    private val settings: SettingsRepository,
     private val transfers: ConversationSettingsTransferCoordinator,
     attachmentProcessor: AttachmentImportProcessor,
     private val scope: CoroutineScope,
     /** Directorio de uploads de esta conexión; se limpia con el reclaim del composer. */
     private val uploadDirectory: File,
+    /** Formatea el fallo de un compact manual con el mismo string que ve el teléfono. */
+    private val compactFailureMessage: (CompactResult.Failed) -> String,
     private val allowLocalSandbox: () -> Boolean = { false },
     sandboxHomeDir: () -> File? = { null },
     /** Notifica la apertura de conversación (p. ej. subagent delivery al navegador). */
@@ -133,6 +149,16 @@ internal class WebUiChatSession(
         val systemPrompts: List<com.newoether.agora.data.SystemPromptEntry> = emptyList(),
         /** Prompt activo global de la app, para marcar la entrada default del selector. */
         val activeSystemPromptId: String? = null,
+        /** Controles efectivos del target (proyección pura compartida con Compose); null mientras carga. */
+        val controls: EffectiveConversationControls? = null,
+        /** Overrides de los seis parámetros de generación del target actual. */
+        val generationParameters: ConversationSettings = ConversationSettings(),
+        /** Defaults globales de esos mismos parámetros. */
+        val generationDefaults: ConversationSettings = ConversationSettings(),
+        /** Configuración actual del editor manual de Compact (modelo/prompt/retain). */
+        val compactDefaults: CompactRequest? = null,
+        /** True mientras un compact corre en la conversación abierta. */
+        val compacting: Boolean = false,
     )
 
     private val target = MutableStateFlow(OpenTarget(null, browserSeq = 0L, movedByServer = false))
@@ -169,6 +195,8 @@ internal class WebUiChatSession(
 
     /** Model chosen on this browser's New Chat page; null follows the default model. */
     private val newChatModelId = MutableStateFlow<String?>(null)
+    /** Overrides de settings del New Chat de este navegador; entran al snapshot del send. */
+    private val newChatSettings = MutableStateFlow<ConversationSettings?>(null)
     /** Prompt de sistema elegido en el New Chat de este navegador; null sigue el default. */
     private val newChatSystemPromptId = MutableStateFlow<String?>(null)
     private val selectedSystemPrompt = openId.flatMapLatest { id ->
@@ -195,6 +223,35 @@ internal class WebUiChatSession(
             id to if (valid == null) "" else resolveValidModel(referenced, fallback, valid)
         }
     }.stateIn(scope, SharingStarted.Eagerly, null)
+    /** Cambia cuando algún input de los controles efectivos cambia; dispara re-proyección. */
+    private val controlChanges = combine(listOf(
+        settings.conversationSettings, newChatSettings, settings.codeExecutionEnabled, settings.googleSearchEnabled,
+        settings.thinkingEnabled, settings.thinkingLevel, settings.thinkingBudgetEnabled, settings.thinkingBudgetTokens,
+        settings.openAiServiceTierEnabled, settings.openAiServiceTier, settings.openAiResponsesApiEnabled,
+        settings.webSearchEnabled, settings.shellEnabled, settings.localLowContextModeEnabled, settings.maxContextWindow,
+        settings.customProviders, settings.defaultTemperature, settings.defaultMaxTokens, settings.defaultTopP,
+        settings.defaultFrequencyPenalty, settings.defaultPresencePenalty, settings.contextCompactModel,
+        settings.contextCompactPrompt, settings.contextCompactRetainCount,
+    )) { Unit }
+    private fun selectedProvider(id: String?): String {
+        val model = activeModel.value?.takeIf { it.first == id }?.second.orEmpty()
+        val reference = ModelId.parse(model).providerName
+        return providerDisplayName(reference, settings.customProviders.value)
+    }
+    /** Proyección pura de controles del target actual; la misma que usa el teléfono en Compose. */
+    private fun effectiveControls(id: String?): EffectiveConversationControls = resolveEffectiveConversationControls(
+        id, if (id == null) newChatSettings.value else settings.conversationSettings.value[id],
+        ConversationSettings(
+            contextWindow = settings.maxContextWindow.value, codeExecutionEnabled = settings.codeExecutionEnabled.value,
+            googleSearchEnabled = settings.googleSearchEnabled.value, thinkingEnabled = settings.thinkingEnabled.value,
+            thinkingLevel = settings.thinkingLevel.value, thinkingBudgetEnabled = settings.thinkingBudgetEnabled.value,
+            thinkingBudgetTokens = settings.thinkingBudgetTokens.value, webSearchEnabled = settings.webSearchEnabled.value,
+            shellEnabled = settings.shellEnabled.value, lowContextModeEnabled = settings.localLowContextModeEnabled.value,
+            openAiServiceTierEnabled = settings.openAiServiceTierEnabled.value, openAiServiceTier = settings.openAiServiceTier.value,
+        ),
+        selectedProvider(id),
+        settings.openAiResponsesApiEnabled.value, settings.customProviders.value,
+    )
 
     private val submission = ConversationComposerSubmissionController(
         scope = scope,
@@ -213,7 +270,7 @@ internal class WebUiChatSession(
                         persisted = null,
                         modelId = newChatModelId.value,
                         systemPromptId = newChatSystemPromptId.value,
-                        conversationSettings = null,
+                        conversationSettings = newChatSettings.value,
                         sessionLocal = true,
                     )
                 },
@@ -225,6 +282,11 @@ internal class WebUiChatSession(
         send = { admission, text, attachments, onAccepted ->
             generation.sendMessage(admission, text, attachments, { accepted ->
                 if (admission.target.wasNewChat) ownerMutex.withLock {
+                    // La aceptación consume solo los settings que este send capturó; una edición
+                    // posterior a la captura ya pertenece al siguiente New Chat.
+                    if (newChatSettings.value == admission.newConversationSettings) {
+                        newChatSettings.value = null
+                    }
                     if (newChatSystemPromptId.value == admission.target.newChatWorkspace?.systemPromptId) {
                         newChatSystemPromptId.value = null
                     }
@@ -253,12 +315,15 @@ internal class WebUiChatSession(
         val runtime = owner.takeUnless { it == NEW_CHAT_WORKSPACE_ID }?.let(registry::getOrCreate)
         combine(draft, state, editRevision, actionId, activeModel) { _, _, _, _, _ -> Unit }
             .combine(modelLabels) { _, _ -> Unit }
+            .combine(controlChanges) { _, _ -> Unit }
             .combine(selectedSystemPrompt) { _, _ -> Unit }
             .combine(settings.systemPrompts) { _, _ -> Unit }
             .combine(settings.activeSystemPromptId) { _, _ -> Unit }
             .combine(runtime?.queuedSends ?: flowOf(emptyList())) { _, _ -> Unit }
             .combine(runtime?.generating ?: flowOf(false)) { _, _ -> Unit }
             .combine(runtime?.stopping ?: flowOf(false)) { _, _ ->
+                Unit
+            }.combine(runtime?.streamingMessage?.map { it?.isContextCompact() == true }?.distinctUntilChanged() ?: flowOf(false)) { _, compacting ->
                 ownerMutex.withLock {
                     val selected = target.value
                     if (retainedOwner != owner || owner != (selected.conversationId ?: NEW_CHAT_WORKSPACE_ID)) {
@@ -276,6 +341,15 @@ internal class WebUiChatSession(
                             selectedSystemPrompt.value?.takeIf { it.first == selected.conversationId }?.second,
                             settings.systemPrompts.value,
                             settings.activeSystemPromptId.value,
+                            effectiveControls(selected.conversationId),
+                            (if (selected.conversationId == null) newChatSettings.value else settings.conversationSettings.value[selected.conversationId]) ?: ConversationSettings(),
+                            ConversationSettings(contextWindow = settings.maxContextWindow.value,
+                                temperature = settings.defaultTemperature.value, maxTokens = settings.defaultMaxTokens.value,
+                                topP = settings.defaultTopP.value, frequencyPenalty = settings.defaultFrequencyPenalty.value,
+                                presencePenalty = settings.defaultPresencePenalty.value),
+                            CompactRequest(settings.contextCompactModel.value ?: activeModel.value?.second.orEmpty(),
+                                settings.contextCompactPrompt.value, settings.contextCompactRetainCount.value),
+                            compacting,
                         )
                     }
                 }
@@ -284,6 +358,7 @@ internal class WebUiChatSession(
 
     /** Attaches to the runtime and admits the initial New Chat composer. */
     suspend fun start() {
+        settings.awaitInitialLoad()
         clients.attach(this)
         ui.start()
         ownerMutex.withLock { retainOwnerLocked(NEW_CHAT_WORKSPACE_ID) }
@@ -380,6 +455,104 @@ internal class WebUiChatSession(
 
     fun stop(seq: Long = target.value.browserSeq) {
         if (seq == target.value.browserSeq) generationStop.stop(openId.value, this)
+    }
+
+    /**
+     * Editor Advanced/Compact del navegador. Advanced transforma solo los seis parámetros de
+     * generación; Compact captura el request bajo lock y ejecuta compactManual fuera de él.
+     */
+    suspend fun editorCommand(command: WebSyncCommand) {
+        val captured = ownerMutex.withLock {
+            if (closed || retainedOwner == null || command.seq != target.value.browserSeq || command.conversationId != openId.value) return@withLock null
+            if (command.type == "advanced") {
+                try {
+                    val submitted = command.parameters ?: return@withLock null
+                    // El editor del navegador no expone repetitionPenalty (slider local-only):
+                    // se preserva el override vigente en vez de borrarlo con un null implícito.
+                    val draft = submitted.copy(
+                        repetitionPenalty = (if (openId.value == null) newChatSettings.value
+                        else settings.conversationSettings.value[openId.value])?.repetitionPenalty,
+                    )
+                    if (!validGenerationParameters(draft)) return@withLock null
+                    val id = openId.value
+                    if (id == null) newChatSettings.value = (newChatSettings.value ?: ConversationSettings()).withGenerationParameters(draft)
+                    else settings.updateConversationSettings(id) { it.withGenerationParameters(draft) }
+                } finally { actionId.value = command.actionId }
+                return@withLock null
+            }
+            if (command.type != "compact") return@withLock null
+            val id = openId.value
+            val request = command.retainCount?.let { CompactRequest(command.modelId.orEmpty(), command.text.orEmpty(), it,
+                preserveSystemPrompt = settings.contextCompactPreserveSystemPrompt.value) }
+            if (id == null || request == null || request.model !in validModels.value.orEmpty() || request.prompt.isBlank() ||
+                request.retainLogicalMessages < 0 || registry.getOrCreate(id).stopping.value ||
+                registry.getOrCreate(id).streamingMessage.value?.isContextCompact() == true) {
+                actionId.value = command.actionId
+                return@withLock null
+            }
+            actionId.value = command.actionId
+            id to request
+        } ?: return
+        scope.launch {
+            val result = try { generation.compactManual(captured.first, captured.second) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (_: Exception) { CompactResult.Failed(CompactFailureReason.GENERIC) }
+            if (result is CompactResult.Failed) showSnackbar(compactFailureMessage(result))
+        }
+    }
+
+    /** Toggle/valor de un control del tools menu; el teléfono decide qué está disponible. */
+    suspend fun settingCommand(command: WebSyncCommand) = ownerMutex.withLock {
+        if (closed || command.seq != target.value.browserSeq) return@withLock
+        try {
+            if (retainedOwner == null) return@withLock
+            val enabled = command.enabled
+            val current = effectiveControls(openId.value)
+            val model = activeModel.value?.takeIf { it.first == openId.value }?.second.orEmpty()
+            if (command.modelId != null && command.modelId != model) return@withLock
+            val capability = thinkingCapabilityForSelectedModel(model, settings.customProviders.value)
+            val thinking = ThinkingResolution.resolve(capability, current.thinkingEnabled, current.thinkingLevel,
+                current.thinkingBudgetEnabled, current.thinkingBudgetTokens)
+            // El frontend envía thinkingBudgetTokens en `tokens` (Long, campo compartido con
+            // list_more); la validación y el write son en Int.
+            val tokens = command.tokens?.toInt()
+            val allowed = when (command.setting) {
+                "thinkingLevel" -> thinking.enabled && thinking.budgetTokens == null && capability.supportedEfforts.size > 1 && command.value in capability.supportedEfforts
+                "thinkingBudgetEnabled" -> enabled != null && thinking.enabled && capability.supportsThinkingBudget
+                "thinkingBudgetTokens" -> thinking.enabled && thinking.budgetTokens != null && tokens in ThinkingLevels.budgetPresets
+                "openAiServiceTier" -> current.openAiServiceTierState.available && current.openAiServiceTierState.enabled && model.isNotBlank() && !current.lowContextModeEnabled && command.value in OpenAiServiceTiers.values
+                "lowContextModeEnabled" -> current.showLowContextMode
+                "thinkingEnabled" -> enabled == true || capability.canDisableThinking
+                "codeExecutionEnabled", "googleSearchEnabled" -> selectedProvider(openId.value).equals("google", ignoreCase = true) && model.isNotBlank() && !current.lowContextModeEnabled
+                "openAiWebSearchEnabled" -> current.openAiWebSearchAvailable && model.isNotBlank() && !current.lowContextModeEnabled
+                "openAiServiceTierEnabled" -> current.openAiServiceTierState.available && model.isNotBlank() && !current.lowContextModeEnabled
+                "webSearchEnabled" -> current.webSearchAvailable && !current.lowContextModeEnabled
+                "shellEnabled" -> current.shellAvailable && !current.lowContextModeEnabled
+                else -> false
+            }
+            if (!allowed || (command.setting?.endsWith("Enabled") == true && enabled == null)) return@withLock
+            val update: (ConversationSettings) -> ConversationSettings = { previous ->
+                when (command.setting) {
+                    "thinkingLevel" -> previous.copy(thinkingLevel = command.value)
+                    "thinkingBudgetEnabled" -> previous.copy(thinkingBudgetEnabled = enabled,
+                        thinkingBudgetTokens = if (enabled == true && current.thinkingBudgetTokens < 1) ThinkingLevels.DefaultBudgetTokens else previous.thinkingBudgetTokens)
+                    "thinkingBudgetTokens" -> previous.copy(thinkingBudgetTokens = tokens)
+                    "openAiServiceTier" -> previous.copy(openAiServiceTier = OpenAiServiceTiers.normalize(command.value))
+                    "lowContextModeEnabled" -> previous.copy(lowContextModeEnabled = enabled)
+                    "thinkingEnabled" -> previous.copy(thinkingEnabled = enabled)
+                    "codeExecutionEnabled" -> previous.copy(codeExecutionEnabled = enabled)
+                    "googleSearchEnabled" -> previous.copy(googleSearchEnabled = enabled)
+                    "openAiWebSearchEnabled" -> previous.copy(openAiWebSearchEnabled = enabled)
+                    "openAiServiceTierEnabled" -> previous.copy(openAiServiceTierEnabled = enabled)
+                    "webSearchEnabled" -> previous.copy(webSearchEnabled = enabled)
+                    "shellEnabled" -> previous.copy(shellEnabled = enabled)
+                    else -> previous
+                }
+            }
+            val id = openId.value
+            if (id == null) newChatSettings.value = update(newChatSettings.value ?: ConversationSettings())
+            else settings.updateConversationSettings(id, update)
+        } finally { actionId.value = command.actionId }
     }
 
     /** Comandos de attachment del navegador: remove/retry/pdf/video, con validación por tipo. */

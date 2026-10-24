@@ -21,10 +21,9 @@ fun AdvancedSettingsDialog(
     overrides: ConversationSettings,
     globalDefaults: ConversationSettings,
     onSave: (ConversationSettings) -> Unit,
-    onResetToDefaults: () -> Unit,
     onDismiss: () -> Unit
 ) {
-    var contextWindow by remember { mutableStateOf(overrides.contextWindow) }
+    var contextWindow by remember { mutableStateOf(overrides.contextWindow?.let(ContextBudget::normalize)) }
     var temperature by remember { mutableStateOf(overrides.temperature) }
     var maxTokens by remember { mutableStateOf(overrides.maxTokens) }
     var topP by remember { mutableStateOf(overrides.topP) }
@@ -129,7 +128,6 @@ fun AdvancedSettingsDialog(
         confirmButton = {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 TextButton(onClick = {
-                    onResetToDefaults()
                     contextWindow = null; temperature = null; maxTokens = null
                     topP = null; frequencyPenalty = null; presencePenalty = null; repetitionPenalty = null
                 }) { Text(stringResource(R.string.gen_reset)) }
@@ -137,7 +135,7 @@ fun AdvancedSettingsDialog(
                     TextButton(onClick = onDismiss) {
                         Text(stringResource(R.string.provider_cancel))
                     }
-                    TextButton(onClick = { onSave(currentSettings()) }) {
+                    TextButton(enabled = validGenerationParameters(currentSettings()), onClick = { onSave(currentSettings()) }) {
                         Text(stringResource(R.string.provider_save))
                     }
                 }

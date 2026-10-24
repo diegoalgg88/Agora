@@ -120,6 +120,8 @@ class WebUiSyncTest {
         coEvery { send(any(), any(), any()) } just Runs
         coEvery { edit(any(), any(), any()) } just Runs
         coEvery { cancelWaiting(any(), any()) } just Runs
+        coEvery { settingCommand(any()) } just Runs
+        coEvery { editorCommand(any()) } just Runs
         every { stop(any()) } just Runs
         coEvery { open(any(), any()) } answers {
             this@WebUiSyncTest.openTarget.value =
@@ -141,6 +143,16 @@ class WebUiSyncTest {
         send("""{"type":"cancel_waiting","seq":7,"actionId":9}""")
         coVerify(exactly = 1) { session.edit("later edit", 3L, 7L) }
         coVerify(exactly = 1) { session.cancelWaiting(7L, 9L) }
+    }
+
+    @Test
+    fun settingsAndEditorCommandsKeepTheirExactDecodedPayload() = sync { send, _ ->
+        send("""{"type":"setting","seq":7,"actionId":9,"setting":"webSearchEnabled","enabled":false}""")
+        send("""{"type":"advanced","seq":7,"actionId":10,"parameters":{"temperature":1.2}}""")
+        send("""{"type":"compact","seq":7,"actionId":11,"modelId":"m","text":"summary","retainCount":0}""")
+        coVerify(exactly = 1) { session.settingCommand(WebSyncCommand("setting", seq = 7, actionId = 9, setting = "webSearchEnabled", enabled = false)) }
+        coVerify(exactly = 1) { session.editorCommand(WebSyncCommand("advanced", seq = 7, actionId = 10, parameters = com.newoether.agora.data.ConversationSettings(temperature = 1.2f))) }
+        coVerify(exactly = 1) { session.editorCommand(WebSyncCommand("compact", seq = 7, actionId = 11, modelId = "m", text = "summary", retainCount = 0)) }
     }
 
     @Test

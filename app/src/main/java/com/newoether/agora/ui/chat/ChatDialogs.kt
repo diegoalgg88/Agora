@@ -348,11 +348,12 @@ internal fun ChatAdvancedSettingsDialog(
         overrides = overrides,
         globalDefaults = defaults,
         onSave = { settings ->
-            viewModel.setConversationSettings(currentId, settings)
-            onDismiss()
-        },
-        onResetToDefaults = {
-            viewModel.setConversationSettings(currentId, null)
+            // Contrato settings-ui-ux: Save aplica solo los campos del editor sobre los settings
+            // vigentes (tool preferences intactas) y se rehusa si el draft es inválido.
+            if (validGenerationParameters(settings)) {
+                viewModel.updateConversationSetting(currentId) { it.withGenerationParameters(settings) }
+                onDismiss()
+            }
         },
         onDismiss = onDismiss
     )

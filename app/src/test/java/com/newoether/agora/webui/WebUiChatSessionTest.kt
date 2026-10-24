@@ -66,6 +66,7 @@ class WebUiChatSessionTest {
         every { generating } returns MutableStateFlow(false)
         every { stopping } returns MutableStateFlow(false)
         every { queuedSends } returns MutableStateFlow(emptyList())
+        every { streamingMessage } returns MutableStateFlow(null)
     }
     private val registry = mockk<ConversationStateRegistry> {
         every { getOrCreate(any()) } returns state
@@ -80,6 +81,30 @@ class WebUiChatSessionTest {
         every { customProviders } returns MutableStateFlow(emptyList())
         every { systemPrompts } returns MutableStateFlow(emptyList())
         every { activeSystemPromptId } returns MutableStateFlow(null)
+        every { conversationSettings } returns MutableStateFlow(emptyMap())
+        every { codeExecutionEnabled } returns MutableStateFlow(false)
+        every { googleSearchEnabled } returns MutableStateFlow(false)
+        every { thinkingEnabled } returns MutableStateFlow(true)
+        every { thinkingLevel } returns MutableStateFlow("medium")
+        every { thinkingBudgetEnabled } returns MutableStateFlow(false)
+        every { thinkingBudgetTokens } returns MutableStateFlow(4096)
+        every { openAiServiceTierEnabled } returns MutableStateFlow(false)
+        every { openAiServiceTier } returns MutableStateFlow("auto")
+        every { openAiResponsesApiEnabled } returns MutableStateFlow(false)
+        every { webSearchEnabled } returns MutableStateFlow(true)
+        every { shellEnabled } returns MutableStateFlow(true)
+        every { localLowContextModeEnabled } returns MutableStateFlow(false)
+        every { maxContextWindow } returns MutableStateFlow(32768)
+        every { defaultTemperature } returns MutableStateFlow(null)
+        every { defaultMaxTokens } returns MutableStateFlow(null)
+        every { defaultTopP } returns MutableStateFlow(null)
+        every { defaultFrequencyPenalty } returns MutableStateFlow(null)
+        every { defaultPresencePenalty } returns MutableStateFlow(null)
+        every { contextCompactModel } returns MutableStateFlow(null)
+        every { contextCompactPrompt } returns MutableStateFlow("summary")
+        every { contextCompactRetainCount } returns MutableStateFlow(4)
+        every { contextCompactPreserveSystemPrompt } returns MutableStateFlow(true)
+        every { updateConversationSettings(any(), any()) } just Runs
         coEvery { awaitInitialLoad() } just Runs
     }
 
@@ -125,6 +150,7 @@ class WebUiChatSessionTest {
         attachmentProcessor = mockk(relaxed = true),
         scope = scope,
         uploadDirectory = uploadDirectory,
+        compactFailureMessage = { it.reason.name },
     )
 
     @After
@@ -284,6 +310,52 @@ class WebUiChatSessionTest {
         withTimeout(TIMEOUT_MS) { queue.first { it.isEmpty() } }
         verify(exactly = 1) { state.removeQueuedSend("q") }
     }
+    @Test
+    fun sessionLocalSettingsCaptureBeforeTapAndRemainIndependentFromPhoneAndOtherOwners() = runBlocking {
+        session.start()
+        withTimeout(TIMEOUT_MS) { session.composerState.first { it.modelValid && it.controls != null } }
+        session.settingCommand(WebSyncCommand("setting", setting = "webSearchEnabled", enabled = false, actionId = 1))
+        val disabled = withTimeout(TIMEOUT_MS) { session.composerState.first { it.actionId == 1L } }
+        assertFalse(disabled.controls!!.webSearchEnabled)
+        session.send("freeze settings")
+        withTimeout(TIMEOUT_MS) { while (captures.isEmpty()) kotlinx.coroutines.delay(10) }
+        assertEquals(false, captures.single().workspace!!.conversationSettings!!.webSearchEnabled)
+        session.settingCommand(WebSyncCommand("setting", setting = "webSearchEnabled", enabled = true, actionId = 2))
+        assertEquals(false, captures.single().workspace!!.conversationSettings!!.webSearchEnabled)
+        verify(exactly = 0) { settings.updateConversationSettings(any(), any()) }
+        session.open("a", 1)
+        withTimeout(TIMEOUT_MS) { session.composerState.first { it.conversationId == "a" && it.controls != null } }
+        assertTrue(session.composerState.first().controls!!.webSearchEnabled)
+        session.open(null, 2)
+        val local = withTimeout(TIMEOUT_MS) { session.composerState.first { it.seq == 2L && it.controls != null } }
+        assertTrue(local.controls!!.webSearchEnabled)
+    }
+
+    @Test
+    fun sharedSettingsTransformPreservesConcurrentFieldsAndRejectsUnavailableOrStaleEdits() = runBlocking {
+        val shared = MutableStateFlow(mapOf("a" to com.newoether.agora.data.ConversationSettings(temperature = 0.7f, shellEnabled = true)))
+        every { settings.conversationSettings } returns shared
+        every { settings.updateConversationSettings(any(), any()) } answers {
+            shared.value = shared.value + ("a" to secondArg<(com.newoether.agora.data.ConversationSettings) -> com.newoether.agora.data.ConversationSettings>().invoke(shared.value.getValue("a")))
+        }
+        session.start()
+        session.open("a", 1)
+        withTimeout(TIMEOUT_MS) { session.composerState.first { it.modelValid && it.seq == 1L && it.controls != null } }
+        session.settingCommand(WebSyncCommand("setting", seq = 1, setting = "webSearchEnabled", enabled = false, actionId = 1))
+        assertEquals(0.7f, shared.value.getValue("a").temperature)
+        assertEquals(true, shared.value.getValue("a").shellEnabled)
+        assertEquals(false, shared.value.getValue("a").webSearchEnabled)
+        session.settingCommand(WebSyncCommand("setting", seq = 0, setting = "shellEnabled", enabled = false))
+        session.settingCommand(WebSyncCommand("setting", seq = 1, setting = "openAiWebSearchEnabled", enabled = true, actionId = 2))
+        session.settingCommand(WebSyncCommand("setting", seq = 1, setting = "unknown", enabled = true, actionId = 3))
+        verify(exactly = 1) { settings.updateConversationSettings(any(), any()) }
+        val acknowledged = withTimeout(TIMEOUT_MS) { session.composerState.first { it.actionId == 3L } }
+        assertFalse(acknowledged.controls!!.openAiWebSearchAvailable)
+        session.close()
+        session.settingCommand(WebSyncCommand("setting", seq = 1, setting = "shellEnabled", enabled = false))
+        verify(exactly = 1) { settings.updateConversationSettings(any(), any()) }
+    }
+
     @Test
     fun canonicalAcceptanceClearsOnlyTheTapTextAndKeepsPostTapEdits() = runBlocking {
         val entered = CompletableDeferred<Unit>()

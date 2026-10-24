@@ -1,10 +1,73 @@
 package com.newoether.agora.ui.chat
 
+import com.newoether.agora.data.ConversationSettings
+import com.newoether.agora.util.Constants
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ConversationSettingsWorkspaceTest {
+    private val global = ConversationSettings(contextWindow = 32768, codeExecutionEnabled = false,
+        googleSearchEnabled = true, thinkingEnabled = true, thinkingLevel = "medium", thinkingBudgetEnabled = false,
+        thinkingBudgetTokens = 4096, openAiServiceTierEnabled = true, openAiServiceTier = "priority",
+        webSearchEnabled = true, shellEnabled = false, lowContextModeEnabled = true)
+
+    @Test
+    fun pureProjectionPreservesOverridesProviderAvailabilityAndGlobalFeatureGates() {
+        val override = ConversationSettings(thinkingEnabled = false, thinkingLevel = "high", thinkingBudgetTokens = 8192,
+            webSearchEnabled = false, shellEnabled = true, openAiWebSearchEnabled = false, contextWindow = 65536)
+        val openai = resolveEffectiveConversationControls("a", override, global, Constants.PROVIDER_OPENAI, true, emptyList())
+        assertEquals("a", openai.settingsOwnerId)
+        assertEquals(false, openai.thinkingEnabled)
+        assertEquals("high", openai.thinkingLevel)
+        assertEquals(8192, openai.thinkingBudgetTokens)
+        assertEquals(true, openai.openAiWebSearchAvailable)
+        assertEquals(false, openai.openAiWebSearchEnabled)
+        assertEquals(true, openai.openAiServiceTierState.available)
+        assertEquals("priority", openai.openAiServiceTierState.tier)
+        assertEquals(false, openai.webSearchEnabled)
+        assertEquals(false, openai.shellEnabled)
+        assertEquals(false, openai.showLowContextMode)
+        assertEquals(65536, openai.contextWindow)
+        val local = resolveEffectiveConversationControls(null, null, global, Constants.PROVIDER_LOCAL, false, emptyList())
+        assertNull(local.settingsOwnerId)
+        assertEquals(true, local.showLowContextMode)
+        assertEquals(true, local.lowContextModeEnabled)
+        assertEquals(false, local.openAiWebSearchAvailable)
+        assertEquals(true, local.googleSearchEnabled)
+        assertEquals(true, local.webSearchAvailable)
+    }
+
+    @Test
+    fun generationParameterTransformNormalizesLegacyContextAndPreservesCurrentToolValues() {
+        val current = ConversationSettings(thinkingEnabled = false, webSearchEnabled = true, maxTokens = 12345)
+        val changed = current.withGenerationParameters(
+            ConversationSettings(contextWindow = 20, maxTokens = 12345, thinkingEnabled = true))
+        // Legacy window <= 100 migra a tokens (20*1024), como ContextBudget.normalize.
+        assertEquals(20480, changed.contextWindow)
+        assertEquals(12345, changed.maxTokens)
+        assertEquals(false, changed.thinkingEnabled)
+        assertEquals(true, changed.webSearchEnabled)
+        val reset = changed.withGenerationParameters(ConversationSettings())
+        assertEquals(current.copy(maxTokens = null), reset)
+    }
+
+    @Test
+    fun validGenerationParametersAcceptsBoundsAndRejectsInvalidDrafts() {
+        assertTrue(validGenerationParameters(ConversationSettings(contextWindow = 65536, temperature = 2f,
+            topP = 0f, frequencyPenalty = -2f, presencePenalty = 2f, repetitionPenalty = 1f, maxTokens = 1)))
+        assertFalse(validGenerationParameters(ConversationSettings(temperature = Float.NaN)))
+        assertFalse(validGenerationParameters(ConversationSettings(contextWindow = 20)))
+        assertFalse(validGenerationParameters(ConversationSettings(maxTokens = 0)))
+        assertFalse(validGenerationParameters(ConversationSettings(topP = 2f)))
+        assertFalse(validGenerationParameters(ConversationSettings(frequencyPenalty = -3f)))
+        assertFalse(validGenerationParameters(ConversationSettings(presencePenalty = Float.POSITIVE_INFINITY)))
+        // repetitionPenalty del fork: rango válido 1..2.
+        assertFalse(validGenerationParameters(ConversationSettings(repetitionPenalty = 0.5f)))
+    }
+
     @Test
     fun newChatOwnsSettingsWhilePreviousConversationIdRemainsDuringFade() {
         assertNull(
