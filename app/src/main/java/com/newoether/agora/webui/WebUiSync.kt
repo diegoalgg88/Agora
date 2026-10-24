@@ -261,6 +261,9 @@ internal class WebUiSync(
                                     }
                                 }
                             }
+                            // El mirror de subagents pertenece al mismo target: la conversación
+                            // abierta proyecta sus hijas o, si es hija, sus hermanas.
+                            launch { conversations.forwardSubagents(target.conversationId, target.browserSeq, outbound) }
                             launch {
                                 session.composerState
                                     .combine(customProviders) { state, _ -> state }

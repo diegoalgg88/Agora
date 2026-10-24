@@ -276,6 +276,18 @@ internal sealed interface WebSyncEvent {
         val items: List<com.newoether.agora.model.ConversationTodoItem>,
     ) : WebSyncEvent
 
+    /**
+     * Mirror de subagents del target: los hijos del parent de la conversación abierta (una hija
+     * proyecta sus hermanas) + el parentConversationId para navegar de regreso.
+     */
+    @Serializable @SerialName("subagents")
+    data class Subagents(
+        val conversationId: String?,
+        val seq: Long,
+        val parentConversationId: String?,
+        val items: List<com.newoether.agora.model.SubagentSummary>,
+    ) : WebSyncEvent
+
     @Serializable @SerialName("scroll_to_bottom")
     data class ScrollToBottom(val conversationId: String, val messageId: String, val seq: Long) : WebSyncEvent
 

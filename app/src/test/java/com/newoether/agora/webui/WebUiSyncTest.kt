@@ -88,6 +88,9 @@ class WebUiSyncTest {
         // El stub del DAO crudo: la extensión observeConversationTodo decodifica encima.
         every { chatDao } returns mockk<com.newoether.agora.data.local.ChatDao> {
             every { observeConversationTodo(any()) } returns MutableStateFlow<String?>(null)
+            // El mirror de subagents consume estas dos queries del DAO crudo.
+            every { observeParentConversationId(any()) } returns kotlinx.coroutines.flow.flowOf(null)
+            every { observeSubagents(any()) } returns kotlinx.coroutines.flow.flowOf(emptyList())
         }
         every { observeMessageTopology("a") } returns topology
         coEvery { recoverConversationRuntime(any(), any()) } returns 0
