@@ -26,7 +26,9 @@ internal class RemoteViewModel(
     private val imageCache: RemoteImageCache? = null,
     projectionDispatcher: kotlinx.coroutines.CoroutineDispatcher = kotlinx.coroutines.Dispatchers.Default,
     private val attachmentStore: RemoteAttachmentStore? = null,
-    createClient: (String, String) -> FiloClient = { address, token -> FiloClient(address, token) },
+    // QwenCodeClient reemplaza a FiloClient (decisión owner): habla ACP contra el
+    // endpoint /acp de `qwen serve`; FiloClient queda para el transporte Conch legacy.
+    createClient: (String, String) -> RemoteClient = { address, token -> QwenCodeClient(address, token) },
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(RemoteState())
     private val attachmentDrafts = RemoteAttachmentDrafts(attachmentStore, viewModelScope, mutableState) { owner, error ->
@@ -223,7 +225,7 @@ internal class RemoteViewModel(
         if (!visible || state.value.devices.firstOrNull { it.id == id }?.status != RemoteDeviceStatus.CONNECTED) return
         loadModels(id, client)
     }
-    private fun loadModels(id: String, client: FiloClient) {
+    private fun loadModels(id: String, client: RemoteClient) {
         if (modelLoading?.isActive == true) return
         val modelGeneration = ++modelEpoch
         mutableState.value = state.value.copy(modelsLoading = true)
@@ -350,7 +352,7 @@ internal class RemoteViewModel(
     }
 
     private suspend fun applyPage(
-        client: FiloClient, sessionId: String, generation: Long, page: RemoteConversationPage, liveControl: Boolean = true,
+        client: RemoteClient, sessionId: String, generation: Long, page: RemoteConversationPage, liveControl: Boolean = true,
     ) {
         if (generation != epoch) return
         val old = state.value.nodes
@@ -572,7 +574,7 @@ internal class RemoteViewModel(
         control(stoppingTurnId = turn) { client -> client.stop(session.id, turn) }
     }
 
-    private fun control(stoppingTurnId: String? = null, operation: suspend (FiloClient) -> Unit) {
+    private fun control(stoppingTurnId: String? = null, operation: suspend (RemoteClient) -> Unit) {
         if (state.value.controlling || state.value.isStopping) return
         val client = clients[state.value.deviceId] ?: return
         val selected = selectionEpoch
@@ -606,7 +608,7 @@ internal class RemoteViewModel(
     }
     fun archiveSession(id: String) = manageSession(id) { it.archiveSession(id); null }
 
-    private fun manageSession(id: String, operation: suspend (FiloClient) -> RemoteSession?) {
+    private fun manageSession(id: String, operation: suspend (RemoteClient) -> RemoteSession?) {
         val snapshot = state.value
         if (snapshot.session != null || snapshot.controlling || snapshot.sessions.none { it.id == id }) return
         val selected = selectionEpoch
@@ -668,7 +670,7 @@ internal class RemoteViewModel(
         return page.copy(messages = emptyList(), nodes = page.nodes.map { it.copy(pageCursor = page.pageCursor) })
     }
 
-    private suspend fun prependPage(client: FiloClient, session: String, generation: Long, cursor: String) {
+    private suspend fun prependPage(client: RemoteClient, session: String, generation: Long, cursor: String) {
         val owner = state.value.owner ?: return
         val page = cachePage(owner, client.conversation(session, cursor), live = false)
         require(page.nextCursor != cursor) { "Filo history cursor did not advance" }

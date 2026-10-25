@@ -68,7 +68,10 @@ internal class RemoteConnectionStore(
         json.decodeFromString<List<RemoteConnection>>(file.readText()).map {
             if (!SecretCrypto.isEncrypted(it.token)) throw RemoteStorageException()
             val token = decrypt(it.token)
-            if (!token.matches(Regex("[a-fA-F0-9]{64}"))) throw RemoteStorageException()
+            // El token es opaco para Agora: el daemon de qwen serve acepta el valor que el
+            // operador elija (base64url generado u operador-suplido), no solo 64-hex.
+            if (token.isBlank() || token.length !in 16..512 || token.any { char -> char.isISOControl() })
+                throw RemoteStorageException()
             RemoteConnection(it.name, it.address, token, it.viewedTurns)
         }.also { entries ->
             if (entries.map { it.address }.distinct().size != entries.size) throw RemoteStorageException()

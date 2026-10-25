@@ -15,7 +15,7 @@ internal class RemoteDeviceDirectory(
     private val scope: CoroutineScope,
     private val mutableState: MutableStateFlow<RemoteState>,
     private val checkSlots: Semaphore,
-    private val createClient: (String, String) -> FiloClient,
+    private val createClient: (String, String) -> RemoteClient,
     private val selectionEpoch: () -> Long,
     private val selectDevice: (String?) -> Unit,
     private val refresh: () -> Unit,
@@ -23,8 +23,8 @@ internal class RemoteDeviceDirectory(
     private val report: (String, Exception?) -> RemoteFailure?,
 ) {
     private val state = mutableState.asStateFlow()
-    private val mutableClients = mutableMapOf<String, FiloClient>()
-    val clients: Map<String, FiloClient> get() = mutableClients
+    private val mutableClients = mutableMapOf<String, RemoteClient>()
+    val clients: Map<String, RemoteClient> get() = mutableClients
     private val configurations = mutableMapOf<String, RemoteConnection>()
     private val checks = mutableMapOf<String, Job>()
     private var storing: Job? = null

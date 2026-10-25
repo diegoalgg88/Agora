@@ -154,6 +154,29 @@ private fun RemoteScreen(vm: RemoteViewModel, settings: SettingsRepository, acti
                     listState = listState,
                     title = stringResource(R.string.remote_sessions), onBack = back,
                     actions = {
+                        // Chip de conexión (delta 54ea0e6c adaptado): identifica al agente
+                        // remoto como QWEN CODE y su estado con el color del dot.
+                        val connectionStatus = displayed.devices.firstOrNull { it.id == displayed.deviceId }?.status
+                        Surface(
+                            shape = androidx.compose.foundation.shape.RoundedCornerShape(20.dp),
+                            color = when (connectionStatus) {
+                                RemoteDeviceStatus.CONNECTED -> MaterialTheme.colorScheme.primaryContainer
+                                RemoteDeviceStatus.CONNECTING -> MaterialTheme.colorScheme.tertiaryContainer
+                                else -> MaterialTheme.colorScheme.errorContainer
+                            },
+                            modifier = Modifier.padding(end = 4.dp),
+                        ) {
+                            Text(
+                                "QWEN CODE",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = when (connectionStatus) {
+                                    RemoteDeviceStatus.CONNECTED -> MaterialTheme.colorScheme.onPrimaryContainer
+                                    RemoteDeviceStatus.CONNECTING -> MaterialTheme.colorScheme.onTertiaryContainer
+                                    else -> MaterialTheme.colorScheme.onErrorContainer
+                                },
+                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                            )
+                        }
                         IconButton(onClick = { showUsage = true }, enabled = current && active) {
                             Icon(Icons.Default.DataUsage, stringResource(R.string.remote_usage))
                         }
