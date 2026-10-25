@@ -53,8 +53,6 @@ import com.newoether.agora.ui.motion.MotionAwareCircularProgressIndicator
 import com.newoether.agora.ui.motion.MotionAwareLinearProgressIndicator
 import com.newoether.agora.ui.common.LocalAgoraHaptics
 import com.newoether.agora.ui.common.rememberAgoraHaptics
-import com.newoether.agora.ui.components.AgoraDropdownMenu
-import com.newoether.agora.ui.components.AgoraDropdownMenuItem
 
 @Composable
 internal fun RemoteOverlay(
@@ -154,7 +152,6 @@ private fun RemoteScreen(vm: RemoteViewModel, settings: SettingsRepository, acti
                 }
                 CollapsingSettingsLazyScaffold(
                     listState = listState,
-                    contentBottomPadding = 104.dp,
                     title = stringResource(R.string.remote_sessions), onBack = back,
                     actions = {
                         IconButton(onClick = { showUsage = true }, enabled = current && active) {
@@ -204,18 +201,18 @@ private fun RemoteScreen(vm: RemoteViewModel, settings: SettingsRepository, acti
                                                     IconButton(onClick = { showMenu = true }, enabled = actionsEnabled) {
                                                         Icon(Icons.Default.MoreVert, stringResource(R.string.more))
                                                     }
-                                                    AgoraDropdownMenu(
+                                                    DropdownMenu(
                                                         containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                                         tonalElevation = 16.dp,
                                                         expanded = showMenu, onDismissRequest = { showMenu = false },
                                                     ) {
-                                                        AgoraDropdownMenuItem(
+                                                        DropdownMenuItem(
                                                             text = { Text(stringResource(R.string.rename)) },
                                                             leadingIcon = { Icon(Icons.Default.Edit, null) },
                                                             enabled = actionsEnabled,
                                                             onClick = { showMenu = false; action = "rename" },
                                                         )
-                                                        AgoraDropdownMenuItem(
+                                                        DropdownMenuItem(
                                                             text = { Text(stringResource(R.string.remote_archive), color = MaterialTheme.colorScheme.error) },
                                                             leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
                                                             enabled = actionsEnabled,
@@ -232,13 +229,15 @@ private fun RemoteScreen(vm: RemoteViewModel, settings: SettingsRepository, acti
                                         onSave = { vm.renameSession(session.id, it); action = null },
                                         onDismiss = { action = null },
                                     )
-                                    if (action == "archive") ChatDeleteConfirmDialog(
-                                        phase = ChatDeleteDialogPhase.CONFIRM,
-                                        title = stringResource(R.string.remote_archive_title),
-                                        message = stringResource(R.string.remote_archive_message),
-                                        confirmLabel = stringResource(R.string.remote_archive),
-                                        onConfirm = { vm.archiveSession(session.id); action = null },
-                                        onDismiss = { action = null },
+                                    if (action == "archive") AlertDialog(
+                                        onDismissRequest = { action = null },
+                                        title = { Text(stringResource(R.string.remote_archive_title)) },
+                                        text = { Text(stringResource(R.string.remote_archive_message)) },
+                                        confirmButton = { TextButton(enabled = actionsEnabled,
+                                            onClick = { vm.archiveSession(session.id); action = null }) {
+                                            Text(stringResource(R.string.remote_archive), color = MaterialTheme.colorScheme.error) } },
+                                        dismissButton = { TextButton(onClick = { action = null }) {
+                                            Text(stringResource(R.string.cancel)) } },
                                     )
                                 }
                             } },
@@ -288,6 +287,18 @@ private fun RemoteSessionIndicator(indicator: DrawerConversationIndicator) {
     }
 }
 
+/** Dot de estado local: el McpStatusDot de settings es private; Remote dibuja el suyo. */
+@Composable
+private fun RemoteMcpStatusDot(status: McpConnectionStatus) {
+    val color = when (status) {
+        McpConnectionStatus.CONNECTED -> MaterialTheme.colorScheme.primary
+        McpConnectionStatus.CONNECTING -> MaterialTheme.colorScheme.tertiary
+        McpConnectionStatus.ERROR -> MaterialTheme.colorScheme.error
+        else -> MaterialTheme.colorScheme.outline
+    }
+    Box(Modifier.size(8.dp).background(color, androidx.compose.foundation.shape.CircleShape))
+}
+
 @Composable
 private fun RemoteDevices(state: RemoteState, vm: RemoteViewModel, onBack: () -> Unit, onForward: () -> Unit) {
     var deleteId by remember { mutableStateOf<String?>(null) }
@@ -319,7 +330,7 @@ private fun RemoteDevices(state: RemoteState, vm: RemoteViewModel, onBack: () ->
                         headlineContent = {
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(device.name.ifBlank { stringResource(R.string.remote_device) }, Modifier.weight(1f, fill = false), maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                McpStatusDot(status)
+                                RemoteMcpStatusDot(status)
                             }
                         },
                         supportingContent = {
@@ -332,12 +343,12 @@ private fun RemoteDevices(state: RemoteState, vm: RemoteViewModel, onBack: () ->
                             IconButton(onClick = { menuOpen = true }, enabled = enabled) {
                                 Icon(Icons.Default.MoreVert, stringResource(R.string.options))
                             }
-                            AgoraDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer,
+                            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }, containerColor = MaterialTheme.colorScheme.surfaceContainer,
                                 tonalElevation = 16.dp) {
-                                AgoraDropdownMenuItem(text = { Text(stringResource(R.string.edit)) }, enabled = enabled,
+                                DropdownMenuItem(text = { Text(stringResource(R.string.edit)) }, enabled = enabled,
                                     leadingIcon = { Icon(Icons.Default.Edit, null) },
                                     onClick = { menuOpen = false; onForward(); vm.editDevice(device.id) })
-                                AgoraDropdownMenuItem(text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
+                                DropdownMenuItem(text = { Text(stringResource(R.string.delete), color = MaterialTheme.colorScheme.error) },
                                     enabled = enabled, leadingIcon = { Icon(Icons.Default.Delete, null, tint = MaterialTheme.colorScheme.error) },
                                     onClick = { menuOpen = false; deleteId = device.id })
                             }
@@ -381,20 +392,18 @@ private fun RemoteAddDevice(state: RemoteState, vm: RemoteViewModel, onBack: () 
         SettingsGroup(title = stringResource(R.string.remote_connection), items = listOf({
             SettingsIconContent(Icons.Default.Computer) {
                 McpLabeledField(label = stringResource(R.string.shell_device_name), value = name,
-                    onValueChange = { name = it }, placeholder = stringResource(R.string.remote_device))
+                    onValueChange = { name = it })
             }
         }, {
             SettingsIconContent(Icons.Default.Link) {
                 McpLabeledField(label = stringResource(R.string.remote_address), value = address,
                     onValueChange = { address = it }, keyboardType = KeyboardType.Uri,
-                    supportingText = stringResource(R.string.remote_connection_hint),
-                    placeholder = stringResource(R.string.remote_address_placeholder))
+                    supportingText = stringResource(R.string.remote_connection_hint))
             }
         }, {
             SettingsIconContent(Icons.Default.Key) {
                 McpLabeledField(label = stringResource(R.string.remote_token), value = token,
-                    onValueChange = { token = it }, keyboardType = KeyboardType.Password, password = true,
-                    placeholder = stringResource(R.string.remote_token_placeholder))
+                    onValueChange = { token = it }, keyboardType = KeyboardType.Password, password = true)
             }
         }))
     }

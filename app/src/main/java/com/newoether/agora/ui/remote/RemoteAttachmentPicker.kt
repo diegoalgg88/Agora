@@ -23,7 +23,9 @@ internal fun RemoteAttachmentPicker(owner: String, enabled: Boolean, vm: RemoteV
     val files = rememberLauncherForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         fileOwner?.let { vm.addAttachments(it, uris) }; fileOwner = null
     }
-    AttachmentAddMenu(enabled = enabled, showCamera = false, showVideos = false,
+    // El menú nativo del fork no tiene params para ocultar camera/videos; sus callbacks
+    // quedan no-ops en Remote hasta que H-2 agregue soporte de captura.
+    AttachmentAddMenu(enabled = enabled,
         onCamera = {}, onVideos = {},
         onPhotos = { photoOwner = owner; photos.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)) },
         onFiles = { fileOwner = owner; files.launch(arrayOf("*/*")) })

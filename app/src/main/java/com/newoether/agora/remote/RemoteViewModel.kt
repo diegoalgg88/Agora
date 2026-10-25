@@ -50,7 +50,10 @@ internal class RemoteViewModel(
         val store = imageStore ?: throw java.io.IOException("Image storage is unavailable")
         val cache = imageCache ?: throw java.io.IOException("Image cache is unavailable")
         cache.load(owner + "/" + request.id + "/" + request.revision + "/" + request.imageIndex) {
-            client.image(snapshot.session!!.id, request, store::persistStream)
+            client.image(snapshot.session!!.id, request) { stream, contentType ->
+                // El store del fork persiste bytes, no streams: materializamos el cuerpo acotado.
+                store.persistBytes(stream.readBytes(), contentType)
+            }
         }
     }, projectionDispatcher = projectionDispatcher)
     private val historyMutation = kotlinx.coroutines.sync.Mutex()

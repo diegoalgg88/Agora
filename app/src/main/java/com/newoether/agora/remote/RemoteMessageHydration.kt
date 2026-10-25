@@ -144,10 +144,9 @@ internal class RemoteMessageHydration(
             currentCoroutineContext().ensureActive()
             val markdown = projector.project { text.toRenderableMarkdownText(inlineMath) }
             if (markdown in prepared) continue
-            // The public parser retains its own dispatcher inside the existing bounded permit.
-            val parsed = projector.project {
-                parseMarkdownFlow(markdown).first { it !is State.Loading }
-            }
+            // El parser público conserva su propio dispatcher dentro del permit acotado, así que
+            // el parse corre directo en el cuerpo suspend de esta proyección.
+            val parsed = parseMarkdownFlow(markdown).first { it !is State.Loading }
             if (parsed !is State.Success) continue
             bytes += projector.project {
                 val nodes = java.util.ArrayDeque<ASTNode>()
