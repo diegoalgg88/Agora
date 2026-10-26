@@ -685,33 +685,27 @@ class GenerationManager(
                 }
             }
 
-            suspend fun acceptProviderPass(outcome: ProviderPassOutcome) {
+            // Rechazo → false (caller cierra STOPPED): una CancellationException manual aquí queda
+            // pendiente ante ART en el resume de UndispatchedCoroutine y aborta el proceso entero.
+            suspend fun acceptProviderPass(outcome: ProviderPassOutcome): Boolean {
                 val result = outcome.resultType()
-                callbacks.onProviderPassCompleted(outcome.identity, result)
+                val accepted = callbacks.onProviderPassCompleted(outcome.identity, result)
                     ?.takeIf { it.identity == outcome.identity && it.result == result }
-                    ?: throw CancellationException(
-                        "Provider pass ${outcome.identity.effectId} outcome is no longer current",
-                    )
+                if (accepted == null) {
+                    DebugLog.w("AgoraVM", "Provider pass ${outcome.identity.effectId} outcome is no longer current"); return false
+                }
                 when (outcome) {
                     is ProviderPassOutcome.CompletedText -> Unit
                     is ProviderPassOutcome.CompletedToolCalls -> {
-                        check(completedToolCalls.isEmpty()) {
-                            "A Provider pass cannot overlap an unconsumed tool batch"
-                        }
+                        check(completedToolCalls.isEmpty()) { "A Provider pass cannot overlap an unconsumed tool batch" }
                         toolRoundEffects.acceptValidatedBatch(outcome.identity)
-                        outcome.calls.forEach { call ->
-                            completedToolCalls[call.streamKey] = call
-                        }
+                        outcome.calls.forEach { call -> completedToolCalls[call.streamKey] = call }
                     }
-                    is ProviderPassOutcome.Truncated,
-                    is ProviderPassOutcome.Failed,
-                    -> check(currentStatus == MessageStatus.ERROR) {
-                        "A failed Provider pass must publish its error before closing"
-                    }
-                    is ProviderPassOutcome.Cancelled -> throw CancellationException(
-                        "Provider pass ${outcome.identity.effectId} was cancelled",
-                    )
+                    is ProviderPassOutcome.Truncated, is ProviderPassOutcome.Failed ->
+                        check(currentStatus == MessageStatus.ERROR) { "A failed Provider pass must publish its error before closing" }
+                    is ProviderPassOutcome.Cancelled -> { DebugLog.w("AgoraVM", "Provider pass ${outcome.identity.effectId} was cancelled"); return false }
                 }
+                return true
             }
 
             val apiPath = if (providerConfig.requestResolver != null) {
@@ -728,9 +722,10 @@ class GenerationManager(
                 )
             }
             requestTrace?.mark("provider_dispatch")
-            acceptProviderPass(collectProviderRequest(apiPath) {
-                requestTrace?.mark("first_semantic_event")
-            })
+            if (!acceptProviderPass(collectProviderRequest(apiPath) { requestTrace?.mark("first_semantic_event") })) {
+                currentStatus = MessageStatus.STOPPED
+                return@withStreamScope GenerationExecutionResult()
+            }
             thoughtTiming.finishCurrent()
             currentStatus = statusAfterThoughtPhaseFinished(currentStatus)
             if (currentStatus != MessageStatus.ERROR) executeAcceptedToolBatch()
@@ -829,7 +824,10 @@ class GenerationManager(
                         assistantPostpend = config.assistantPostpend,
                     )
                 }
-                acceptProviderPass(collectProviderRequest(apiToolPath))
+                if (!acceptProviderPass(collectProviderRequest(apiToolPath))) {
+                    currentStatus = MessageStatus.STOPPED
+                    break
+                }
                 thoughtTiming.finishCurrent()
                 currentStatus = statusAfterThoughtPhaseFinished(currentStatus)
                 if (currentStatus != MessageStatus.ERROR) executeAcceptedToolBatch()
