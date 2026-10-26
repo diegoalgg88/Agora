@@ -64,6 +64,12 @@ internal class QwenCodeTransport(
         .callTimeout(30, TimeUnit.SECONDS).build(),
     /** Deadline de mutations nativas (session/prompt puede tardar minutos en frío). */
     mutationTimeoutMillis: Long = 210_000,
+    /**
+     * Read timeout del socket SSE. El server late un heartbeat cada 15s: 90s son seis
+     * latidos perdidos antes de declarar muerto el stream — el default de OkHttp (10s)
+     * mataba TODO stream idle con SocketTimeoutException.
+     */
+    streamReadTimeoutMillis: Long = 90_000,
 ) {
     private val endpoint = try {
         address.trim().toHttpUrl().also {
@@ -81,9 +87,13 @@ internal class QwenCodeTransport(
     /** Requests en vuelo: id de JSON-RPC → waiter de la respuesta. */
     private val pending = java.util.concurrent.ConcurrentHashMap<Long, CompletableDeferred<JsonObject>>()
     private val pendingMutex = Mutex()
+    /** Stream SSE vivo; un re-initialize lo cancela para que el collector siga al connId nuevo. */
+    @Volatile private var activeStreamCall: okhttp3.Call? = null
 
     private val readCalls: Call.Factory = (calls as? OkHttpClient)?.newBuilder()
-        ?.retryOnConnectionFailure(true)?.build() ?: calls
+        ?.retryOnConnectionFailure(true)
+        ?.readTimeout(streamReadTimeoutMillis, TimeUnit.MILLISECONDS)
+        ?.build() ?: calls
     private val mutationCalls: Call.Factory = (calls as? OkHttpClient)?.newBuilder()
         ?.retryOnConnectionFailure(false)
         ?.readTimeout(mutationTimeoutMillis, TimeUnit.MILLISECONDS)
@@ -96,7 +106,14 @@ internal class QwenCodeTransport(
      * agente. El id de conexión viaja en TODO request y stream posterior.
      */
     suspend fun initialize(): JsonObject {
-        check(connectionId == null) { "Connection already initialized" }
+        // Re-inicializar es el path de recovery: el server permite varias conexiones ACP
+        // por cliente. Los waiters del stream viejo fallan de inmediato y el stream viejo
+        // se cancela — el server late heartbeats que lo mantendrían vivo para siempre y
+        // el collector quedaría bound al connectionId anterior.
+        if (connectionId != null) {
+            failPending(QwenCodeProtocolException(message = "Connection reset"))
+            activeStreamCall?.cancel()
+        }
         val id = requestIds.incrementAndGet()
         val body = buildJsonObject {
             put("jsonrpc", "2.0")
@@ -207,6 +224,20 @@ internal class QwenCodeTransport(
         ?: throw QwenCodeProtocolException(message = "$timeoutMillis ms waiting for a response on the ACP stream")
 
     /**
+     * Resuelve todos los requests en vuelo con [cause] y limpia el registro: se invoca cuando
+     * el stream que demultiplexa sus respuestas muere — sin esto, cada caller colgaría hasta
+     * su propio deadline de [timeoutMillis]. El ConcurrentHashMap permite drenar sin el mutex:
+     * el registro nuevo compite con el drenaje y pierde solo si llega tras el fallo del stream.
+     */
+    internal fun failPending(cause: Exception) {
+        while (pending.isNotEmpty()) {
+            pending.keys.toList().forEach { key ->
+                pending.remove(key)?.completeExceptionally(cause)
+            }
+        }
+    }
+
+    /**
      * SSE connection-scoped: responses de requests (demux por id contra
      * [pending]) + notificaciones connection-level (p. ej. available_commands).
      * Emite las NOTIFICACIONES crudas; las responses se consumen internamente.
@@ -263,6 +294,10 @@ internal class QwenCodeTransport(
         lastEventId?.let { requestBuilder.header("Last-Event-Id", it) }
         val call = readCalls.newCall(requestBuilder.build())
         call.timeout().clearTimeout()
+        // Solo el stream conn-scoped se rastrea: el re-initialize lo cancela porque su
+        // collector persiste fuera del ciclo de polling del ViewModel; los streams de
+        // sesión se re-crean solos en cada ciclo con el connId vigente.
+        if (sessionId == null) activeStreamCall = call
         call.enqueue(object : Callback {
             override fun onFailure(call: Call, e: IOException) { close(e) }
             override fun onResponse(call: Call, response: Response) {
@@ -293,8 +328,16 @@ internal class QwenCodeTransport(
                                 }
                             }
                         }
-                        close(IOException("ACP stream closed"))
-                    } catch (error: Exception) { close(error) }
+                        // EOF normal (server cerró o cancelamos): el flujo COMPLETA, no lanza.
+                        // El consumidor decide si reconecta; un fin de stream rutinario de SSE
+                        // no es un error de red ni debe tumbar el proceso.
+                        close()
+                    } catch (error: Exception) {
+                        // El stream murió con error real: los requests en vuelo esperando su
+                        // respuesta por este flujo fallan de inmediato, no hasta su deadline.
+                        failPending(error)
+                        close(error)
+                    }
                 }
             }
         })

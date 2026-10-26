@@ -8,6 +8,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -59,19 +60,35 @@ internal class QwenCodeClient(
 
     override val address: String get() = transport.acpAddress
 
+    /** Collector del SSE conn-scoped: se reinicia en cada connect (el connId cambia). */
+    private var collector: kotlinx.coroutines.Job? = null
+
     override suspend fun connect(): String {
-        check(!initialized) { "Already connected" }
         val capabilities = transport.initialize()
-        // El collector del SSE conn-scoped DEBE vivir antes del primer request:
-        // las respuestas llegan por ese stream, demultiplexadas por id.
-        scope.launch { transport.connectionEvents().collect { frame ->
-            frame["method"]?.jsonPrimitive?.contentOrNull?.let { method ->
-                if (method == "permission_request") onPermissionRequest(frame)
+        // El collector del SSE conn-scoped DEBE vivir antes del primer request: las
+        // respuestas llegan por ese stream, demultiplexadas por id. Se (re)inicia en
+        // CADA connect — el transport cancela el stream viejo en re-initialize y sus
+        // respuestas pendientes ya fallaron; sin collector nuevo, los requests del
+        // connId vigente no tendrían demuxer. El loop tolera la muerte del stream
+        // (timeout/EOF del server) y reintenta tras pausa: un fallo de transporte jamás
+        // escapa del scope — el ciclo de polling del ViewModel ya es el mecanismo
+        // ordinario de reporte y recovery.
+        collector?.cancel()
+        collector = scope.launch {
+            while (isActive) {
+                try {
+                    transport.connectionEvents().collect { frame ->
+                        frame["method"]?.jsonPrimitive?.contentOrNull?.let { method ->
+                            if (method == "permission_request") onPermissionRequest(frame)
+                        }
+                    }
+                } catch (cancelled: kotlinx.coroutines.CancellationException) { throw cancelled }
+                catch (_: Exception) { /* stream muerto; re-establecer tras pausa */ }
+                kotlinx.coroutines.delay(15_000)
             }
-        } }
+        }
         capabilities["agentInfo"]?.jsonObject?.get("name")?.jsonPrimitive?.contentOrNull
             ?.let { deviceName = it }
-        initialized = true
         return deviceName
     }
 
