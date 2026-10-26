@@ -39,13 +39,16 @@ import java.io.IOException
  */
 class QwenCodeTransportTest {
     /** Comportamiento del stream SSE GET /acp. */
-    private enum class StreamMode { IDLE, ONE_FRAME }
+    private enum class StreamMode { IDLE, ONE_FRAME, LIST_REPLY }
 
     @Volatile private var mode = StreamMode.IDLE
     private var server: EmbeddedServer<*, *>? = null
     private var port = 0
+    /** Latch: el POST de session/list habilita la escritura del reply en el stream. */
+    private var listRequested = CompletableDeferred<Unit>()
 
     @Before fun start() {
+        listRequested = CompletableDeferred()
         val embedded = embeddedServer(CIO, port = 0) {
             routing {
                 post("/acp") {
@@ -58,6 +61,7 @@ class QwenCodeTransportTest {
                         )
                     } else {
                         // Contrato /acp: 202, la respuesta real llega por el stream SSE.
+                        if (body.contains("session/list")) listRequested.complete(Unit)
                         call.respondText("", status = HttpStatusCode.Accepted)
                     }
                 }
@@ -69,6 +73,15 @@ class QwenCodeTransportTest {
                             // Un frame y EOF: readBoundedWireLine debe ver null y COMPLETAR.
                             StreamMode.ONE_FRAME -> {
                                 write("""data: {"jsonrpc":"2.0","method":"available_commands","params":{}}""")
+                                write("\n\n")
+                                flush()
+                            }
+                            // Reply del request session/list (id=2: initialize usó el 1):
+                            // sessions viaja como ARRAY — el shape real del dispatcher. El
+                            // latch espera a que el POST registre el waiter antes de escribir.
+                            StreamMode.LIST_REPLY -> {
+                                listRequested.await()
+                                write("""data: {"jsonrpc":"2.0","id":2,"result":{"sessions":[{"sessionId":"s1","title":"Session One","updatedAt":1698000000000,"cwd":"C:\\w"}],"nextCursor":null}}""")
                                 write("\n\n")
                                 flush()
                             }
@@ -134,6 +147,22 @@ class QwenCodeTransportTest {
         withTimeout(5_000) { collector.cancelAndJoin() }
         assertTrue(System.currentTimeMillis() - startedAt < 5_000)
         assertTrue(collector.isCancelled)
+    }
+
+    @Test fun sessionListReplyWithArrayShapeParsesWithoutThrowing() = runBlocking {
+        mode = StreamMode.LIST_REPLY
+        val client = QwenCodeClient("http://127.0.0.1:$port", "token")
+        try {
+            client.connect()
+            // El dispatcher manda `sessions` como ARRAY; el accessor .jsonObject lanzaba
+            // IllegalArgumentException y tumbaba el read loop. sessions() debe parsear.
+            val page = withTimeout(10_000) { client.sessions() }
+            assertEquals(1, page.sessions.size)
+            assertEquals("s1", page.sessions.single().id)
+            assertEquals("Session One", page.sessions.single().title)
+        } finally {
+            client.close()
+        }
     }
 
     @Test fun reInitializeFailsPendingWaitersAndReplacesTheConnection() = runBlocking {

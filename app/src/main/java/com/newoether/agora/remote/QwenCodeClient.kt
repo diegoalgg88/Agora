@@ -116,14 +116,13 @@ internal class QwenCodeClient(
             cursor?.let { put("cursor", it) }
             put("archiveState", "active")
         })
-        val sessions = result["sessions"]?.jsonObject?.let { org ->
-            org.keys.mapNotNull { key -> org[key] as? JsonObject }
-        } ?: run {
-            // El dispatcher manda sessions como array JSON.
-            result["sessions"]?.let { element ->
-                (element as? kotlinx.serialization.json.JsonArray)?.mapNotNull { it as? JsonObject }
-            } ?: emptyList()
-        }
+        // El dispatcher manda `sessions` como ARRAY (dispatch.ts session/list); el
+        // accessor .jsonObject LANZA IllegalArgumentException con arrays, así que el
+        // parseo usa casts seguros que toleran ambos shapes.
+        val sessions = (result["sessions"] as? kotlinx.serialization.json.JsonArray)
+            ?.filterIsInstance<JsonObject>()
+            ?: (result["sessions"] as? JsonObject)?.values?.filterIsInstance<JsonObject>()
+            ?: emptyList()
         return RemoteSessionPage(
             sessions = sessions.mapNotNull { s ->
                 val id = s["sessionId"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
