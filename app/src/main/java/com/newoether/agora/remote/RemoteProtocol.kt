@@ -40,6 +40,19 @@ internal data class RemoteActivity(
 )
 @Serializable
 internal data class RemoteQueuedMessage(val id: String, val clientId: String, val text: String)
+/** Una opción de respuesta de un permission request: {optionId, name} del server. */
+@Serializable
+internal data class RemotePermissionOption(val optionId: String, val name: String = "")
+/**
+ * Tool call pidiendo aprobación: el server lo entrega como notification permission_request
+ * por el stream de sesión; sin respuesta el server cancela deny-safe tras su timeout.
+ */
+@Serializable
+internal data class RemotePermissionRequest(
+    val requestId: String, val sessionId: String,
+    val title: String = "", val kind: String? = null, val rawArguments: String? = null,
+    val options: List<RemotePermissionOption> = emptyList(),
+)
 @Serializable
 internal data class RemoteSessionPage(
     val sessions: List<RemoteSession>, val nextCursor: String?,

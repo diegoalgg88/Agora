@@ -261,6 +261,19 @@ internal class RemoteViewModel(
         loadModels(id, client)
         polling = viewModelScope.launch {
             mutableState.value = state.value.copy(loading = true)
+            // Permission requests de ACP fluyen junto al stream de sesión: el collector
+            // hijo vive lo mismo que el polling y filtra por la sesión abierta (al
+            // navegar a la lista, open=null las vacía del estado).
+            launch {
+                client.pendingPermissionRequests.collect { requests ->
+                    if (generation == epoch) {
+                        val open = state.value.session?.id
+                        mutableState.value = state.value.copy(
+                            permissions = requests.filter { it.sessionId == open },
+                        )
+                    }
+                }
+            }
             var consecutiveFailures = 0
             var notifiedFailure: RemoteFailure? = null
             do {
@@ -607,6 +620,17 @@ internal class RemoteViewModel(
         manageSession(id) { it.rename(id, name) }
     }
     fun archiveSession(id: String) = manageSession(id) { it.archiveSession(id); null }
+
+    /** Respuesta a un permission request de ACP: optionId elegido, o null = cancelled. */
+    fun respondToPermission(requestId: String, optionId: String?) {
+        val deviceId = state.value.deviceId ?: return
+        val client = clients[deviceId] ?: return
+        control { current ->
+            try { current.respondToPermission(requestId, optionId) }
+            catch (cancelled: CancellationException) { throw cancelled }
+            catch (error: Exception) { trace("permission_failed", error) }
+        }
+    }
 
     private fun manageSession(id: String, operation: suspend (RemoteClient) -> RemoteSession?) {
         val snapshot = state.value

@@ -19,6 +19,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withTimeout
@@ -39,16 +40,16 @@ import java.io.IOException
  */
 class QwenCodeTransportTest {
     /** Comportamiento del stream SSE GET /acp. */
-    private enum class StreamMode { IDLE, ONE_FRAME, LIST_REPLY }
+    private enum class StreamMode { IDLE, ONE_FRAME, LIST_REPLY, NEW_SESSION, LOAD_REPLAY, PERMISSION }
+
+    /** Latch por request: habilita la escritura del reply una vez registrado el waiter. */
+    private val requested = mutableMapOf<String, CompletableDeferred<Unit>>()
 
     @Volatile private var mode = StreamMode.IDLE
     private var server: EmbeddedServer<*, *>? = null
     private var port = 0
-    /** Latch: el POST de session/list habilita la escritura del reply en el stream. */
-    private var listRequested = CompletableDeferred<Unit>()
-
     @Before fun start() {
-        listRequested = CompletableDeferred()
+        requested.clear()
         val embedded = embeddedServer(CIO, port = 0) {
             routing {
                 post("/acp") {
@@ -61,7 +62,14 @@ class QwenCodeTransportTest {
                         )
                     } else {
                         // Contrato /acp: 202, la respuesta real llega por el stream SSE.
-                        if (body.contains("session/list")) listRequested.complete(Unit)
+                        when {
+                            body.contains("session/list") -> requested.getOrPut("list") { CompletableDeferred() }.complete(Unit)
+                            body.contains("session/new") -> requested.getOrPut("new") { CompletableDeferred() }.complete(Unit)
+                            body.contains("session/prompt") -> requested.getOrPut("prompt") { CompletableDeferred() }.complete(Unit)
+                            body.contains("session/set_model") -> requested.getOrPut("set_model") { CompletableDeferred() }.complete(Unit)
+                            body.contains("session/load") -> requested.getOrPut("load") { CompletableDeferred() }.complete(Unit)
+                            body.contains("session/permission") -> requested.getOrPut("permission") { CompletableDeferred() }.complete(Unit)
+                        }
                         call.respondText("", status = HttpStatusCode.Accepted)
                     }
                 }
@@ -80,8 +88,48 @@ class QwenCodeTransportTest {
                             // sessions viaja como ARRAY — el shape real del dispatcher. El
                             // latch espera a que el POST registre el waiter antes de escribir.
                             StreamMode.LIST_REPLY -> {
-                                listRequested.await()
+                                requested.getOrPut("list") { CompletableDeferred() }.await()
                                 write("""data: {"jsonrpc":"2.0","id":2,"result":{"sessions":[{"sessionId":"s1","title":"Session One","updatedAt":1698000000000,"cwd":"C:\\w"}],"nextCursor":null}}""")
+                                write("\n\n")
+                                flush()
+                            }
+                            // session/new (id=2) trae el catálogo ACP-standard en `models`;
+                            // luego session/prompt (id=3) cierra el turno. El latch por-request
+                            // evita escribir el frame antes de registrar su waiter.
+                            StreamMode.NEW_SESSION -> {
+                                requested.getOrPut("new") { CompletableDeferred() }.await()
+                                write("""data: {"jsonrpc":"2.0","id":2,"result":{"sessionId":"s-new","models":{"currentModelId":"m1","availableModels":[{"id":"m1"},{"id":"m2"}]}}}""")
+                                write("\n\n")
+                                flush()
+                                requested.getOrPut("prompt") { CompletableDeferred() }.await()
+                                write("""data: {"jsonrpc":"2.0","id":3,"result":{"turnId":"t1"}}""")
+                                write("\n\n")
+                                flush()
+                            }
+                            // session/load (id=2) rearma el replay: session/update frames fluyen
+                            // por el stream (user_message + agent_message) — el historial NO
+                            // viene en el reply, sino por el stream (initialReplayPending).
+                            StreamMode.LOAD_REPLAY -> {
+                                requested.getOrPut("load") { CompletableDeferred() }.await()
+                                write("""data: {"jsonrpc":"2.0","id":2,"result":{"sessionId":"s-load","replayStatus":{}}}""")
+                                write("\n\n")
+                                flush()
+                                write("""data: {"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"s-load","update":{"sessionUpdate":"user_message","content":[{"type":"text","text":"Historial"}],"messageId":"u1","turnId":"t9"}}}""")
+                                write("\n\n")
+                                flush()
+                                write("""data: {"jsonrpc":"2.0","method":"session/update","params":{"sessionId":"s-load","update":{"sessionUpdate":"agent_message","content":[{"type":"text","text":"Respuesta"}],"messageId":"a1","turnId":"t9"}}}""")
+                                write("\n\n")
+                                flush()
+                            }
+                            // Notificación permission_request por el stream conn-scoped
+                            // (id=1 ya lo usó initialize); tras el POST de session/permission
+                            // su reply (id=2) cierra el ciclo de aprobación.
+                            StreamMode.PERMISSION -> {
+                                write("""data: {"jsonrpc":"2.0","method":"permission_request","params":{"requestId":"req-1","sessionId":"s-load","toolCall":{"title":"Ejecutar comando","kind":"execute","arguments":[{"type":"text","text":"rm -rf /tmp/x"}]},"options":[{"optionId":"allow_once","name":"Permitir"},{"optionId":"reject","name":"Rechazar"}]}}""")
+                                write("\n\n")
+                                flush()
+                                requested.getOrPut("permission") { CompletableDeferred() }.await()
+                                write("""data: {"jsonrpc":"2.0","id":2,"result":{}}""")
                                 write("\n\n")
                                 flush()
                             }
@@ -163,6 +211,72 @@ class QwenCodeTransportTest {
         } finally {
             client.close()
         }
+    }
+
+    @Test fun createCachesTheModelsCatalogFromTheSessionNewReply() = runBlocking {
+        mode = StreamMode.NEW_SESSION
+        val client = QwenCodeClient("http://127.0.0.1:$port", "token")
+        try {
+            client.connect()
+            // Antes del primer session/new el catálogo está vacío (degradación v1).
+            assertEquals(emptyList<RemoteModel>(), client.models())
+            val session = client.create("Hola", "client-1")
+            assertEquals("s-new", session.id)
+            // El reply de session/new trae models {currentModelId, availableModels:[{id}]}:
+            // el catálogo queda cacheado y models() lo expone.
+            val models = client.models()
+            assertEquals(listOf("m1", "m2"), models.map { it.id })
+        } finally { client.close() }
+    }
+
+    @Test fun conversationTriggersSessionLoadAndReplayFeedsEventsWithTopologyNodes() = runBlocking {
+        mode = StreamMode.LOAD_REPLAY
+        val client = QwenCodeClient("http://127.0.0.1:$port", "token")
+        try {
+            client.connect()
+            // El ViewModel colecta events() ANTES de abrir: el replay del ring viaja por ahí.
+            val pages = kotlinx.coroutines.channels.Channel<RemoteConversationPage>(8)
+            val events = kotlinx.coroutines.CoroutineScope(Dispatchers.Default + SupervisorJob())
+                .launch { client.events("s-load").collect { pages.send(it) } }
+            // conversation() dispara session/load — el reply NO trae el transcript; el
+            // server rearma el replay hacia el stream (initialReplayPending). El contrato
+            // es una página POR session/update: acumular hasta que el replay complete.
+            client.conversation("s-load")
+            var page = withTimeout(10_000) { pages.receive() }
+            withTimeout(10_000) {
+                while (page.messages.none { it.role == "assistant" }) { page = pages.receive() }
+            }
+            events.cancel()
+            // Contrato de cachePage: nodes con los mismos ids, mismo orden que messages.
+            assertEquals(page.messages.map { it.id }, page.nodes.map { it.id })
+            // El replay entregó el historial: user + agent del ring del server.
+            val texts = page.messages.map { it.role to it.text }
+            assertTrue("user_message del replay ausente: $texts", texts.any { it.first == "user" && it.second == "Historial" })
+            assertTrue("agent_message del replay ausente: $texts", texts.any { it.first == "assistant" && it.second == "Respuesta" })
+        } finally { client.close() }
+    }
+
+    @Test fun permissionRequestSurfacesViaStateFlowAndRespondsBySessionPermission() = runBlocking {
+        mode = StreamMode.PERMISSION
+        val client = QwenCodeClient("http://127.0.0.1:$port", "token")
+        try {
+            client.connect()
+            // El collector conn-scoped de connect() recibe la notificación y la expone.
+            val request = withTimeout(10_000) {
+                client.pendingPermissionRequests.first { it.isNotEmpty() }.single()
+            }
+            assertEquals("req-1", request.requestId)
+            assertEquals("s-load", request.sessionId)
+            assertEquals("Ejecutar comando", request.title)
+            assertEquals(listOf("allow_once", "reject"), request.options.map { it.optionId })
+            assertEquals("rm -rf /tmp/x", request.rawArguments)
+            // La respuesta viaja como session/permission con el outcome seleccionado.
+            client.respondToPermission("req-1", "allow_once")
+            withTimeout(10_000) {
+                while (client.pendingPermissionRequests.value.any { it.requestId == "req-1" }) delay(50)
+            }
+            assertTrue(client.pendingPermissionRequests.value.isEmpty())
+        } finally { client.close() }
     }
 
     @Test fun reInitializeFailsPendingWaitersAndReplacesTheConnection() = runBlocking {

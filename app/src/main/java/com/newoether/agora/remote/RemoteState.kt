@@ -38,6 +38,8 @@ internal data class RemoteState(
     val viewedTurns: Map<String, String> = emptyMap(),
     val settingsRevision: Long = 0,
     val stoppingOwner: String? = null, val stoppingTurnId: String? = null,
+    /** Permission requests de ACP pendientes de la sesión abierta (Filo: vacías). */
+    val permissions: List<RemotePermissionRequest> = emptyList(),
 ) {
     val error: Boolean get() = failure != null
     val owner: String? get() = session?.let {

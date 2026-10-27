@@ -35,6 +35,16 @@ internal interface RemoteClient {
     suspend fun upload(item: SelectedAttachment): RemoteUpload
     suspend fun send(id: String, text: String, clientId: String, attachments: List<String> = emptyList()): String
 
+    /**
+     * Permission requests vivas (solo clientes ACP; Filo no tiene el concepto): la UI
+     * de RemoteConversation presenta las de la sesión abierta y responde por id.
+     */
+    val pendingPermissionRequests: kotlinx.coroutines.flow.StateFlow<List<RemotePermissionRequest>>
+        get() = kotlinx.coroutines.flow.MutableStateFlow(emptyList())
+
+    /** Respuesta a un permission request: optionId seleccionado, o null = cancelled. */
+    suspend fun respondToPermission(requestId: String, optionId: String?) {}
+
     /** El cliente ACP lanza collectors propios; cerrarlos aquí es no-op para Filo. */
     fun close() {}
 }

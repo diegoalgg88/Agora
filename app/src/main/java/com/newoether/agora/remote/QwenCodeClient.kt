@@ -8,6 +8,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.mapNotNull
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
@@ -55,8 +56,18 @@ internal class QwenCodeClient(
     /** Mensajes acumulados por sesión: cada session/update extiende la página. */
     private val sessionMessages = HashMap<String, MutableList<RemoteMessage>>()
     private val sessionRuntime = HashMap<String, RemoteRuntime>()
-    /** Permission requests vivas: requestId → (sessionId, frame crudo). */
-    private val pendingPermissions = HashMap<String, Pair<String, JsonObject>>()
+    /**
+     * Permission requests vivas de TODAS las sesiones, ordenadas por llegada: la UI
+     * de RemoteConversation presenta las de la sesión abierta y responde por id.
+     */
+    private val mutablePermissions = kotlinx.coroutines.flow.MutableStateFlow<List<RemotePermissionRequest>>(emptyList())
+    override val pendingPermissionRequests: kotlinx.coroutines.flow.StateFlow<List<RemotePermissionRequest>> = mutablePermissions
+    /**
+     * Catálogo de modelos del server, llenado desde el campo `models` del reply de
+     * session/new (ACP-standard: {currentModelId, availableModels:[{id}]}, dispatch.ts
+     * extractModelState). ACP no ofrece un método de listado sin sesión.
+     */
+    @Volatile private var cachedModels: List<RemoteModel> = emptyList()
 
     override val address: String get() = transport.acpAddress
 
@@ -96,11 +107,29 @@ internal class QwenCodeClient(
         val params = frame["params"]?.jsonObject ?: return
         val requestId = params["requestId"]?.jsonPrimitive?.contentOrNull ?: return
         val sessionId = params["sessionId"]?.jsonPrimitive?.contentOrNull ?: return
-        pendingPermissions[requestId] = sessionId to params
+        val toolCall = params["toolCall"]?.jsonObject
+        // Shape verificado (transport.test.js:1849): options [{optionId, name}]; el
+        // toolCall ACP lleva title/kind y arguments crudos como string.
+        val options = (params["options"] as? kotlinx.serialization.json.JsonArray)
+            ?.filterIsInstance<JsonObject>()?.mapNotNull { option ->
+                val optionId = option["optionId"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                RemotePermissionOption(optionId, option["name"]?.jsonPrimitive?.contentOrNull.orEmpty())
+            }.orEmpty()
+        val request = RemotePermissionRequest(
+            requestId = requestId, sessionId = sessionId,
+            title = toolCall?.get("title")?.jsonPrimitive?.contentOrNull.orEmpty(),
+            kind = toolCall?.get("kind")?.jsonPrimitive?.contentOrNull,
+            rawArguments = (toolCall?.get("arguments") as? kotlinx.serialization.json.JsonArray)
+                ?.let { args -> args.filterIsInstance<JsonObject>()
+                    .firstNotNullOfOrNull { it["text"]?.jsonPrimitive?.contentOrNull } },
+            options = options,
+        )
+        // Reemplaza por id: el server puede re-pedir el mismo request tras reconnect.
+        mutablePermissions.value = (mutablePermissions.value.filter { it.requestId != requestId }) + request
     }
 
     /** Aprobación de tool calls: outcome "selected" con optionId, o "cancelled". */
-    suspend fun respondToPermission(requestId: String, optionId: String?) {
+    override suspend fun respondToPermission(requestId: String, optionId: String?) {
         transport.request("session/permission", buildJsonObject {
             put("requestId", requestId)
             put("outcome", buildJsonObject {
@@ -108,7 +137,7 @@ internal class QwenCodeClient(
                 else { put("outcome", "selected"); put("optionId", optionId) }
             })
         })
-        pendingPermissions.remove(requestId)
+        mutablePermissions.value = mutablePermissions.value.filter { it.requestId != requestId }
     }
 
     override suspend fun sessions(cursor: String?): RemoteSessionPage {
@@ -142,14 +171,11 @@ internal class QwenCodeClient(
     }
 
     override suspend fun conversation(id: String, cursor: String?): RemoteConversationPage {
-        // La paginación de historial vía ACP no existe como tal: el ring replay
-        // del SSE entrega lo reciente; degradamos la carga de páginas viejas.
-        return RemoteConversationPage(
-            messages = sessionMessages[id].orEmpty().toList(),
-            nextCursor = null,
-            queued = emptyList(),
-            runtime = sessionRuntime[id] ?: RemoteRuntime(status = "idle"),
-        )
+        // ACP no pagina el historial: session/load rearma el replay del ring hacia el stream
+        // de sesión que el ViewModel ya colecta (initialReplayPending, dispatch.ts:2486/:5879);
+        // lo retenido por el ring es todo lo disponible y nextCursor queda en null.
+        transport.request("session/load", buildJsonObject { put("sessionId", id) })
+        return page(id, cursor)
     }
 
     override suspend fun create(
@@ -162,6 +188,15 @@ internal class QwenCodeClient(
         })
         val sessionId = newResult["sessionId"]?.jsonPrimitive?.contentOrNull
             ?: throw QwenCodeProtocolException(message = "session/new without sessionId")
+        // El reply trae el catálogo ACP-standard: models es un OBJETO
+        // {currentModelId, availableModels:[{id}]} (extractModelState, dispatch.ts:1660).
+        (newResult["models"] as? JsonObject)?.get("availableModels")
+            ?.let { it as? kotlinx.serialization.json.JsonArray }?.let { models ->
+            cachedModels = models.filterIsInstance<JsonObject>().mapNotNull { entry ->
+                val id = entry["id"]?.jsonPrimitive?.contentOrNull ?: return@mapNotNull null
+                RemoteModel(id = id, name = id)
+            }
+        }
         settings?.model?.let { model ->
             transport.request("session/set_model", buildJsonObject {
                 put("sessionId", sessionId); put("modelId", model)
@@ -228,15 +263,19 @@ internal class QwenCodeClient(
      * y emite la página completa — el mismo contrato incremental que Filo.
      */
     override fun events(id: String): Flow<RemoteConversationPage> =
-        transport.sessionEvents(id).map { (frame, cursor) ->
-            val params = frame["params"]?.jsonObject ?: return@map page(id, cursor)
-            val update = params["update"]?.jsonObject ?: return@map page(id, cursor)
+        transport.sessionEvents(id).mapNotNull { (frame, cursor) ->
+            // Solo las notificaciones session/update mutan la página: los replies de
+            // requests (id+result) y otras notificaciones del stream no tocan el
+            // historial y se omiten en vez de emitir una página vacía.
+            val update = frame["params"]?.jsonObject?.get("update") as? JsonObject
+                ?: return@mapNotNull null
             when (update["sessionUpdate"]?.jsonPrimitive?.contentOrNull) {
                 "user_message" -> appendUser(id, update)
                 "agent_message" -> appendAgent(id, update, cursor)
                 "agent_thought" -> Unit
                 "tool_call" -> appendToolCall(id, update)
                 "plan" -> Unit
+                else -> return@mapNotNull null
             }
             page(id, cursor)
         }
@@ -298,11 +337,28 @@ internal class QwenCodeClient(
         }
     }
 
-    private fun page(id: String, cursor: String?): RemoteConversationPage = RemoteConversationPage(
-        messages = sessionMessages[id].orEmpty().toList(),
-        nextCursor = null, queued = emptyList(),
-        runtime = sessionRuntime[id] ?: RemoteRuntime(status = "idle"),
-        continuationCursor = cursor,
+    private fun page(id: String, cursor: String?): RemoteConversationPage {
+        val messages = sessionMessages[id].orEmpty().toList()
+        return RemoteConversationPage(
+            messages = messages,
+            // cachePage exige nodes con los mismos ids en el mismo orden que messages.
+            nodes = messages.map(::nodeOf),
+            nextCursor = null, queued = emptyList(),
+            runtime = sessionRuntime[id] ?: RemoteRuntime(status = "idle"),
+            continuationCursor = cursor,
+        )
+    }
+
+    /** Nodo de topología del mensaje: la hidratación proyecta grupos desde estos nodos. */
+    private fun nodeOf(message: RemoteMessage) = RemoteMessageNode(
+        id = message.id, turnId = message.turnId, clientId = message.clientId,
+        role = message.role, timestamp = message.timestamp,
+        revision = "${message.id}-${message.timestamp}",
+        textLength = message.text.length, groupId = message.groupId, nativeId = message.nativeId,
+        textOffset = message.textOffset, textContinues = message.textContinues,
+        activity = message.activity?.let { RemoteNodeActivity(it.type, it.state, it.durationMs) },
+        hasContent = message.text.isNotEmpty() || message.activity != null,
+        error = message.error,
     )
 
     // ── Degradaciones documentadas: sin equivalente ACP directo ──
@@ -321,7 +377,8 @@ internal class QwenCodeClient(
         throw QwenCodeProtocolException(message = "Archive is not available on Qwen Code")
     }
 
-    override suspend fun models(): List<RemoteModel> = emptyList()
+    /** Catálogo cacheado del último session/new; ACP no lista modelos sin sesión. */
+    override suspend fun models(): List<RemoteModel> = cachedModels
 
     override suspend fun usage(): RemoteUsage = throw QwenCodeProtocolException(message = "Usage is not available on Qwen Code")
 

@@ -230,6 +230,30 @@ internal fun RemoteConversation(
                             label = { Text(attachment.fileName.orEmpty(), maxLines = 1) })
                     }
                 }
+                // Tool calls remotos pidiendo aprobación (ACP permission_request): el
+                // title y las opciones vienen del server; cancel responde "cancelled".
+                state.permissions.forEach { permission ->
+                    Column(
+                        Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        if (permission.title.isNotBlank()) {
+                            Text(permission.title, style = MaterialTheme.typography.titleSmall)
+                        }
+                        permission.rawArguments?.takeIf(String::isNotBlank)?.let { args ->
+                            Text(args, style = MaterialTheme.typography.bodySmall, maxLines = 4,
+                                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            permission.options.forEach { option ->
+                                AssistChip(onClick = { vm.respondToPermission(permission.requestId, option.optionId) },
+                                    label = { Text(option.name.ifBlank { option.optionId }) })
+                            }
+                            AssistChip(onClick = { vm.respondToPermission(permission.requestId, null) },
+                                label = { Text(stringResource(R.string.cancel)) })
+                        }
+                    }
+                }
                 Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextField(state = field, modifier = Modifier.weight(1f),
                         placeholder = { Text(stringResource(R.string.ask_agora)) },

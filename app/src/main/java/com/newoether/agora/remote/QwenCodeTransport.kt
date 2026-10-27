@@ -342,7 +342,9 @@ internal class QwenCodeTransport(
             }
         })
         awaitClose { call.cancel() }
-    }.buffer(Channel.CONFLATED)
+    // Los frames de sesión transportan contenido (session/update con texto, tool calls):
+    // CONFLATED los descartaría en ráfaga — el replay del ring llegaría incompleto.
+    }.buffer(Channel.UNLIMITED)
 
     /** El stream de sesión necesita exponer el cursor por frame; wrapper interno. */
     private fun <T> sseStream(sessionId: String?, transform: (JsonObject) -> T?): Flow<T> =
