@@ -3,24 +3,33 @@ package com.newoether.agora.viewmodel
 import com.newoether.agora.model.ChatMessage
 import com.newoether.agora.model.RunEffect
 import com.newoether.agora.model.RunEffectIdentity
-import kotlinx.coroutines.CancellationException
+import com.newoether.agora.util.DebugLog
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 class ToolRoundEffectCoordinatorTest {
+    @Before
+    fun quietLogs() {
+        // DebugLog delega en android.util.Log, no mockeado en JVM tests: apagar el flag
+        // privado evita "Method w not mocked" sin tocar la config compartida del build.
+        val field = DebugLog::class.java.getDeclaredField("enabled")
+        field.isAccessible = true
+        field.setBoolean(DebugLog, false)
+    }
     @Test
     fun `effect order is batch then results then durable commit then continuation`() = runTest {
         val events = mutableListOf<String>()
         val coordinator = ToolRoundEffectCoordinator(callbacks(events))
 
-        val batch = coordinator.acceptValidatedBatch(PROVIDER_IDENTITY)
-        val commit = coordinator.completeBatch(batch.identity)
-        val continuation = coordinator.commitRound { identity ->
+        val batch = checkNotNull(coordinator.acceptValidatedBatch(PROVIDER_IDENTITY))
+        val commit = checkNotNull(coordinator.completeBatch(batch.identity))
+        val continuation = checkNotNull(coordinator.commitRound { identity ->
             assertEquals(commit.identity, identity)
             events += "persist"
-        }
+        })
 
         assertEquals(commit.identity, continuation.identity)
         assertEquals(
@@ -33,7 +42,7 @@ class ToolRoundEffectCoordinatorTest {
     fun `durable failure reports failure and never authorizes continuation`() = runTest {
         val events = mutableListOf<String>()
         val coordinator = ToolRoundEffectCoordinator(callbacks(events))
-        val batch = coordinator.acceptValidatedBatch(PROVIDER_IDENTITY)
+        val batch = checkNotNull(coordinator.acceptValidatedBatch(PROVIDER_IDENTITY))
         coordinator.completeBatch(batch.identity)
 
         val failure = runCatching {
@@ -57,11 +66,30 @@ class ToolRoundEffectCoordinatorTest {
         )
         val coordinator = ToolRoundEffectCoordinator(callbacks)
 
-        val failure = runCatching {
-            coordinator.acceptValidatedBatch(PROVIDER_IDENTITY)
-        }.exceptionOrNull()
+        // El rechazo viaja como null (sin CancellationException manual — SIGABRT 2026-10-26).
+        org.junit.Assert.assertNull(coordinator.acceptValidatedBatch(PROVIDER_IDENTITY))
+    }
 
-        assertTrue(failure is CancellationException)
+    @Test
+    fun `runtime rejection at completion and continuation also degrades to null`() = runTest {
+        // completeBatch rechazado: el batch queda sin cerrar y retorna null, sin throw.
+        val completing = callbacks(mutableListOf()).copy(
+            onToolBatchCompleted = { null },
+        )
+        val coordinator = ToolRoundEffectCoordinator(completing)
+        val batch = checkNotNull(coordinator.acceptValidatedBatch(PROVIDER_IDENTITY))
+        org.junit.Assert.assertNull(coordinator.completeBatch(batch.identity))
+
+        // commitRound con continuación que no es current: null tras el persist durable.
+        val continuing = callbacks(mutableListOf()).copy(
+            onToolRoundCommitted = { identity, _ ->
+                RunEffect.ToolRoundCommitFailed(identity)
+            },
+        )
+        val second = ToolRoundEffectCoordinator(continuing)
+        val batch2 = checkNotNull(second.acceptValidatedBatch(PROVIDER_IDENTITY))
+        second.completeBatch(batch2.identity)
+        org.junit.Assert.assertNull(second.commitRound { })
     }
 
     @Test

@@ -2,7 +2,7 @@ package com.newoether.agora.viewmodel
 
 import com.newoether.agora.model.RunEffect
 import com.newoether.agora.model.RunEffectIdentity
-import kotlinx.coroutines.CancellationException
+import com.newoether.agora.util.DebugLog
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.withContext
 
@@ -12,6 +12,10 @@ import kotlinx.coroutines.withContext
  * Tool progress remains presentation-only. This coordinator accepts exactly one batch effect,
  * closes it into exactly one commit effect, runs that durable effect to an unambiguous result,
  * and returns continuation authority only after the success result is accepted.
+ *
+ * Los rechazos del mailbox viajan como null (el caller cierra el Run como STOPPED por el path
+ * ordinario): una CancellationException manual aquí queda pendiente ante ART en el resume de
+ * UndispatchedCoroutine y aborta el proceso entero (mismo defecto del SIGABRT 2026-10-26).
  */
 internal class ToolRoundEffectCoordinator(
     private val callbacks: GenerationCallbacks,
@@ -21,14 +25,15 @@ internal class ToolRoundEffectCoordinator(
 
     suspend fun acceptValidatedBatch(
         providerOutcomeIdentity: RunEffectIdentity,
-    ): RunEffect.ExecuteToolBatch {
+    ): RunEffect.ExecuteToolBatch? {
         check(batchEffect == null && commitEffect == null) {
             "A Provider pass cannot overlap an unfinished tool effect"
         }
         val accepted = callbacks.onToolBatchRequested(providerOutcomeIdentity)
-            ?: throw CancellationException(
-                "Provider pass ${providerOutcomeIdentity.effectId} is no longer current",
-            )
+        if (accepted == null) {
+            DebugLog.w("AgoraVM", "Provider pass ${providerOutcomeIdentity.effectId} is no longer current")
+            return null
+        }
         check(
             accepted.identity == providerOutcomeIdentity.copy(
                 effectId = "tool-batch-${providerOutcomeIdentity.effectId}",
@@ -44,15 +49,16 @@ internal class ToolRoundEffectCoordinator(
 
     suspend fun completeBatch(
         batchIdentity: RunEffectIdentity,
-    ): RunEffect.CommitToolRound {
+    ): RunEffect.CommitToolRound? {
         val activeBatch = requireBatchEffect()
         check(activeBatch.identity == batchIdentity) {
             "A stale tool batch cannot produce authoritative results"
         }
         val accepted = callbacks.onToolBatchCompleted(batchIdentity)
-            ?: throw CancellationException(
-                "Tool batch ${batchIdentity.effectId} is no longer current",
-            )
+        if (accepted == null) {
+            DebugLog.w("AgoraVM", "Tool batch ${batchIdentity.effectId} is no longer current")
+            return null
+        }
         check(
             accepted.identity == batchIdentity.copy(
                 effectId = "tool-round-${batchIdentity.effectId}",
@@ -69,7 +75,7 @@ internal class ToolRoundEffectCoordinator(
 
     suspend fun commitRound(
         persist: suspend (RunEffectIdentity) -> Unit,
-    ): RunEffect.ContinueProviderPass {
+    ): RunEffect.ContinueProviderPass? {
         val activeCommit = requireCommitEffect()
         try {
             // Once issued, this transaction must reach one result even if Stop concurrently
@@ -96,9 +102,8 @@ internal class ToolRoundEffectCoordinator(
             continuation !is RunEffect.ContinueProviderPass ||
             continuation.identity != activeCommit.identity
         ) {
-            throw CancellationException(
-                "Tool round ${activeCommit.identity.effectId} is no longer current",
-            )
+            DebugLog.w("AgoraVM", "Tool round ${activeCommit.identity.effectId} is no longer current")
+            return null
         }
         return continuation
     }

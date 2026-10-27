@@ -28,8 +28,9 @@ class GenerationPassAcceptanceContractTest {
         )
         // El fence de identidad permanece: un outcome stale sigue siendo ilegal de consumir.
         assertTrue(acceptance.contains("it.identity == outcome.identity && it.result == result"))
-        // Ambos motivos de rechazo (stale fence y pass cancelado) producen false, no throw.
-        assertEquals(2, acceptance.countToken("return false"))
+        // Tres motivos de rechazo → false (stale fence, pass cancelado, y el batch-rejection
+        // del tool coordinator dentro del branch CompletedToolCalls), no throw.
+        assertEquals(3, acceptance.countToken("return false"))
         assertTrue(acceptance.contains("is ProviderPassOutcome.Cancelled"))
         // El happy path acepta con true — exactamente una aceptación por outcome.
         assertEquals(1, acceptance.countToken("return true"))

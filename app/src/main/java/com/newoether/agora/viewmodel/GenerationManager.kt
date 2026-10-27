@@ -448,7 +448,7 @@ class GenerationManager(
                 roundToolSegments.addAll(outcome.segments)
                 toolCallData = outcome.calls.firstOrNull()
                 toolCallDataList = outcome.calls
-                toolRoundEffects.completeBatch(batchEffect.identity)
+                toolRoundEffects.completeBatch(batchEffect.identity) ?: run { currentStatus = MessageStatus.STOPPED; return }
                 currentStatus = MessageStatus.SENDING
                 publishStreamUpdate(forceCheckpoint = true)
                 uiUpdateGate.recordPublished(System.currentTimeMillis())
@@ -698,7 +698,7 @@ class GenerationManager(
                     is ProviderPassOutcome.CompletedText -> Unit
                     is ProviderPassOutcome.CompletedToolCalls -> {
                         check(completedToolCalls.isEmpty()) { "A Provider pass cannot overlap an unconsumed tool batch" }
-                        toolRoundEffects.acceptValidatedBatch(outcome.identity)
+                        if (toolRoundEffects.acceptValidatedBatch(outcome.identity) == null) return false
                         outcome.calls.forEach { call -> completedToolCalls[call.streamKey] = call }
                     }
                     is ProviderPassOutcome.Truncated, is ProviderPassOutcome.Failed ->
@@ -762,12 +762,13 @@ class GenerationManager(
                     completedSegments = txedSegments,
                 )
                 toolPath = toolPath + round.pathMessages
-                toolRoundEffects.commitRound { commitIdentity ->
-                    conversations.appendToolRoundToRun(
-                        messages = round.entities,
-                        expectedPass = commitIdentity.pass,
-                    )
-                }
+                // Rechazo stale del mailbox → STOPPED, sin throw (mismo defecto del SIGABRT).
+                if (toolRoundEffects.commitRound { commitIdentity ->
+                        conversations.appendToolRoundToRun(
+                            messages = round.entities,
+                            expectedPass = commitIdentity.pass,
+                        )
+                    } == null) { currentStatus = MessageStatus.STOPPED; break }
                 toolOverlay.releaseCommittedResponseState(
                     tcds.mapTo(linkedSetOf()) { call ->
                         checkNotNull(call.toolCallId) {
