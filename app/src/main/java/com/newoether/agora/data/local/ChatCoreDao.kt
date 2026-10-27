@@ -35,12 +35,14 @@ data class DrawerConversationRow(
  * the core contract reviewable and under the repository's permanent source-size gate.
  */
 interface ChatCoreDao : ChatModelReferenceDao {
-    @Query("SELECT id, title, systemPromptId, modelId, taskId, origin, graduated, hasUnreadGeneration, isPinned, selectedBranchesJson FROM conversations WHERE taskId IS NULL ORDER BY lastUpdated DESC")
+    // Las hijas de subagent viven SOLO en el capsule del parent: el drawer jamás las lista
+    // (duplicarlas contradice el diseño de capsules; su estado persistido queda intacto).
+    @Query("SELECT id, title, systemPromptId, modelId, taskId, origin, graduated, hasUnreadGeneration, isPinned, selectedBranchesJson FROM conversations WHERE taskId IS NULL AND parentConversationId IS NULL ORDER BY lastUpdated DESC")
     fun getAllConversations(): Flow<List<ChatConversation>>
 
-    @Query("SELECT id, title, hasUnreadGeneration, isPinned FROM conversations WHERE taskId IS NULL ORDER BY isPinned DESC, lastUpdated DESC, id LIMIT :limit")
+    @Query("SELECT id, title, hasUnreadGeneration, isPinned FROM conversations WHERE taskId IS NULL AND parentConversationId IS NULL ORDER BY isPinned DESC, lastUpdated DESC, id LIMIT :limit")
     fun observeDrawerConversations(limit: Int): Flow<List<DrawerConversationRow>>
-    @Query("SELECT id, title, hasUnreadGeneration, isPinned FROM conversations WHERE taskId IS NULL AND id IN (:ids)")
+    @Query("SELECT id, title, hasUnreadGeneration, isPinned FROM conversations WHERE taskId IS NULL AND parentConversationId IS NULL AND id IN (:ids)")
     suspend fun getDrawerConversations(ids: List<String>): List<DrawerConversationRow>
 
     @Query("SELECT * FROM conversations WHERE taskId = :taskId ORDER BY lastUpdated DESC")
