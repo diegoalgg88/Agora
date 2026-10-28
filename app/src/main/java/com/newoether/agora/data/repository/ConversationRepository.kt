@@ -386,15 +386,27 @@ class ConversationRepository(
         require(messages.isNotEmpty() && messages.all { it.runId.isNotBlank() })
         // El watermark avanza junto con el commit de la ronda: un backup incremental
         // jamás considera "sin cambios" una conversación con tool rounds nuevos.
-        return withSemanticTransaction(messages.map(MessageEntity::id)) {
+        var waitReceipts = emptyMap<String, String>()
+        withSemanticTransaction(messages.map(MessageEntity::id)) {
             chatDao.appendToolRoundToRun(messages, expectedPass).also { commit ->
                 if (commit.inserted) {
-                    commitSubagentWaitReceipts(messages)
+                    waitReceipts = commitSubagentWaitReceipts(messages)
                     check(chatDao.touchConversationData(messages.first().conversationId, System.currentTimeMillis()) == 1)
                 }
             }
+        }.let { commit ->
+            // El hook dispara SOLO tras el commit durable, fuera de la transacción: la cola
+            // ordinaria retira las notificaciones automáticas ya consumidas por el wait.
+            if (waitReceipts.isNotEmpty()) {
+                onSubagentWaitCommitted?.invoke(messages.first().conversationId, waitReceipts)
+            }
+            return commit
         }
     }
+
+    /** Notificación post-commit de receipts wait consumidos; la delivery de la cola la instala. */
+    @Volatile
+    var onSubagentWaitCommitted: (suspend (String, Map<String, String>) -> Unit)? = null
 
     suspend fun recoverConversationRuntime(
         conversationId: String,

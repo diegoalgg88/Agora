@@ -21,6 +21,8 @@ data class MessageSource(
     val askUser: List<AskUserItem> = emptyList(),
     /** Exact outbox receipts consumed atomically with this automatic input's Run graph. */
     val subagentResults: Map<String, String> = emptyMap(),
+    /** Diagnóstico estructurado del receipt presentado en la burbuja; solo Kind.SUBAGENT. */
+    val subagentResult: SubagentResult? = null,
 ) {
     @Serializable
     enum class Kind {
@@ -38,9 +40,20 @@ data class MessageSource(
         val answer: String? = null,
     )
 
+    /** Nombre + estado del hijo que produjo el receipt; el texto completo vive en la hija. */
+    @Immutable
+    @Serializable
+    data class SubagentResult(
+        val name: String,
+        val status: String,
+        val errorText: String? = null,
+        val errorCode: String? = null,
+    )
+
     init {
         require(kind == Kind.ASK_USER || askUser.isEmpty())
         require(kind == Kind.SUBAGENT || subagentResults.isEmpty())
+        require(kind == Kind.SUBAGENT || subagentResult == null)
     }
 
     /**

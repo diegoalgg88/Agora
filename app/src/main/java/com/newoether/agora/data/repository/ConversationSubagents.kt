@@ -67,9 +67,11 @@ internal suspend fun ConversationRepository.persistSubagentTerminal(childId: Str
     chatDao.setSubagentResult(childId, parentId, SubagentCompletion.encode(completion), completion.id, status, at)
 }
 
+/** Retorna los receipts confirmados para que el caller dispare el hook fuera de la transacción. */
 internal suspend fun ConversationRepository.commitSubagentWaitReceipts(
     messages: List<com.newoether.agora.data.local.MessageEntity>,
-) {
+): Map<String, String> {
+    val acknowledged = linkedMapOf<String, String>()
     messages.forEach { message ->
         val raw = message.toolCallJson ?: return@forEach
         if (message.participant != com.newoether.agora.model.Participant.USER) return@forEach
@@ -88,7 +90,18 @@ internal suspend fun ConversationRepository.commitSubagentWaitReceipts(
             if (child.subagentDeliveredResultId != resultId) {
                 check(chatDao.acknowledgeSubagentResult(id, message.conversationId, resultId, System.currentTimeMillis()) == 1)
             }
+            acknowledged[id] = resultId
         }
+    }
+    return acknowledged
+}
+
+/** Un send descartado consume sus receipts exactos: el parent no vuelve a ofrecerlos. */
+suspend fun ConversationRepository.dismissSubagentResults(
+    parentId: String, receipts: Map<String, String>,
+) {
+    receipts.forEach { (id, resultId) ->
+        chatDao.acknowledgeSubagentResult(id, parentId, resultId, System.currentTimeMillis())
     }
 }
 

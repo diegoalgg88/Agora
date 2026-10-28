@@ -10,6 +10,10 @@ data class SubagentCompletion(
     val status: String,
     val text: String,
     val modelMessageId: String? = null,
+    /** Detalle de error estructurado: el texto completo del fallo, distinto del texto parcial. */
+    val errorText: String? = null,
+    /** Código de error del provider cuando existe (ej. HTTP status o código tipado). */
+    val errorCode: String? = null,
 ) {
     init {
         require(id.isNotBlank())

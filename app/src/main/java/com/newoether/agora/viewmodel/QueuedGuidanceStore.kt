@@ -1,6 +1,7 @@
 package com.newoether.agora.viewmodel
 
 import com.newoether.agora.model.AttachmentMeta
+import com.newoether.agora.model.MessageSource
 import com.newoether.agora.model.SelectedAttachment
 import com.newoether.agora.util.AttachmentFiles
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,6 +24,8 @@ internal data class QueuedSend(
     val attachments: List<SelectedAttachment>,
     /** Provenance only; drain always creates a fresh Run and never reuses this id. */
     val runId: String,
+    /** Fuente estructurada del input automático (task/loop/ask_user/subagent receipt). */
+    val source: MessageSource? = null,
     /** Pure projection of canonical READY attachment artifacts. */
     val preparedImages: List<String> = emptyList(),
     val preparedAttachmentMetaJson: String? = null,
@@ -114,6 +117,37 @@ internal class GuidanceLeaseStore(
         _queuedSends.value = _queuedSends.value.filterNot { it.id == id }
         removed
     }
+
+    /** Exact outbox identity stays owned while pending or claimed by an in-flight drain. */
+    fun containsSubagentResult(childId: String, resultId: String): Boolean = synchronized(lock) {
+        (_queuedSends.value.asSequence() + claimedGuidance.values.asSequence().flatten()).any {
+            it.source?.subagentResults?.get(childId) == resultId
+        }
+    }
+
+    /** A committed wait result supersedes only its exact pending automatic notifications. */
+    fun removeSubagentResults(receipts: Map<String, String>): List<QueuedSend> = synchronized(lock) {
+        val removed = _queuedSends.value.filter { send ->
+            val source = send.source
+            source?.kind == MessageSource.Kind.SUBAGENT && source.subagentResults.isNotEmpty() &&
+                source.subagentResults.all { (id, resultId) -> receipts[id] == resultId }
+        }
+        _queuedSends.value = _queuedSends.value - removed.toSet()
+        removed
+    }
+
+    /** Only consumed automatic inputs may be retired from a claimed batch before admission. */
+    fun retireSubagentResults(lease: GuidanceBatchLease, receipts: Set<Pair<String, String>>): GuidanceBatchLease? =
+        synchronized(lock) {
+            check(claimedGuidance[lease.id] == lease.batch)
+            val retained = lease.batch.filterNot { send ->
+                val results = send.source?.subagentResults.orEmpty()
+                results.isNotEmpty() && results.all { (id, resultId) -> (id to resultId) in receipts }
+            }
+            if (retained.isEmpty()) claimedGuidance.remove(lease.id)
+            else claimedGuidance[lease.id] = retained
+            retained.takeIf { it.isNotEmpty() }?.let { GuidanceBatchLease(lease.id, it) }
+        }
 
     /** Transfer the pending batch to one explicit in-flight owner. */
     fun claim(): GuidanceBatchLease? = synchronized(lock) {

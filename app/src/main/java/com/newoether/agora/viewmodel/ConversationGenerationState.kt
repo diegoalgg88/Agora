@@ -398,6 +398,16 @@ class ConversationGenerationState(
     @Volatile var onStreamCommit: ((String, ChatMessage) -> Unit)? = null
     /** Fired after any normal or STOPPED terminal release so pending guidance can claim a fresh Run. */
     @Volatile var onQueueDrainRequested: ((ConversationGenerationState) -> Unit)? = null
+    /** Notifica el descarte de un send en cola; la entrega de receipts lo usa para el outbox. */
+    @Volatile internal var onQueuedSendDismissed: ((QueuedSend) -> Unit)? = null
+
+    /** Exact outbox identity stays owned while pending or claimed by an in-flight drain. */
+    internal fun containsSubagentResult(childId: String, resultId: String): Boolean =
+        guidanceLeases.containsSubagentResult(childId, resultId)
+
+    /** Un wait comprometido supersede solo sus notificaciones automáticas exactas. */
+    internal fun removeSubagentResults(receipts: Map<String, String>): List<QueuedSend> =
+        guidanceLeases.removeSubagentResults(receipts)
 
     /** Builds the token-gated callbacks for one generation, writing ONLY to this conversation's
      *  private state. The ChatViewModel mirror pipes private→global when this conversation is
@@ -548,7 +558,10 @@ class ConversationGenerationState(
      * delete its now-orphaned attachment files — the composer already cleared its own reference on
      * enqueue, so the QueuedSend holds the only handle to those copied files.
      */
-    internal fun removeQueuedSend(id: String): QueuedSend? = guidanceLeases.remove(id)
+    // El descarte de un send notifica al outbox: un receipt subagent descartado se consume
+    // (acknowledge) para que el parent no lo re-ofrezca en el siguiente delivery.
+    internal fun removeQueuedSend(id: String): QueuedSend? =
+        guidanceLeases.remove(id)?.also { onQueuedSendDismissed?.invoke(it) }
     internal fun discardQueuedSend(send: QueuedSend) = guidanceLeases.discard(send)
 
     /** Transfer the pending batch to one explicit in-flight owner before leaving memory-only state. */
