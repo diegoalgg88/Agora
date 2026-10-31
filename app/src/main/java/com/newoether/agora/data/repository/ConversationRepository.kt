@@ -295,13 +295,17 @@ class ConversationRepository(
         at: Long = System.currentTimeMillis(),
         touchConversationOnAdmission: Boolean,
     ): RunGraphCommit = withSemanticTransaction(messages.map(MessageEntity::id), at) {
-        // Un subagent receipt USER admite la conversación hija; se registra en la misma transacción.
-        commitSubagentReceipts(
-            run.conversationId,
-            messages.firstOrNull { it.participant == com.newoether.agora.model.Participant.USER }
-                ?.sourceJson?.let(com.newoether.agora.model.MessageSource::decode),
-            at,
-        )
+        // Un subagent receipt USER admite la conversación hija; se registra en la misma
+        // transacción. El drain de mensajes separados admite VARIOS USER messages, cada uno
+        // con sus propios receipts: se commitea el source de cada uno.
+        messages.filter { it.participant == com.newoether.agora.model.Participant.USER }
+            .forEach { userMessage ->
+                commitSubagentReceipts(
+                    run.conversationId,
+                    userMessage.sourceJson?.let(com.newoether.agora.model.MessageSource::decode),
+                    at,
+                )
+            }
         chatDao.createRunWithMessages(
             run,
             messages,

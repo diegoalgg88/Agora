@@ -1094,11 +1094,9 @@
 
     <!-- Crash reporting -->
     <string name="crash_title">أُغلق Agora بشكل غير متوقع</string>
-    <string name="crash_message">نعتذر عن ذلك. يمكنك المساعدة في إصلاح هذا بإرسال تقرير تعطّل مجهول.</string>
-    <string name="crash_submit">إرسال التقرير</string>
-    <string name="crash_dismiss">عدم الإرسال</string>
-    <string name="crash_privacy_note">يُرسَل سجل التعطّل فقط إلى newoether.com. لا يتم جمع أي معلومات أخرى.</string>
-    <string name="crash_submitted">تم إرسال تقرير التعطّل. شكرًا لك!</string>
+    <string name="crash_message">نعتذر عن ذلك. يمكنك مراجعة سجل التعطّل أدناه ونسخه لأغراض تصحيح الأخطاء.</string>
+    <string name="crash_dismiss">إغلاق</string>
+    <string name="crash_privacy_note">يبقى سجل التعطّل على هذا الجهاز فقط. لا يُرسَل أي شيء إلى أي خادم.</string>
     <string name="settings_group_network">الشبكة</string>
     <string name="settings_proxy">الوكيل</string>
     <string name="settings_proxy_desc">توجيه حركة الشبكة عبر وكيل HTTP أو SOCKS</string>

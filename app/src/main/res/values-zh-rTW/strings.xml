@@ -1142,11 +1142,9 @@
 
     <!-- Crash reporting -->
     <string name="crash_title">Agora 意外退出</string>
-    <string name="crash_message">很抱歉。您可以透過傳送匿名崩潰報告來協助修復此問題。</string>
-    <string name="crash_submit">提交報告</string>
-    <string name="crash_dismiss">不傳送</string>
-    <string name="crash_privacy_note">僅向 newoether.com 傳送崩潰記錄，不收集任何其他資訊。</string>
-    <string name="crash_submitted">崩潰報告已傳送，謝謝！</string>
+    <string name="crash_message">很抱歉。您可以查看下方的崩潰記錄，並複製它以供除錯。</string>
+    <string name="crash_dismiss">關閉</string>
+    <string name="crash_privacy_note">崩潰記錄僅保存在本裝置上，不會傳送至任何伺服器。</string>
     <string name="settings_group_network">網路</string>
     <string name="settings_proxy">代理</string>
     <string name="settings_proxy_desc">透過 HTTP 或 SOCKS 代理轉送網路流量</string>

@@ -105,6 +105,17 @@ suspend fun ConversationRepository.dismissSubagentResults(
     }
 }
 
+/** Revalida las notificaciones reclamadas antes de la admisión ordinaria; el wait comprometido gana sobre la cola. */
+internal suspend fun ConversationRepository.consumedSubagentResults(
+    parentId: String, receipts: Set<Pair<String, String>>,
+): Set<Pair<String, String>> = withProviderContextSnapshot {
+    receipts.filter { (id, resultId) ->
+        val child = chatDao.getConversation(id)
+        child == null || child.parentConversationId != parentId || child.subagentResultId != resultId ||
+            child.subagentDeliveredResultId == resultId
+    }.toSet()
+}
+
 /** Called only inside the accepted-input graph transaction; mismatch rolls the graph back. */
 internal suspend fun ConversationRepository.commitSubagentReceipts(
     parentId: String, source: MessageSource?, at: Long,

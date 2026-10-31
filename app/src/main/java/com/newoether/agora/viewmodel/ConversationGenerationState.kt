@@ -88,6 +88,38 @@ class ConversationGenerationState(
     private var runState: RunState = RunState.Idle(conversationId)
     /** Proyección wait-only de la ownership del reducer; la revocación de UI token del Stop no la settlea. */
     private val generationOwner = MutableStateFlow<Long?>(null)
+    /** Admisiones de generación retenidas por lifecycle hasta que ambas barreras (durable+Job) settlean. */
+    private val generationAdmissionReleases = mutableMapOf<Long, Pair<Job, () -> Unit>>()
+
+    internal suspend fun acquireGenerationAdmission(
+        uiToken: Long,
+        coordinator: com.newoether.agora.automation.ConversationExecutionCoordinator,
+    ): Boolean {
+        val release = coordinator.acquireGenerationAdmission(conversationId)
+        val retained = synchronized(genLock) {
+            if (!runState.isLaunchableOwner(uiToken)) {
+                false
+            } else {
+                val job = checkNotNull(resources.currentGenerationJob())
+                check(uiToken !in generationAdmissionReleases)
+                generationAdmissionReleases[uiToken] = job to release
+                true
+            }
+        }
+        if (!retained) release()
+        return retained
+    }
+
+    private fun releaseSettledGenerationAdmissions() = synchronized(genLock) {
+        generationAdmissionReleases.entries.removeAll { (token, admission) ->
+            if (runState.identityOrNull()?.ownerToken == token || !admission.first.isCompleted) {
+                false
+            } else {
+                admission.second()
+                true
+            }
+        }
+    }
     private val runtimeTrace = ConversationRuntimeTrace()
     /** Foreground/headless Send, Stop, and tool-effect lifecycle commands enter here. */
     private val commandMailbox = ConversationCommandMailbox(scope, ::reduceMailboxCommand)
@@ -317,6 +349,7 @@ class ConversationGenerationState(
                 ConversationCommand.CoroutineSettled(commandIdentity)
             },
         )
+        releaseSettledGenerationAdmissions()
         if (!transition.accepted) return@withContext false
         when (
             transition.effects.filterIsInstance<RunEffect.ReleaseSlot>().singleOrNull()?.reason
@@ -399,7 +432,7 @@ class ConversationGenerationState(
     /** Fired after any normal or STOPPED terminal release so pending guidance can claim a fresh Run. */
     @Volatile var onQueueDrainRequested: ((ConversationGenerationState) -> Unit)? = null
     /** Notifica el descarte de un send en cola; la entrega de receipts lo usa para el outbox. */
-    @Volatile internal var onQueuedSendDismissed: ((QueuedSend) -> Unit)? = null
+    @Volatile internal var onQueuedSendDismissed: (suspend (QueuedSend) -> Unit)? = null
 
     /** Exact outbox identity stays owned while pending or claimed by an in-flight drain. */
     internal fun containsSubagentResult(childId: String, resultId: String): Boolean =
@@ -408,6 +441,10 @@ class ConversationGenerationState(
     /** Un wait comprometido supersede solo sus notificaciones automáticas exactas. */
     internal fun removeSubagentResults(receipts: Map<String, String>): List<QueuedSend> =
         guidanceLeases.removeSubagentResults(receipts)
+
+    /** Solo los inputs automáticos consumidos se retiran de un batch reclamado antes de la admisión. */
+    internal fun retireSubagentResults(lease: GuidanceBatchLease, receipts: Set<Pair<String, String>>): GuidanceBatchLease? =
+        guidanceLeases.retireSubagentResults(lease, receipts)
 
     /** Builds the token-gated callbacks for one generation, writing ONLY to this conversation's
      *  private state. The ChatViewModel mirror pipes private→global when this conversation is
@@ -558,10 +595,13 @@ class ConversationGenerationState(
      * delete its now-orphaned attachment files — the composer already cleared its own reference on
      * enqueue, so the QueuedSend holds the only handle to those copied files.
      */
-    // El descarte de un send notifica al outbox: un receipt subagent descartado se consume
-    // (acknowledge) para que el parent no lo re-ofrezca en el siguiente delivery.
-    internal fun removeQueuedSend(id: String): QueuedSend? =
-        guidanceLeases.remove(id)?.also { onQueuedSendDismissed?.invoke(it) }
+    // El descarte persiste ANTES de la remoción (invariante upstream): si el hook falla, el
+    // send queda en la cola y el outbox no se consume — dismissal persists before removal.
+    internal suspend fun removeQueuedSend(id: String): QueuedSend? {
+        val send = guidanceLeases.get(id) ?: return null
+        onQueuedSendDismissed?.invoke(send)
+        return guidanceLeases.remove(id)
+    }
     internal fun discardQueuedSend(send: QueuedSend) = guidanceLeases.discard(send)
 
     /** Transfer the pending batch to one explicit in-flight owner before leaving memory-only state. */
@@ -673,6 +713,7 @@ class ConversationGenerationState(
 
     private fun notifyReleasedLocked() {
         check(runState is RunState.Idle)
+        releaseSettledGenerationAdmissions()
         onRegistryIdle(conversationId)
         onIdle?.invoke(conversationId)
     }

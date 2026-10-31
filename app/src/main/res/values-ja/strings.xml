@@ -1094,11 +1094,9 @@
 
     <!-- Crash reporting -->
     <string name="crash_title">Agora が予期せず終了しました</string>
-    <string name="crash_message">申し訳ありません。匿名のクラッシュレポートを送信して修正にご協力いただけます。</string>
-    <string name="crash_submit">レポートを送信</string>
-    <string name="crash_dismiss">送信しない</string>
-    <string name="crash_privacy_note">クラッシュログのみが newoether.com に送信されます。それ以外の情報は収集されません。</string>
-    <string name="crash_submitted">クラッシュレポートを送信しました。ありがとうございます!</string>
+    <string name="crash_message">申し訳ありません。下のクラッシュログを確認し、デバッグ用にコピーできます。</string>
+    <string name="crash_dismiss">閉じる</string>
+    <string name="crash_privacy_note">クラッシュログはこの端末にのみ保存されます。どこにも送信されません。</string>
     <string name="settings_group_network">ネットワーク</string>
     <string name="settings_proxy">プロキシ</string>
     <string name="settings_proxy_desc">HTTP または SOCKS プロキシ経由で通信します</string>

@@ -112,6 +112,10 @@ internal class GuidanceLeaseStore(
         }
     }
 
+    fun get(id: String): QueuedSend? = synchronized(lock) {
+        _queuedSends.value.firstOrNull { it.id == id }
+    }
+
     fun remove(id: String): QueuedSend? = synchronized(lock) {
         val removed = _queuedSends.value.firstOrNull { it.id == id } ?: return null
         _queuedSends.value = _queuedSends.value.filterNot { it.id == id }

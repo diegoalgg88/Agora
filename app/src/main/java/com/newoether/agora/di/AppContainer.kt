@@ -218,7 +218,13 @@ class AppContainer(
 
     /** Serializes every foreground/background generation touching the same conversation. */
     val conversationExecutionCoordinator: ConversationExecutionCoordinator by lazy {
-        ConversationExecutionCoordinator()
+        // Admission de generación bounded: resuelve el parent durable para el cap de
+        // concurrencia de subagentes; el default del ctor (4 concurrentes) aplica sin settings.
+        ConversationExecutionCoordinator(
+            parentConversationId = { id ->
+                conversationRepository.getConversation(id)?.parentConversationId
+            },
+        )
     }
 
     /** Foreground generation slots survive Activity/ViewModel recreation within this process. */

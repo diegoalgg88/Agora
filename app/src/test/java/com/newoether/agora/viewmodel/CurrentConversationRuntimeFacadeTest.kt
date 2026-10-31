@@ -66,7 +66,7 @@ class CurrentConversationRuntimeFacadeTest {
         val state = runtimeState(emptyList(), stopping = false)
         every { state.queueMutationMutex } returns Mutex()
         val removed = queued("queued")
-        every { state.removeQueuedSend("queued") } returns removed
+        io.mockk.coEvery { state.removeQueuedSend("queued") } returns removed
         every { state.discardQueuedSend(any()) } returns Unit
         every { registry.getOrCreate("conversation") } returns state
         val facade = CurrentConversationRuntimeFacade(
@@ -80,7 +80,7 @@ class CurrentConversationRuntimeFacadeTest {
         facade.removeQueuedSend("queued")
         runCurrent()
 
-        verify(exactly = 1) { state.removeQueuedSend("queued") }
+        io.mockk.coVerify(exactly = 1) { state.removeQueuedSend("queued") }
         verify(exactly = 1) { state.discardQueuedSend(removed) }
     }
 

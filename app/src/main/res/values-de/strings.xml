@@ -1094,11 +1094,9 @@
 
     <!-- Crash reporting -->
     <string name="crash_title">Agora wurde unerwartet beendet</string>
-    <string name="crash_message">Das tut uns leid. Du kannst bei der Behebung helfen, indem du einen anonymen Absturzbericht sendest.</string>
-    <string name="crash_submit">Bericht senden</string>
-    <string name="crash_dismiss">Nicht senden</string>
-    <string name="crash_privacy_note">Es wird nur das Absturzprotokoll an newoether.com gesendet. Es werden keine weiteren Informationen erfasst.</string>
-    <string name="crash_submitted">Absturzbericht gesendet. Danke!</string>
+    <string name="crash_message">Das tut uns leid. Du kannst das Absturzprotokoll unten prüfen und zum Debuggen kopieren.</string>
+    <string name="crash_dismiss">Schließen</string>
+    <string name="crash_privacy_note">Das Absturzprotokoll bleibt auf diesem Gerät. Es wird nichts an einen Server gesendet.</string>
     <string name="settings_group_network">Netzwerk</string>
     <string name="settings_proxy">Proxy</string>
     <string name="settings_proxy_desc">Netzwerkverkehr über einen HTTP- oder SOCKS-Proxy leiten</string>

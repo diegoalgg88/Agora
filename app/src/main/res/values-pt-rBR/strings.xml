@@ -1094,11 +1094,9 @@
 
     <!-- Crash reporting -->
     <string name="crash_title">O Agora fechou inesperadamente</string>
-    <string name="crash_message">Sentimos muito. Você pode ajudar a corrigir isso enviando um relatório de falha anônimo.</string>
-    <string name="crash_submit">Enviar relatório</string>
-    <string name="crash_dismiss">Não enviar</string>
-    <string name="crash_privacy_note">Apenas o registro da falha é enviado para newoether.com. Nenhuma outra informação é coletada.</string>
-    <string name="crash_submitted">Relatório de falha enviado. Obrigado!</string>
+    <string name="crash_message">Sentimos muito. Você pode revisar o registro da falha abaixo e copiá-lo para depuração.</string>
+    <string name="crash_dismiss">Fechar</string>
+    <string name="crash_privacy_note">O registro da falha permanece neste dispositivo. Nada é enviado a qualquer servidor.</string>
     <string name="settings_group_network">Rede</string>
     <string name="settings_proxy">Proxy</string>
     <string name="settings_proxy_desc">Encaminhar o tráfego de rede por um proxy HTTP ou SOCKS</string>

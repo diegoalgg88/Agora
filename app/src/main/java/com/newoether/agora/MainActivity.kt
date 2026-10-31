@@ -494,10 +494,9 @@ fun MainNavigation(
         )
     }
 
-    // Crash report — opt-in, shown once on the first launch after an unexpected exit
+    // Crash report — local-only en el fork: revisión y copia del trace, sin envío por red
     val crashContext = LocalContext.current
     var pendingCrash by remember { mutableStateOf<Pair<String, String>?>(null) }
-    val crashSubmittedMsg = stringResource(R.string.crash_submitted)
     LaunchedEffect(Unit) {
         pendingCrash = withContext(Dispatchers.IO) {
             CrashReporter.pendingReport(crashContext)?.let { report ->
@@ -601,21 +600,8 @@ fun MainNavigation(
             confirmButton = {
                 TextButton(onClick = {
                     pendingCrash = null
-                    ratingScope.launch {
-                        val ok = withContext(Dispatchers.IO) {
-                            CrashReporter.submit(report).also { submitted ->
-                                if (submitted) CrashReporter.clear(crashContext)
-                            }
-                        }
-                        if (ok) {
-                            try {
-                                snackbarHostState.showSnackbar(crashSubmittedMsg)
-                            } finally {
-                                snackbarVersion++
-                            }
-                        }
-                    }
-                }) { Text(stringResource(R.string.crash_submit)) }
+                    ratingScope.launch(Dispatchers.IO) { CrashReporter.clear(crashContext) }
+                }) { Text(stringResource(R.string.ok)) }
             },
             dismissButton = {
                 TextButton(onClick = ::dismissPendingCrash) {

@@ -2,7 +2,6 @@ package com.newoether.agora.util
 
 import android.content.Context
 import android.os.Build
-import com.newoether.agora.api.HttpClient
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
@@ -11,20 +10,22 @@ import java.io.StringWriter
 import java.util.concurrent.ConcurrentLinkedDeque
 
 /**
- * Anonymous, opt-in crash reporting.
+ * Crash reporting local-only (fork).
  *
- * On an uncaught exception we persist a single pending report to disk and then let the
- * platform's default handler terminate the process normally. On the next launch the UI
- * detects the pending report and offers the user a one-tap, opt-in submission to
- * [ENDPOINT]; nothing is ever sent without that explicit action.
+ * En uncaught exception persiste UN reporte pendiente en disco y deja que el handler
+ * del platform termine el proceso con normalidad. En el siguiente launch la UI detecta
+ * el reporte pendiente y lo muestra para revisión y copia del trace.
  *
- * The report carries only a stack trace plus coarse, non-identifying environment data
- * (app version, Android API level, device model) — no user content, no device IDs.
+ * El fork NO envía nada por red: el POST al endpoint del upstream (`newoether.com/crash`)
+ * fue removido — un fork personal no debe filtrar sus stack traces al origin del
+ * upstream. Pendiente: repoint a un endpoint propio (ver AGENTS.md §15).
+ *
+ * El reporte lleva solo el stack trace más datos de entorno coarse no-identificativos
+ * (versión de la app, API level de Android, modelo de dispositivo) — sin contenido de
+ * usuario, sin device IDs.
  */
 object CrashReporter {
 
-    /** Cloudflare-fronted public endpoint. The origin server address is never referenced here. */
-    private const val ENDPOINT = "https://newoether.com/crash"
     private const val DIR = "crash"
     private const val FILE = "pending.json"
     private const val MAX_TRACE_CHARS = 60_000
@@ -68,17 +69,10 @@ object CrashReporter {
         return runCatching { f.readText() }.getOrNull()
     }
 
-    /** Discards the pending report (after the user submits or dismisses it). */
+    /** Descarta el reporte pendiente (tras revisarlo o cerrar el diálogo). */
     fun clear(context: Context) {
         runCatching { reportFile(context).delete() }
     }
-
-    /**
-     * POSTs the given report JSON to the crash endpoint. Returns true on success.
-     * Must be called off the main thread (it performs blocking network I/O).
-     */
-    fun submit(reportJson: String): Boolean =
-        runCatching { HttpClient.post(ENDPOINT, reportJson) != null }.getOrDefault(false)
 
     private fun writeReport(context: Context, throwable: Throwable) {
         val trace = StringWriter().also { throwable.printStackTrace(PrintWriter(it)) }

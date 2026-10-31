@@ -1094,11 +1094,9 @@
 
     <!-- Crash reporting -->
     <string name="crash_title">Agora неожиданно завершилась</string>
-    <string name="crash_message">Приносим извинения. Вы можете помочь исправить это, отправив анонимный отчёт о сбое.</string>
-    <string name="crash_submit">Отправить отчёт</string>
-    <string name="crash_dismiss">Не отправлять</string>
-    <string name="crash_privacy_note">На newoether.com отправляется только журнал сбоя. Никакая другая информация не собирается.</string>
-    <string name="crash_submitted">Отчёт о сбое отправлен. Спасибо!</string>
+    <string name="crash_message">Приносим извинения. Вы можете просмотреть журнал сбоя ниже и скопировать его для отладки.</string>
+    <string name="crash_dismiss">Закрыть</string>
+    <string name="crash_privacy_note">Журнал сбоя остаётся на этом устройстве. Никуда ничего не отправляется.</string>
     <string name="settings_group_network">Сеть</string>
     <string name="settings_proxy">Прокси</string>
     <string name="settings_proxy_desc">Направлять сетевой трафик через HTTP- или SOCKS-прокси</string>

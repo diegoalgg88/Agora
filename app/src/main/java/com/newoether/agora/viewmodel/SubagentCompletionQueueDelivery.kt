@@ -5,14 +5,11 @@ import com.newoether.agora.data.repository.dismissSubagentResults
 import com.newoether.agora.data.repository.pendingSubagentResults
 import com.newoether.agora.model.MessageSource
 import com.newoether.agora.model.SubagentCompletion
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.withLock
 import java.util.UUID
 
 /** Adapts the durable completion outbox to the sole ordinary guidance queue. Owns no work list. */
 internal class SubagentCompletionQueueDelivery(
-    private val scope: CoroutineScope,
     private val conversations: ConversationRepository,
     private val registry: ConversationStateRegistry,
     private val fallbackModelId: () -> String?,
@@ -80,9 +77,6 @@ internal class SubagentCompletionQueueDelivery(
     }
 
     fun bind(state: ConversationGenerationState) {
-        // El hook de la UI no es suspend: el descarte lanza la operación del outbox en el scope.
-        state.onQueuedSendDismissed = { send ->
-            scope.launch { dismiss(state.conversationId, send) }
-        }
+        state.onQueuedSendDismissed = { send -> dismiss(state.conversationId, send) }
     }
 }

@@ -777,7 +777,7 @@ class ConversationGenerationStateTest {
     }
 
     @Test
-    fun removingQueuedGuidanceTransfersOwnershipExactlyOnce() {
+    fun removingQueuedGuidanceTransfersOwnershipExactlyOnce() = kotlinx.coroutines.test.runTest {
         val state = ConversationGenerationState("conversation", reclaimQueuedAttachments = {})
         val queued = QueuedSend("one", "first", "model", emptyList(), "run")
         state.enqueueSend(queued)

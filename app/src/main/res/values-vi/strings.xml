@@ -1103,11 +1103,9 @@
 
     <!-- Crash reporting -->
     <string name="crash_title">Agora đã thoát đột ngột</string>
-    <string name="crash_message">Rất tiếc vì sự cố này. Bạn có thể giúp khắc phục lỗi bằng cách gửi một báo cáo sự cố ẩn danh.</string>
-    <string name="crash_submit">Gửi báo cáo</string>
-    <string name="crash_dismiss">Không gửi</string>
-    <string name="crash_privacy_note">Chỉ có nhật ký sự cố được gửi đến newoether.com. Không thu thập thêm thông tin nào khác.</string>
-    <string name="crash_submitted">Báo cáo sự cố đã được gửi. Xin cảm ơn bạn!</string>
+    <string name="crash_message">Rất tiếc vì sự cố này. Bạn có thể xem nhật ký sự cố bên dưới và sao chép nó để gỡ lỗi.</string>
+    <string name="crash_dismiss">Đóng</string>
+    <string name="crash_privacy_note">Nhật ký sự cố chỉ lưu trên thiết bị này. Không có gì được gửi đến máy chủ nào.</string>
     <string name="settings_group_network">Mạng</string>
     <string name="settings_proxy">Proxy</string>
     <string name="settings_proxy_desc">Định tuyến lưu lượng truy cập mạng thông qua một proxy HTTP hoặc SOCKS</string>

@@ -1094,11 +1094,9 @@
 
     <!-- Crash reporting -->
     <string name="crash_title">Agora s\'est fermé de façon inattendue</string>
-    <string name="crash_message">Désolé pour ce désagrément. Vous pouvez aider à corriger cela en envoyant un rapport de plantage anonyme.</string>
-    <string name="crash_submit">Envoyer le rapport</string>
-    <string name="crash_dismiss">Ne pas envoyer</string>
-    <string name="crash_privacy_note">Seul le journal de plantage est envoyé à newoether.com. Aucune autre information n\'est collectée.</string>
-    <string name="crash_submitted">Rapport de plantage envoyé. Merci !</string>
+    <string name="crash_message">Désolé pour ce désagrément. Vous pouvez consulter le journal de plantage ci-dessous et le copier pour le débogage.</string>
+    <string name="crash_dismiss">Fermer</string>
+    <string name="crash_privacy_note">Le journal de plantage reste sur cet appareil. Rien n\'est envoyé à un serveur.</string>
     <string name="settings_group_network">Réseau</string>
     <string name="settings_proxy">Proxy</string>
     <string name="settings_proxy_desc">Acheminer le trafic réseau via un proxy HTTP ou SOCKS</string>

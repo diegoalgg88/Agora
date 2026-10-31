@@ -295,7 +295,7 @@ class WebUiChatSessionTest {
         every { state.generating } returns generating
         every { state.onQueueDrainRequested } returns { _: ConversationGenerationState -> drains++ }
         every { state.queueMutationMutex } returns Mutex()
-        every { state.removeQueuedSend("q") } answers { queue.value = emptyList(); queued }
+        io.mockk.coEvery { state.removeQueuedSend("q") } answers { queue.value = emptyList(); queued }
         // El facade portado (d8a0e1b3) llama discardQueuedSend tras remove; sin el stub,
         // mockk revienta asincrónicamente en IO y contamina al siguiente test de la JVM.
         every { state.discardQueuedSend(any()) } just Runs
@@ -311,7 +311,7 @@ class WebUiChatSessionTest {
         assertEquals(1, drains)
         session.removeQueued("q", seq = 1L)
         withTimeout(TIMEOUT_MS) { queue.first { it.isEmpty() } }
-        verify(exactly = 1) { state.removeQueuedSend("q") }
+        io.mockk.coVerify(exactly = 1) { state.removeQueuedSend("q") }
     }
     @Test
     fun sessionLocalSettingsCaptureBeforeTapAndRemainIndependentFromPhoneAndOtherOwners() = runBlocking {
