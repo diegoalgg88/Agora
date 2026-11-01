@@ -66,12 +66,19 @@ internal data class RemoteConversationPage(
     val nodes: List<RemoteMessageNode> = emptyList(),
 )
 @Serializable
+internal data class RemoteSettingsChange(
+    val id: String, val state: String, // "pending" | "confirmed" | "failed"
+    val requested: RemoteSettings, val actualModel: String?, val actualEffort: String?,
+)
+@Serializable
 internal data class RemoteRuntime(
     val status: String, val activeTurnId: String? = null, val model: String? = null,
     val contextTokens: Int? = null, val contextWindow: Int? = null,
     val completedTurnId: String? = null,
     val effort: String? = null, val serviceTier: String? = null,
     val serviceTierKnown: Boolean = false, val activeTurnHasUserMessage: Boolean = false,
+    /** Evidencia nativa de un cambio de settings en curso o completado. */
+    val settingsChange: RemoteSettingsChange? = null,
 ) { val isRunning: Boolean get() = status == "active" }
 @Serializable
 internal data class RemoteModel(
@@ -81,6 +88,7 @@ internal data class RemoteModel(
 )
 @Serializable
 internal data class RemoteServiceTier(val id: String, val name: String, val description: String = "")
+@Serializable
 internal data class RemoteSettings(
     val model: String? = null, val effort: String? = null,
     val serviceTier: String? = null, val updateServiceTier: Boolean = false,
