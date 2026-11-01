@@ -14,14 +14,18 @@ import java.util.UUID
 internal class SubagentMessageQueue(
     private val conversations: ConversationRepository,
     private val registry: ConversationStateRegistry,
-    private val prepareSnapshot: suspend (
-        conversationId: String,
-        runId: String,
-        modelId: String,
-    ) -> GenerationAdmissionSnapshot,
     private val idFactory: () -> String = { UUID.randomUUID().toString() },
 ) {
-    suspend fun enqueue(id: String, text: String, parentContext: GenerationContext): String {
+    suspend fun enqueue(
+        id: String,
+        text: String,
+        parentContext: GenerationContext,
+        prepareSnapshot: suspend (
+            conversationId: String,
+            runId: String,
+            modelId: String,
+        ) -> GenerationAdmissionSnapshot,
+    ): String {
         require(id.isNotBlank()) { "agent_id is required" }
         require(text.isNotBlank()) { "message is required" }
         check(parentContext.subagentToolsEnabled) { "Subagent tools are unavailable in this context" }
