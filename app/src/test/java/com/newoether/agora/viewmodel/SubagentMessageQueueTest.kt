@@ -41,7 +41,10 @@ class SubagentMessageQueueTest {
         val snapshots = mutableListOf<GenerationAdmissionSnapshot>()
         val drains = mutableListOf<String>()
         var prepare: suspend (String, String, String) -> GenerationAdmissionSnapshot = { id, run, model ->
-            testGenerationAdmissionSnapshot(conversationId = id, runId = run, selectedModelId = model)
+            val snapshot = testGenerationAdmissionSnapshot(conversationId = id, runId = run, selectedModelId = model)
+            captures += Triple(id, run, model)
+            snapshots += snapshot
+            snapshot
         }
         private var nextId = 0
         val queue: SubagentMessageQueue
@@ -55,10 +58,7 @@ class SubagentMessageQueueTest {
             registry.attachUiCallbacks(this) { state ->
                 state.onQueueDrainRequested = { drains += it.conversationId }
             }
-            queue = SubagentMessageQueue(conversations, registry, { id, run, model ->
-                captures += Triple(id, run, model)
-                prepare(id, run, model).also { snapshots += it }
-            }, { "queue-${++nextId}" })
+            queue = SubagentMessageQueue(conversations, registry, { "queue-${++nextId}" })
         }
     }
 
@@ -74,7 +74,7 @@ class SubagentMessageQueueTest {
                 awaitCancellation()
             })
             entered.await()
-            val receipt = f.queue.enqueue("child", "Follow up", f.parentContext)
+            val receipt = f.queue.enqueue("child", "Follow up", f.parentContext, f.prepare)
             assertEquals("queue-1", receipt)
             assertEquals(receipt, state.queuedSends.value.single().id)
             assertEquals("Follow up", state.queuedSends.value.single().text)
@@ -99,7 +99,7 @@ class SubagentMessageQueueTest {
             f.registry.attachUiCallbacks(this) { owner ->
                 owner.onQueueDrainRequested = { atDrain = it.queuedSends.value.map(QueuedSend::id) }
             }
-            val receipt = f.queue.enqueue("child", "Idle follow up", f.parentContext)
+            val receipt = f.queue.enqueue("child", "Idle follow up", f.parentContext, f.prepare)
             assertEquals(listOf(receipt), atDrain)
             assertFalse(state.generating.value)
             assertNull(state.currentRunId())
@@ -112,13 +112,13 @@ class SubagentMessageQueueTest {
     @Test fun fifoClaimsRollbackAndRemovalStayOwnedByTheExistingGuidanceStore() = runTest {
         val f = Fixture()
         try {
-            val first = f.queue.enqueue("child", "First", f.parentContext)
-            val second = f.queue.enqueue("child", "Second", f.parentContext)
+            val first = f.queue.enqueue("child", "First", f.parentContext, f.prepare)
+            val second = f.queue.enqueue("child", "Second", f.parentContext, f.prepare)
             val state = requireNotNull(f.registry.get("child"))
             val lease = state.queueMutationMutex.withLock { requireNotNull(state.claimQueuedSends()) }
             assertEquals(listOf(first, second), lease.batch.map(QueuedSend::id))
             assertTrue(state.queuedSends.value.isEmpty())
-            val third = f.queue.enqueue("child", "Third", f.parentContext)
+            val third = f.queue.enqueue("child", "Third", f.parentContext, f.prepare)
             assertTrue(state.settleGuidanceClaim(lease.id, durable = false))
             assertEquals(listOf(first, second, third), state.queuedSends.value.map(QueuedSend::id))
             state.queueMutationMutex.withLock { state.removeQueuedSend(second)?.let { state.discardQueuedSend(it) } }
@@ -143,8 +143,8 @@ class SubagentMessageQueueTest {
     fun modelFollowupsStayMarkedAcrossFifoRollbackWhileTypedInputStaysPlain() = runTest {
         val f = Fixture()
         try {
-            val first = f.queue.enqueue("child", "First", f.parentContext)
-            val second = f.queue.enqueue("child", "Second", f.parentContext)
+            val first = f.queue.enqueue("child", "First", f.parentContext, f.prepare)
+            val second = f.queue.enqueue("child", "Second", f.parentContext, f.prepare)
             val state = requireNotNull(f.registry.get("child"))
             val typed = QueuedSend("typed", "My own message", "Provider:child", emptyList(), "typed-run")
             state.enqueueSend(typed)
@@ -189,9 +189,11 @@ class SubagentMessageQueueTest {
             )
             f.prepare = { id, run, model ->
                 val captured = testGenerationAdmissionSnapshot(id, run, model)
+                f.captures += Triple(id, run, model)
+                f.snapshots += captured
                 captured.copy(context = captured.context.copy(todoEnabled = false, shellEnabled = false))
             }
-            f.queue.enqueue("child", "Task only", parent)
+            f.queue.enqueue("child", "Task only", parent, f.prepare)
             val item = requireNotNull(f.registry.get("child")).queuedSends.value.single()
             val snapshot = requireNotNull(item.generationSnapshot)
             val expected = parent.copy(
@@ -223,9 +225,11 @@ class SubagentMessageQueueTest {
                 for (capturedAllowed in listOf(false, true)) {
                     f.prepare = { id, run, model ->
                         val snapshot = testGenerationAdmissionSnapshot(id, run, model)
+                        f.captures += Triple(id, run, model)
+                        f.snapshots += snapshot
                         snapshot.copy(context = snapshot.context.copy(todoEnabled = capturedAllowed))
                     }
-                    val receipt = f.queue.enqueue("child", "Follow up", f.parentContext.copy(todoEnabled = parentAllowed))
+                    val receipt = f.queue.enqueue("child", "Follow up", f.parentContext.copy(todoEnabled = parentAllowed), f.prepare)
                     val item = requireNotNull(f.registry.get("child")).queuedSends.value.single { it.id == receipt }
                     assertEquals(parentAllowed && capturedAllowed, item.generationSnapshot?.context?.todoEnabled)
                 }
@@ -246,12 +250,12 @@ class SubagentMessageQueueTest {
                 f.parentContext.copy(toolEffectIdentity = f.identity.copy(pass = 1)),
             )
             invalidParents.forEach { context ->
-                assertTrue(runCatching { f.queue.enqueue("child", "Task", context) }.isFailure)
+                assertTrue(runCatching { f.queue.enqueue("child", "Task", context, f.prepare) }.isFailure)
             }
             coVerify(exactly = 0) { f.dao.getConversation(any()) }
-            assertTrue(runCatching { f.queue.enqueue("other", "Task", f.parentContext) }.isFailure)
-            assertTrue(runCatching { f.queue.enqueue("missing", "Task", f.parentContext) }.isFailure)
-            assertTrue(runCatching { f.queue.enqueue("child", " ", f.parentContext) }.isFailure)
+            assertTrue(runCatching { f.queue.enqueue("other", "Task", f.parentContext, f.prepare) }.isFailure)
+            assertTrue(runCatching { f.queue.enqueue("missing", "Task", f.parentContext, f.prepare) }.isFailure)
+            assertTrue(runCatching { f.queue.enqueue("child", " ", f.parentContext, f.prepare) }.isFailure)
             assertTrue(f.captures.isEmpty())
             assertNull(f.registry.get("child"))
             assertNull(f.registry.get("other"))
@@ -269,9 +273,12 @@ class SubagentMessageQueueTest {
             f.prepare = { id, run, model ->
                 entered.complete(Unit)
                 release.await()
-                testGenerationAdmissionSnapshot(id, run, model)
+                val snapshot = testGenerationAdmissionSnapshot(id, run, model)
+                f.captures += Triple(id, run, model)
+                f.snapshots += snapshot
+                snapshot
             }
-            val send = async { runCatching { f.queue.enqueue("child", "Task", f.parentContext) } }
+            val send = async { runCatching { f.queue.enqueue("child", "Task", f.parentContext, f.prepare) } }
             entered.await()
             f.parentActive = false
             release.complete(Unit)
@@ -290,7 +297,7 @@ class SubagentMessageQueueTest {
             val state = f.registry.getOrCreate("child")
             state.queueMutationMutex.lock()
             val send = async(start = CoroutineStart.UNDISPATCHED) {
-                runCatching { f.queue.enqueue("child", "Task", f.parentContext) }
+                runCatching { f.queue.enqueue("child", "Task", f.parentContext, f.prepare) }
             }
             assertFalse(send.isCompleted)
             assertEquals(1, f.captures.size)
@@ -313,9 +320,12 @@ class SubagentMessageQueueTest {
                 f.rows["child"] = original
                 f.prepare = { id, run, model ->
                     if (replacement == null) f.rows.remove(id) else f.rows[id] = replacement
-                    testGenerationAdmissionSnapshot(id, run, model)
+                    val snapshot = testGenerationAdmissionSnapshot(id, run, model)
+                    f.captures += Triple(id, run, model)
+                    f.snapshots += snapshot
+                    snapshot
                 }
-                assertTrue(runCatching { f.queue.enqueue("child", "Task", f.parentContext) }.isFailure)
+                assertTrue(runCatching { f.queue.enqueue("child", "Task", f.parentContext, f.prepare) }.isFailure)
                 assertTrue(f.registry.get("child")?.queuedSends?.value.orEmpty().isEmpty())
             }
             assertTrue(f.drains.isEmpty())
@@ -328,7 +338,7 @@ class SubagentMessageQueueTest {
     @Test fun failedTransactionExitRemovesOnlyTheNewEntryBeforeItCanBeClaimed() = runTest {
         val f = Fixture()
         try {
-            val existing = f.queue.enqueue("child", "Existing", f.parentContext)
+            val existing = f.queue.enqueue("child", "Existing", f.parentContext, f.prepare)
             val state = requireNotNull(f.registry.get("child"))
             val repository = spyk(f.conversations)
             var transactions = 0
@@ -338,9 +348,10 @@ class SubagentMessageQueueTest {
                 result
             }
             var nextId = 0
-            val queue = SubagentMessageQueue(repository, f.registry,
-                { id, run, model -> testGenerationAdmissionSnapshot(id, run, model) }, { "failed-${++nextId}" })
-            assertTrue(runCatching { queue.enqueue("child", "Rejected", f.parentContext) }.isFailure)
+            val queue = SubagentMessageQueue(repository, f.registry, { "failed-${++nextId}" })
+            assertTrue(runCatching { queue.enqueue("child", "Rejected", f.parentContext, { id, run, model ->
+                testGenerationAdmissionSnapshot(id, run, model)
+            }) }.isFailure)
             assertEquals(listOf(existing), state.queuedSends.value.map(QueuedSend::id))
             assertEquals(listOf("child"), f.drains)
         } finally {
@@ -352,12 +363,12 @@ class SubagentMessageQueueTest {
         val f = Fixture()
         try {
             f.prepare = { _, _, _ -> error("Provider not configured") }
-            assertTrue(runCatching { f.queue.enqueue("child", "Task", f.parentContext) }.isFailure)
+            assertTrue(runCatching { f.queue.enqueue("child", "Task", f.parentContext, f.prepare) }.isFailure)
             f.prepare = { _, _, _ -> throw CancellationException("Cancelled") }
-            assertTrue(runCatching { f.queue.enqueue("child", "Task", f.parentContext) }.exceptionOrNull()
+            assertTrue(runCatching { f.queue.enqueue("child", "Task", f.parentContext, f.prepare) }.exceptionOrNull()
                 is CancellationException)
             f.prepare = { _, _, _ -> testGenerationAdmissionSnapshot("other", "wrong-run") }
-            assertTrue(runCatching { f.queue.enqueue("child", "Task", f.parentContext) }.isFailure)
+            assertTrue(runCatching { f.queue.enqueue("child", "Task", f.parentContext, f.prepare) }.isFailure)
             assertNull(f.registry.get("child"))
             assertTrue(f.drains.isEmpty())
         } finally {

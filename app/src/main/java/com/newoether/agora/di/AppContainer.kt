@@ -50,11 +50,13 @@ import com.newoether.agora.tool.McpToolProvider
 import com.newoether.agora.tool.NotificationToolProvider
 import com.newoether.agora.tool.SmsToolProvider
 import com.newoether.agora.viewmodel.ChatRuntime
+import com.newoether.agora.viewmodel.ChatViewModelFactory
+import com.newoether.agora.viewmodel.ConversationStateRegistry
+import com.newoether.agora.viewmodel.ProviderRegistry
+import com.newoether.agora.viewmodel.ShellConfirmationController
 import com.newoether.agora.viewmodel.SubagentCompletionQueueDelivery
 import com.newoether.agora.viewmodel.SubagentMessageQueue
 import com.newoether.agora.util.appLanguageResources
-import java.util.UUID
-import java.util.UUID
 import java.util.UUID
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
@@ -129,8 +131,6 @@ class AppContainer(
         "0.0.0"
     }
 
-    val automationScheduler: AutomationScheduler = AutomationScheduler(appContext, taskRepository, settingsRepository, appScope)
-
     val conversationRepository: ConversationRepository by lazy {
         ConversationRepository(
             chatDao = chatDao,
@@ -146,52 +146,6 @@ class AppContainer(
         )
     }
 
-    /** Lets native import quiesce Task/Loop generation without serializing ordinary executions. */
-    val automationExecutionGate: AutomationExecutionGate by lazy { AutomationExecutionGate() }
-
-    // ── Auto Backup ───────────────────────────────────────────
-
-    val autoBackupManager: AutoBackupManager by lazy {
-        AutoBackupManager(appContext, database, settingsManager, chatDao, memoryManager, skillManager)
-    }
-
-    // ── Headless task execution (process-scoped) ──────────────
-    // Drives a full generation with no ViewModel/UI, reusing the shared generation
-    // singletons above. Background Task/Loop runners call its runOnce(...).
-
-    val taskExecutionEngine: TaskExecutionEngine by lazy {
-        TaskExecutionEngine(
-            application = application,
-            appContext = appContext,
-            convRepo = conversationRepository,
-            settings = settingsRepository,
-            memoryManager = memoryManager,
-            skillManager = skillManager,
-            providerRegistry = providerRegistry,
-            localProvider = localProvider,
-            sandboxFactory = sandboxManagerFactory,
-            appScope = appScope,
-            executionCoordinator = conversationExecutionCoordinator,
-            shellConfirmation = shellConfirmationController,
-            automationExecutionGate = automationExecutionGate,
-            mcpToolProvider = mcpToolProvider,
-            generationRegistry = conversationStateRegistry,
-            pauseConversationLoop = { conversationId -> loopManager.stopLoop(conversationId) },
-            // HeartbeatScheduler runs the heartbeat prompt through this same engine; without
-            // these, promote_learning/SMS/notification tools would be invisible during a
-            // heartbeat run even though they're wired into the interactive ChatViewModel.
-            extraToolProviders = listOf(
-                heartbeatToolProvider,
-                smsToolProvider,
-                notificationToolProvider,
-                assistantDeviceToolProvider,
-                emailToolProvider,
-            // Subagents: el mismo engine corre las conversaciones hijas aisladas.
-                subagentToolProvider,
-            ),
-        )
-    }
-
     @Volatile
     private var processServicesStarted = false
 
@@ -200,6 +154,7 @@ class AppContainer(
     fun startProcessServices() {
         if (processServicesStarted) return
         providerRegistry.ensureStarted()
+        taskManager.start()
         automationScheduler.start()
         // ask_user: espeja la pregunta en espera en una notificación cuando el chat no está
         // en pantalla; el bar vive solo en la pantalla de chat.
@@ -227,6 +182,9 @@ class AppContainer(
                 if (enabled) daemonController.start() else daemonController.stop()
             }
         }
+        processServicesStarted = true
+    }
+
     val taskRepository: TaskRepository by lazy {
         TaskRepository(chatDao)
     }
@@ -247,7 +205,7 @@ class AppContainer(
             conversationExecutionCoordinator = conversationExecutionCoordinator,
             automationExecutionGate = automationExecutionGate,
             titleExecutionConversation = taskExecutionEngine::updateTaskExecutionTitle,
-            surfaceTaskResult = { task: com.newoether.agora.model.Task, conversationId: String, modelMessageId: String?, response: String ->
+            surfaceTaskResult = { task, conversationId, modelMessageId, response ->
                 surfaceAutomationResult(
                     source = com.newoether.agora.data.local.TaskConfirmationSource.TASK,
                     title = task.name,
@@ -265,8 +223,19 @@ class AppContainer(
             LocalModelRuntime.bindIdleRetention(it.localModelIdleRetentionMinutes, appScope)
         }
     }
+
+    val automationScheduler: AutomationScheduler by lazy {
+        AutomationScheduler(appContext, taskRepository, settingsRepository, appScope)
+    }
+
     val conversationSettingsTransfers: ConversationSettingsTransferCoordinator by lazy {
         ConversationSettingsTransferCoordinator(conversationRepository, settingsRepository)
+    }
+
+    // ── Auto Backup ───────────────────────────────────────────
+
+    val autoBackupManager: AutoBackupManager by lazy {
+        AutoBackupManager(appContext, database, settingsManager, chatDao, memoryManager, skillManager)
     }
 
     // ── Generation singletons (process-scoped) ────────────────
@@ -315,6 +284,11 @@ class AppContainer(
 
     val mcpToolProvider: McpToolProvider by lazy {
         McpToolProvider(mcpRegistry)
+    }
+
+    /** One process-wide confirmation queue shared by Chat, Task, and Loop generation. */
+    val shellConfirmationController: ShellConfirmationController by lazy {
+        ShellConfirmationController(settingsRepository)
     }
 
     /** Lets native import quiesce Task/Loop generation without serializing ordinary executions. */
@@ -457,41 +431,6 @@ class AppContainer(
         com.newoether.agora.tool.SubagentToolProvider(subagentManager)
     }
 
-    val taskManager: TaskManager by lazy {
-        TaskManager(
-            taskRepository = taskRepository,
-            conversationRepository = conversationRepository,
-            engine = taskExecutionEngine,
-            scope = appScope,
-            cancelScheduledExecution = { taskId: String ->
-                appScope.launch { TaskWorker.cancel(appContext, taskId) }
-                automationScheduler.cancelTask(taskId)
-            },
-            cancelConversationLoop = { conversationId: String ->
-                loopManager.stopLoop(conversationId)
-            },
-            refreshScheduling = { automationScheduler.refresh() },
-            conversationExecutionCoordinator = conversationExecutionCoordinator,
-            automationExecutionGate = automationExecutionGate,
-            titleExecutionConversation = taskExecutionEngine::updateTaskExecutionTitle,
-            surfaceTaskResult = suspend { task, conversationId, modelMessageId, response ->
-                appScope.launch {
-                    surfaceAutomationResult(
-                        source = com.newoether.agora.data.local.TaskConfirmationSource.TASK,
-                        // Durable title = the task's own name: the user wrote it, it identifies the
-                        // origin better than any generic label. HEARTBEAT keeps its localized
-                        // header; TASK shows its name.
-                        title = task.name,
-                        conversationId = conversationId,
-                        modelMessageId = modelMessageId,
-                        response = response,
-                    )
-                }
-            },
-            taskConfirmationsEnabled = { settingsRepository.taskConfirmationEnabled.value },
-        )
-    }
-
     /**
      * Shared F8 surfacing for non-heartbeat automation results (tasks, and the final cycle of loops):
      * applies the global toggle/mode and PROMPT-vs-AUTO semantics on top of the durable
@@ -555,10 +494,6 @@ class AppContainer(
         AutomationToolProvider(taskManager, loopManager) {
             settingsManager.automationToolsEnabled.first()
         }
-    }
-
-    val autoBackupManager: AutoBackupManager by lazy {
-        AutoBackupManager(appContext, database, settingsManager, chatDao, memoryManager, skillManager)
     }
 
     // ── Heartbeat/SMS/Daemon ────────────────────────────────
@@ -739,7 +674,20 @@ class AppContainer(
             },
             // Context accounting por conexión: cada navegador pricea la conversación que muestra
             // con su propio projector; la política de compactación es el settings flow del teléfono.
-            /**
+            contextAccounting = com.newoether.agora.webui.WebUiContextAccounting(
+                conversations = conversationRepository,
+                requestBuilder = chatRuntime.requestBuilder,
+                generationManager = { chatRuntime.generationManager },
+                generationErrorFormatter = { raw ->
+                    com.newoether.agora.viewmodel.normalizePersistedGenerationErrorText(appContext, raw)
+                },
+                compactThresholdPercent = settingsRepository.contextCompactThresholdPercent,
+                compactEnabled = settingsRepository.contextCompactEnabled,
+            ),
+        )
+    }
+
+    /**
      * Runtime de chat process-scoped: posee GenerationManager + RagManager + los comandos de
      * mensajes (send/regenerate/edit/delete/compact/stop) fuera del ViewModel, con fan-out de
      * snackbar events a todos los clientes conectados. La vida de la generación sobrevive
@@ -771,23 +719,6 @@ class AppContainer(
             subagentManager = subagentManager,
         )
     }
-
-    /**
-     * Runtime de chat process-scoped: posee GenerationManager + RagManager + los comandos de
-     * mensajes (send/regenerate/edit/delete/compact/stop) fuera del ViewModel, con fan-out de
-     * snackbar events a todos los clientes conectados. La vida de la generación sobrevive
-     * rotaciones/recreaciones de Activity; prerequisite del WebUI (segundo cliente).
-     */
-    val contextAccounting = com.newoether.agora.webui.WebUiContextAccounting(
-        conversations = conversationRepository,
-        requestBuilder = chatRuntime.requestBuilder,
-        generationManager = { chatRuntime.generationManager },
-        generationErrorFormatter = { raw ->
-            com.newoether.agora.viewmodel.normalizePersistedGenerationErrorText(appContext, raw)
-        },
-        compactThresholdPercent = settingsRepository.contextCompactThresholdPercent,
-        compactEnabled = settingsRepository.contextCompactEnabled,
-    )
 
     val heartbeatScheduler: HeartbeatScheduler by lazy {
         HeartbeatScheduler(
