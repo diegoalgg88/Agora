@@ -587,6 +587,19 @@ internal class RemoteViewModel(
         control(stoppingTurnId = turn) { client -> client.stop(session.id, turn) }
     }
 
+    /**
+     * Aborto del turno activo (Fase 4 54ea0e6c). En ACP `session/cancel` aborta la sesión;
+     * el seam [RemoteClient.abort] permite a otros clientes distinguirlo. UI expone un botón
+     * de abort junto a stop cuando el runtime está corriendo.
+     */
+    fun abort() {
+        val snapshot = state.value
+        val session = snapshot.session ?: return
+        if (snapshot.runtime?.isRunning != true) return
+        val turn = snapshot.runtime.activeTurnId ?: return
+        control(stoppingTurnId = turn) { client -> client.abort(session.id, turn) }
+    }
+
     private fun control(stoppingTurnId: String? = null, operation: suspend (RemoteClient) -> Unit) {
         if (state.value.controlling || state.value.isStopping) return
         val client = clients[state.value.deviceId] ?: return

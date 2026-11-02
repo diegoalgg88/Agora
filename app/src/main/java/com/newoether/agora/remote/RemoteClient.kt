@@ -32,6 +32,13 @@ internal interface RemoteClient {
     suspend fun setModel(id: String, model: String)
     suspend fun updateSettings(id: String, settings: RemoteSettings)
     suspend fun stop(id: String, turnId: String)
+
+    /**
+     * Aborto semántico del turno activo (Fase 4 54ea0e6c). El ACP de `qwen serve` solo
+     * expone `session/cancel`, así que el default delega a [stop]; los clientes que
+     * distingan abort de stop pueden sobreescribirlo.
+     */
+    suspend fun abort(id: String, turnId: String) = stop(id, turnId)
     suspend fun upload(item: SelectedAttachment): RemoteUpload
     suspend fun send(id: String, text: String, clientId: String, attachments: List<String> = emptyList()): String
 
