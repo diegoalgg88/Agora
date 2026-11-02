@@ -228,6 +228,8 @@ class SettingsManager(val context: Context) {
 
     val shellEnabled: Flow<Boolean> = context.dataStore.data.map { it[SHELL_ENABLED] ?: true }
     val automationToolsEnabled: Flow<Boolean> = context.dataStore.data.map { it[AUTOMATION_TOOLS_ENABLED] ?: false }
+    // Límites de subagentes persistentes (Fase 4 54ea0e6c) viven en su propio store (999 líneas).
+    val subagentLimits: SubagentLimitSettings = SubagentLimitSettings(context)
     /** Assistant device-action tool toggles live in their own store (source-size policy). */
     val assistantTools: AssistantToolSettings = AssistantToolSettings(context)
     val exactExecutionEnabled: Flow<Boolean> = context.dataStore.data.map { it[EXACT_EXECUTION_ENABLED] ?: false }

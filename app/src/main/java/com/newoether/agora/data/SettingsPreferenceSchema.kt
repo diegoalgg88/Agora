@@ -193,3 +193,7 @@ internal val TASK_CONFIRMATION_CARD_STYLE = stringPreferencesKey("task_confirmat
 internal val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
 internal val NOTIFICATIONS_PENDING = stringPreferencesKey("notifications_pending")
 internal val NOTIFICATIONS_SYNC_STATE = stringPreferencesKey("notifications_sync_state")
+
+// ── Subagentes (Fase 4 54ea0e6c): límites persistentes ──────
+internal val SUBAGENT_MAX_TOTAL = intPreferencesKey("subagent_max_total")
+internal val SUBAGENT_MAX_CONCURRENT = intPreferencesKey("subagent_max_concurrent")

@@ -60,6 +60,7 @@ import com.newoether.agora.util.appLanguageResources
 import java.util.UUID
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 /**
@@ -259,11 +260,16 @@ class AppContainer(
     /** Serializes every foreground/background generation touching the same conversation. */
     val conversationExecutionCoordinator: ConversationExecutionCoordinator by lazy {
         // Admission de generación bounded: resuelve el parent durable para el cap de
-        // concurrencia de subagentes; el default del ctor (4 concurrentes) aplica sin settings.
+        // concurrencia de subagentes; los límites vienen de settings persistentes (DataStore).
         ConversationExecutionCoordinator(
             parentConversationId = { id ->
                 conversationRepository.getConversation(id)?.parentConversationId
             },
+            subagentMaxConcurrent = settingsManager.subagentLimits.maxConcurrent.stateIn(
+                appScope,
+                kotlinx.coroutines.flow.SharingStarted.Eagerly,
+                com.newoether.agora.data.DEFAULT_SUBAGENT_MAX_CONCURRENT,
+            ),
         )
     }
 
