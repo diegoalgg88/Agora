@@ -27,4 +27,9 @@
         <item quantity="one">%d servidor</item>
         <item quantity="other">%d servidores</item>
     </plurals>
+    <string name="settings_tools_group_subagents">Subagentes</string>
+    <string name="settings_subagent_max_total">Subagentes máx. (total)</string>
+    <string name="settings_subagent_max_total_desc">Total máximo de conversas de subagentes por pai</string>
+    <string name="settings_subagent_max_concurrent">Subagentes simultâneos máx.</string>
+    <string name="settings_subagent_max_concurrent_desc">Subagentes gerando ao mesmo tempo no máximo</string>
 </resources>

@@ -29,4 +29,9 @@
         <item quantity="many">%d серверов</item>
         <item quantity="other">%d сервера</item>
     </plurals>
+    <string name="settings_tools_group_subagents">Субагенты</string>
+    <string name="settings_subagent_max_total">Макс. субагентов (всего)</string>
+    <string name="settings_subagent_max_total_desc">Максимальное общее число субагентов на родителя</string>
+    <string name="settings_subagent_max_concurrent">Макс. одновременно работающих субагентов</string>
+    <string name="settings_subagent_max_concurrent_desc">Максимум одновременно генерирующих субагентов</string>
 </resources>

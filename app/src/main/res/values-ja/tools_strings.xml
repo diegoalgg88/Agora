@@ -26,4 +26,9 @@
     <plurals name="mcp_servers_count">
         <item quantity="other">%d サーバー</item>
     </plurals>
+    <string name="settings_tools_group_subagents">サブエージェント</string>
+    <string name="settings_subagent_max_total">サブエージェント最大数（合計）</string>
+    <string name="settings_subagent_max_total_desc">親ごとのサブエージェント会話の最大合計数</string>
+    <string name="settings_subagent_max_concurrent">同時実行サブエージェント最大数</string>
+    <string name="settings_subagent_max_concurrent_desc">同時に生成できるサブエージェントの最大数</string>
 </resources>

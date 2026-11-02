@@ -26,4 +26,9 @@
     <plurals name="mcp_servers_count">
         <item quantity="other">%d máy chủ</item>
     </plurals>
+    <string name="settings_tools_group_subagents">Tác nhân phụ</string>
+    <string name="settings_subagent_max_total">Số tác nhân phụ tối đa (tổng)</string>
+    <string name="settings_subagent_max_total_desc">Tổng số cuộc trò chuyện tác nhân phụ tối đa cho mỗi cha</string>
+    <string name="settings_subagent_max_concurrent">Số tác nhân phụ đồng thời tối đa</string>
+    <string name="settings_subagent_max_concurrent_desc">Số tác nhân phụ tạo đồng thời tối đa</string>
 </resources>

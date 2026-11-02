@@ -31,4 +31,9 @@
         <item quantity="many">%d خادمًا</item>
         <item quantity="other">%d خادم</item>
     </plurals>
+    <string name="settings_tools_group_subagents">الوكلاء الفرعيون</string>
+    <string name="settings_subagent_max_total">الحد الأقصى للوكلاء الفرعيين (الإجمالي)</string>
+    <string name="settings_subagent_max_total_desc">الحد الأقصى لعدد محادثات الوكلاء الفرعيين لكل родитель</string>
+    <string name="settings_subagent_max_concurrent">الحد الأقصى للوكلاء الفرعيين المتزامنين</string>
+    <string name="settings_subagent_max_concurrent_desc">الحد الأقصى للوكلاء الفرعيين الذين يولدون في نفس الوقت</string>
 </resources>

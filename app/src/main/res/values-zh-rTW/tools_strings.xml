@@ -26,4 +26,9 @@
     <plurals name="mcp_servers_count">
         <item quantity="other">%d 個伺服器</item>
     </plurals>
+    <string name="settings_tools_group_subagents">子代理</string>
+    <string name="settings_subagent_max_total">子代理最大數量（總計）</string>
+    <string name="settings_subagent_max_total_desc">每個父對話的子代理對話最大總數</string>
+    <string name="settings_subagent_max_concurrent">最大並行子代理數</string>
+    <string name="settings_subagent_max_concurrent_desc">可同時生成的子代理最大數量</string>
 </resources>
