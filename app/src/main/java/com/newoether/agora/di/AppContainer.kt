@@ -265,11 +265,7 @@ class AppContainer(
             parentConversationId = { id ->
                 conversationRepository.getConversation(id)?.parentConversationId
             },
-            subagentMaxConcurrent = settingsManager.subagentLimits.maxConcurrent.stateIn(
-                appScope,
-                kotlinx.coroutines.flow.SharingStarted.Eagerly,
-                com.newoether.agora.data.DEFAULT_SUBAGENT_MAX_CONCURRENT,
-            ),
+            subagentMaxConcurrent = settingsRepository.subagentMaxConcurrentFlow,
         )
     }
 

@@ -23,6 +23,11 @@
     <string name="settings_tool_open_url_desc">Open a link in the browser or default app</string>
     <string name="settings_tool_send_notification">Send Notification</string>
     <string name="settings_tool_send_notification_desc">Post a notification on the device</string>
+    <string name="settings_tools_group_subagents">Subagents</string>
+    <string name="settings_subagent_max_total">Max subagents (total)</string>
+    <string name="settings_subagent_max_total_desc">Maximum total subagent conversations per parent conversation</string>
+    <string name="settings_subagent_max_concurrent">Max concurrent subagents</string>
+    <string name="settings_subagent_max_concurrent_desc">Maximum subagents generating at the same time</string>
     <plurals name="mcp_servers_count">
         <item quantity="one">%d server</item>
         <item quantity="other">%d servers</item>

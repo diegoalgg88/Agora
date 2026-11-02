@@ -3,6 +3,8 @@ package com.newoether.agora.ui.settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -13,6 +15,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import com.newoether.agora.R
 import com.newoether.agora.viewmodel.ChatViewModel
 
@@ -41,6 +44,8 @@ fun SettingsToolsPage(
     val assistantLocalTime by viewModel.settings.assistantGetLocalTimeEnabled.collectAsState()
     val assistantOpenUrl by viewModel.settings.assistantOpenUrlEnabled.collectAsState()
     val assistantNotification by viewModel.settings.assistantSendNotificationEnabled.collectAsState()
+    val subagentMaxTotal by viewModel.settings.subagentMaxTotalFlow.collectAsState()
+    val subagentMaxConcurrent by viewModel.settings.subagentMaxConcurrentFlow.collectAsState()
 
     // Enabling any calendar tool requires the runtime calendar permissions; the toggle
     // only sticks when the user grants both. One launcher serves all four calendar rows —
@@ -187,6 +192,42 @@ fun SettingsToolsPage(
                         leadingContent = { Icon(Icons.Default.NotificationsActive, null, tint = MaterialTheme.colorScheme.primary) },
                         trailingContent = { Switch(checked = assistantNotification, onCheckedChange = { viewModel.settings.setAssistantSendNotificationEnabled(it) }) },
                         modifier = Modifier.clickable { viewModel.settings.setAssistantSendNotificationEnabled(!assistantNotification) }
+                    )
+                }
+            ))
+            // Límites de subagentes persistentes (Fase 4 54ea0e6c): sliders 1..16 con clamp
+            // vía normalizeSubagent* al persistir.
+            SettingsGroup(title = stringResource(R.string.settings_tools_group_subagents), items = listOf(
+                {
+                    SettingsItem(
+                        headlineContent = { Text(stringResource(R.string.settings_subagent_max_total)) },
+                        supportingContent = {
+                            Text(stringResource(R.string.settings_subagent_max_total_desc))
+                            Text("$subagentMaxTotal", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                            Slider(
+                                value = subagentMaxTotal.toFloat(),
+                                onValueChange = { viewModel.settings.setSubagentMaxTotal(it.toInt()) },
+                                valueRange = 1f..16f, steps = 14,
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            )
+                        },
+                        leadingContent = { Icon(Icons.Default.AccountTree, null, tint = MaterialTheme.colorScheme.primary) },
+                    )
+                },
+                {
+                    SettingsItem(
+                        headlineContent = { Text(stringResource(R.string.settings_subagent_max_concurrent)) },
+                        supportingContent = {
+                            Text(stringResource(R.string.settings_subagent_max_concurrent_desc))
+                            Text("$subagentMaxConcurrent", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                            Slider(
+                                value = subagentMaxConcurrent.toFloat(),
+                                onValueChange = { viewModel.settings.setSubagentMaxConcurrent(it.toInt()) },
+                                valueRange = 1f..16f, steps = 14,
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            )
+                        },
+                        leadingContent = { Icon(Icons.Default.SyncAlt, null, tint = MaterialTheme.colorScheme.primary) },
                     )
                 }
             ))

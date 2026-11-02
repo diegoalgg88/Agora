@@ -10,6 +10,8 @@ import com.newoether.agora.data.DEFAULT_COLOR_SCHEME
 import com.newoether.agora.data.DEFAULT_CONTEXT_COMPACT_ENABLED
 import com.newoether.agora.data.DEFAULT_CONTEXT_COMPACT_PRESERVE_SYSTEM_PROMPT
 import com.newoether.agora.data.DEFAULT_CONTEXT_COMPACT_RETAIN_COUNT
+import com.newoether.agora.data.DEFAULT_SUBAGENT_MAX_CONCURRENT
+import com.newoether.agora.data.DEFAULT_SUBAGENT_MAX_TOTAL
 import com.newoether.agora.data.DEFAULT_CONTEXT_COMPACT_THRESHOLD_PERCENT
 import com.newoether.agora.data.DEFAULT_DYNAMIC_COLOR
 import com.newoether.agora.data.DEFAULT_LOCAL_MODEL_IDLE_RETENTION_MINUTES
@@ -839,14 +841,10 @@ class SettingsRepository(
     fun setParseInlineDollarMath(enabled: Boolean) =
         scope.launch { settingsManager.saveParseInlineDollarMath(enabled) }
     fun setHapticsEnabled(enabled: Boolean) = scope.launch { settingsManager.saveHapticsEnabled(enabled) }
-    fun setDetailedTokenUsage(enabled: Boolean) =
-        scope.launch { settingsManager.saveDetailedTokenUsage(enabled) }
+    fun setDetailedTokenUsage(enabled: Boolean) = scope.launch { settingsManager.saveDetailedTokenUsage(enabled) }
     fun setToolCallDisplayMode(mode: String) = scope.launch { settingsManager.saveToolCallDisplayMode(mode) }
-    fun setThinkingSegmentDisplayMode(mode: String) =
-        scope.launch { settingsManager.saveThinkingSegmentDisplayMode(mode) }
-
-    fun setAutoExpandActiveGroup(enabled: Boolean) =
-        scope.launch { settingsManager.saveAutoExpandActiveGroup(enabled) }
+    fun setThinkingSegmentDisplayMode(mode: String) = scope.launch { settingsManager.saveThinkingSegmentDisplayMode(mode) }
+    fun setAutoExpandActiveGroup(enabled: Boolean) = scope.launch { settingsManager.saveAutoExpandActiveGroup(enabled) }
     fun setSchemeStyle(style: String) = scope.launch { settingsManager.saveSchemeStyle(style) }
     fun setFontPreference(value: String) = scope.launch { settingsManager.saveFontPreference(value) }
     fun setCustomFontPath(value: String) = scope.launch { settingsManager.saveCustomFontPath(value) }
@@ -857,6 +855,8 @@ class SettingsRepository(
     fun setShellConfirmEnabled(enabled: Boolean) = scope.launch { settingsManager.saveShellConfirmEnabled(enabled) }
     fun setSubagentMaxTotal(value: Int) = scope.launch { settingsManager.subagentLimits.saveMaxTotal(value) }
     fun setSubagentMaxConcurrent(value: Int) = scope.launch { settingsManager.subagentLimits.saveMaxConcurrent(value) }
+    val subagentMaxTotalFlow: StateFlow<Int> = hot(settingsManager.subagentLimits.maxTotal, DEFAULT_SUBAGENT_MAX_TOTAL)
+    val subagentMaxConcurrentFlow: StateFlow<Int> = hot(settingsManager.subagentLimits.maxConcurrent, DEFAULT_SUBAGENT_MAX_CONCURRENT)
     fun addShellDevice(device: ShellDeviceConfig) = scope.launch { settingsManager.saveShellDevices(shellDevices.value + device) }
     fun updateShellDevice(device: ShellDeviceConfig) = scope.launch {
         settingsManager.saveShellDevices(shellDevices.value.map { if (it.id == device.id) device else it })
